@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, FileJson, Music, CheckCircle, XCircle, AlertCircle, Download, Trash2 } from 'lucide-react';
-import { validateFrekJson, canonicalize } from '../lib/frek-schema';
+import { validateFrekJson, canonicalizeMetadata } from '../lib/frek-schema';
 import { verifySignature, sha256, calculateDemoFingerprint } from '../lib/crypto';
 import { downloadFile, readFileAsText, readFileAsArrayBuffer, formatDate, formatDuration, truncateHash } from '../lib/utils';
 
