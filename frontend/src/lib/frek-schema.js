@@ -39,10 +39,11 @@ export function validateFrekJson(data) {
   }
 }
 
-// Canonicalize JSON for signature verification (exclude signature field)
-export function canonicalize(frekDoc) {
-  const { signature, ...rest } = frekDoc;
-  return JSON.stringify(rest, Object.keys(rest).sort(), 0);
+// Canonicalize metadata for signature verification
+// The signed message is: fingerprint + canonical(metadata)
+// This ensures only the core attestation data is signed
+export function canonicalizeMetadata(metadata) {
+  return JSON.stringify(metadata, Object.keys(metadata).sort(), 0);
 }
 
 // Example valid FREK document for testing
