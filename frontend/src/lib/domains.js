@@ -1,16 +1,22 @@
 // Domain configuration for FREK
-// frekcore.com = Public website
+// frekcore.com = Public website (production)
 // djproof = Developer portal / infrastructure
 
+// Read from environment or use current origin
+const getEnvOrOrigin = (envVar, fallback) => {
+  if (typeof window === 'undefined') return fallback;
+  return process.env[envVar] || fallback;
+};
+
 export const DOMAINS = {
-  // Public website
-  PUBLIC: 'https://www.frekcore.com',
+  // Public website - defaults to current origin for local dev
+  PUBLIC: getEnvOrOrigin('REACT_APP_PUBLIC_URL', window?.location?.origin || ''),
   
-  // Developer portal (djproof)
-  DEVELOPER: 'https://djproof.preview.emergentagent.com',
+  // Developer portal URL
+  DEVELOPER: getEnvOrOrigin('REACT_APP_DEVELOPER_URL', 'https://djproof.preview.emergentagent.com'),
   
   // Documentation base URL (developer portal)
-  DOCS_BASE: 'https://djproof.preview.emergentagent.com/docs'
+  DOCS_BASE: getEnvOrOrigin('REACT_APP_DOCS_URL', 'https://djproof.preview.emergentagent.com/docs')
 };
 
 // Helper to get docs URL
@@ -27,5 +33,5 @@ export function isDeveloperPortal() {
 // Check if we're on the public site (frekcore.com)
 export function isPublicSite() {
   if (typeof window === 'undefined') return true;
-  return window.location.hostname.includes('frekcore');
+  return window.location.hostname.includes('frekcore') || !isDeveloperPortal();
 }
