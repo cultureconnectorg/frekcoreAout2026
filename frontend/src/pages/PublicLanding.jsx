@@ -27,9 +27,14 @@ export function PublicLanding() {
             <NavLink to="/industry" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
               Industry
             </NavLink>
-            <NavLink to="/docs" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Docs
-            </NavLink>
+            <a 
+              href={docsUrl} 
+              className="font-mono text-sm text-zinc-400 hover:text-white transition-colors"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Developers
+            </a>
             <NavLink 
               to="/verify" 
               className="font-mono text-sm px-4 py-2 bg-[#00F0FF] text-black hover:bg-[#00F0FF]/90 transition-colors"
