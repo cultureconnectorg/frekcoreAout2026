@@ -375,13 +375,15 @@ export function Industry() {
               <Mail className="w-4 h-4" />
               Contact for Partnership
             </a>
-            <NavLink 
-              to="/docs"
+            <a 
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-zinc-700 text-white font-mono text-sm uppercase tracking-wide hover:border-zinc-500 transition-colors"
             >
               Technical Documentation
               <ArrowRight className="w-4 h-4" />
-            </NavLink>
+            </a>
           </div>
         </div>
       </section>
