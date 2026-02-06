@@ -60,12 +60,19 @@ export function PublicLanding() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <NavLink 
-              to="/app"
+              to="/verify"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-black font-mono text-sm uppercase tracking-wide hover:bg-zinc-200 transition-colors"
               data-testid="hero-verify-btn"
             >
               <Play className="w-4 h-4" />
-              Try Live Demo
+              Verify Audio
+            </NavLink>
+            <NavLink 
+              to="/industry"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-zinc-700 text-white font-mono text-sm uppercase tracking-wide hover:border-zinc-500 hover:bg-zinc-900/50 transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              Industry
             </NavLink>
             <NavLink 
               to="/docs"
@@ -73,7 +80,7 @@ export function PublicLanding() {
               data-testid="hero-docs-btn"
             >
               <Code className="w-4 h-4" />
-              Developer Docs
+              Documentation
             </NavLink>
           </div>
         </div>
