@@ -30,6 +30,8 @@ Construire FREK v0.4: une infrastructure de preuve pour DJ mixes.
 - [x] Changelog v0.4
 
 ## What's Been Implemented (Jan 2026)
+
+### Phase 1: Core Implementation
 1. Landing page sobre avec accès Docs/Verify
 2. Manifeste complet (principes, philosophie)
 3. Architecture pipeline (4 étapes visuelles)
@@ -41,6 +43,20 @@ Construire FREK v0.4: une infrastructure de preuve pour DJ mixes.
    - Vérification signature Ed25519
    - Comparaison fingerprint (demo mode)
    - Export rapport JSON
+
+### Phase 2: Professional Architecture Upgrade
+1. **PUBLIC Layer** (`/`, `/industry`)
+   - Cinematic landing page with Playfair Display typography
+   - What is FREK, Why it exists, Use cases sections
+   - Industry positioning page for enterprise adoption
+2. **DOCS Layer** (`/docs/*`)
+   - Developer documentation with sidebar navigation
+   - Manifesto, Architecture, Specification, Governance, Changelog
+   - English language for international audience
+3. **APP Layer** (`/app`)
+   - Standalone verification tool
+   - Clean, focused UI without documentation clutter
+   - Full Ed25519 + JSON schema validation
 
 ## Prioritized Backlog
 

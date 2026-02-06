@@ -1,68 +1,68 @@
-# FREK v0.4 — Infrastructure de Preuve Audio Locale
+# FREK v0.4 — Musical Proof Standard
 
-## Qu'est-ce que FREK ?
+## Overview
 
-FREK est un **standard de traçabilité, d'intégrité et de reconnaissance technique du geste DJ**.
+FREK is an open protocol for verifying DJ mixes and musical performances. Cryptographic proof without surveillance.
 
-FREK n'est PAS :
-- Un réseau social
-- Une plateforme
-- Un outil de surveillance
-- Un système de scoring
-
-FREK EST :
-- Une spécification ouverte
-- Un format de preuve cryptographique
-- Un outil de vérification local-first
-- Un standard anti-capture
+**Website Architecture:**
+- `/` — Public landing page
+- `/docs` — Developer documentation
+- `/app` — Verification tool
+- `/industry` — Industry solutions
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 - Node.js >= 18
 - Yarn
 
-### Développement local
+### Local Development
 
 ```bash
-# Frontend
 cd frontend
 yarn install
 yarn start
 ```
 
-Le frontend démarre sur `http://localhost:3000`.
+Frontend runs on `http://localhost:3000`.
 
-**Note**: Le backend est optionnel et désactivé par défaut. FREK fonctionne entièrement dans le navigateur.
+**Note**: Backend is optional and disabled by default. FREK operates entirely in the browser.
 
-## Structure du Projet
+## Architecture
 
 ```
 /app
-├── frontend/                 # Application React
+├── frontend/
 │   ├── src/
-│   │   ├── components/      # Composants UI
-│   │   ├── pages/           # Pages de l'application
-│   │   ├── lib/             # Utilitaires et validation
-│   │   └── App.js           # Point d'entrée
+│   │   ├── pages/
+│   │   │   ├── PublicLanding.jsx    # / route
+│   │   │   ├── Industry.jsx         # /industry route
+│   │   │   ├── AppVerify.jsx        # /app route
+│   │   │   └── docs/                # /docs/* routes
+│   │   ├── components/
+│   │   │   └── DocsLayout.jsx       # Docs sidebar layout
+│   │   └── lib/
+│   │       ├── frek-schema.js       # JSON validation (Zod)
+│   │       └── crypto.js            # Ed25519 verification
 │   └── package.json
-├── backend/                  # API FastAPI (optionnel)
+├── backend/                          # Optional (disabled)
 └── README.md
 ```
 
-## Routes Disponibles
+## Routes
 
-| Route | Description |
-|-------|-------------|
-| `/` | Page d'accueil |
-| `/docs` | Manifeste et principes |
-| `/architecture` | Pipeline technique |
-| `/spec` | Spécification .frek.json |
-| `/governance` | Modèle de gouvernance |
-| `/changelog` | Historique des versions |
-| `/verify` | Module de vérification |
+| Route | Layer | Description |
+|-------|-------|-------------|
+| `/` | PUBLIC | Industry landing page |
+| `/industry` | PUBLIC | Industry solutions |
+| `/docs` | DOCS | Manifesto |
+| `/docs/architecture` | DOCS | Technical pipeline |
+| `/docs/spec` | DOCS | .frek.json specification |
+| `/docs/governance` | DOCS | Governance model |
+| `/docs/changelog` | DOCS | Version history |
+| `/app` | APP | Verification tool |
 
-## Format .frek.json
+## .frek.json Format
 
 ```json
 {
@@ -81,35 +81,35 @@ Le frontend démarre sur `http://localhost:3000`.
 }
 ```
 
-## Module de Vérification
+## Verification Module
 
-Le module `/verify` permet de :
+The `/app` module performs:
 
-1. **Valider** la structure JSON contre le schéma v0.4
-2. **Vérifier** la signature Ed25519
-3. **Comparer** le fingerprint avec un fichier audio (optionnel)
-4. **Exporter** un rapport de vérification
+1. **JSON Validation** — Structure against v0.4 schema
+2. **Signature Verification** — Ed25519 cryptographic check
+3. **Fingerprint Comparison** — Audio matching (optional)
+4. **Report Export** — JSON verification report
 
-**Important** : Aucune donnée ne quitte le navigateur. Vérifiable dans les DevTools (onglet Network).
+**Important**: All processing is local. No data leaves the browser.
 
-## Limites
+## Non-Negotiable Principles
 
-- Le fingerprint "demo" utilise SHA-256 sur les données brutes (pas d'analyse spectrale complète)
-- La version 0.4 est en phase de développement
-- Les segments sont optionnels
+1. FREK does not judge music
+2. FREK does not rank artists
+3. FREK does not collect personal data
+4. FREK never becomes a platform
+5. FREK works offline by default
 
-## Principes Non Négociables
+## Limitations
 
-1. FREK ne juge pas la musique
-2. FREK ne classe pas les artistes
-3. FREK ne collecte pas de données personnelles
-4. FREK ne devient jamais une plateforme
-5. FREK fonctionne hors-ligne par défaut
+- Demo fingerprint uses SHA-256 on raw data (not full spectral analysis)
+- Version 0.4 is in development phase
+- Segments are optional
 
-## Licence
+## License
 
-Standard ouvert sous licence copyleft.
+Open standard under copyleft license.
 
 ---
 
-*FREK reconnaît un fait technique, dans un contexte précis.*
+*FREK — An open protocol for verifying DJ mixes and musical performances.*
