@@ -228,15 +228,15 @@ export function PublicLanding() {
               <div className="w-12 h-12 bg-[#00F0FF]/10 flex items-center justify-center mb-6">
                 <Play className="w-6 h-6 text-[#00F0FF]" />
               </div>
-              <h3 className="font-mono text-lg text-white mb-3">Live Demo</h3>
+              <h3 className="font-mono text-lg text-white mb-3">Verify Audio</h3>
               <p className="text-zinc-500 text-sm mb-6 flex-1">
-                Try the FREK verification tool. Upload a .frek.json file and verify its authenticity locally.
+                Check if an audio file has a valid FREK attestation. Upload your file and verify locally.
               </p>
               <NavLink 
-                to="/app"
+                to="/verify"
                 className="inline-flex items-center gap-2 font-mono text-sm text-[#00F0FF] hover:underline"
               >
-                Launch App <ArrowRight className="w-4 h-4" />
+                Start Verification <ArrowRight className="w-4 h-4" />
               </NavLink>
             </div>
 
