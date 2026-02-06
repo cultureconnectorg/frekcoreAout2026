@@ -1,0 +1,122 @@
+{
+  "identity": {
+    "name": "FREK v0.4",
+    "tone": "Technical, Authoritative, Cryptographic, Raw, 'Cypherpunk'",
+    "language": "French (fr-FR)",
+    "aesthetic": "RFC Spec / Terminal / Brutalist Data"
+  },
+  "typography": {
+    "font_family": {
+      "primary": "JetBrains Mono, monospace",
+      "secondary": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "usage": {
+      "headings": "font-mono tracking-tight uppercase text-white",
+      "body": "font-sans text-zinc-400 leading-relaxed",
+      "ui_elements": "font-mono text-xs uppercase tracking-widest",
+      "code": "font-mono text-sm bg-zinc-900 p-1 rounded-none"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-6xl font-bold",
+      "h2": "text-2xl md:text-3xl font-semibold border-b border-zinc-800 pb-2",
+      "h3": "text-xl font-medium",
+      "p": "text-base"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#050505",
+      "surface": "#0A0A0A",
+      "surface_highlight": "#121212",
+      "border": "#27272A",
+      "text_primary": "#FAFAFA",
+      "text_secondary": "#A1A1AA",
+      "text_muted": "#52525B",
+      "accent": "#00F0FF",
+      "success": "#00FF94",
+      "error": "#FF3333",
+      "warning": "#FFB800"
+    },
+    "usage": {
+      "bg_app": "bg-[#050505]",
+      "bg_sidebar": "bg-[#0A0A0A] border-r border-zinc-800",
+      "bg_card": "bg-[#0A0A0A] border border-zinc-800",
+      "text_main": "text-zinc-100",
+      "text_dim": "text-zinc-500",
+      "border_default": "border-zinc-800",
+      "accent_primary": "text-[#00F0FF] border-[#00F0FF]"
+    }
+  },
+  "layout": {
+    "structure": "Sidebar Navigation (Left) + Main Content Area (Right)",
+    "grid_system": "grid grid-cols-1 md:grid-cols-[240px_1fr] min-h-screen",
+    "container": "max-w-5xl mx-auto p-6 md:p-12",
+    "spacing": {
+      "section_gap": "gap-8",
+      "item_gap": "gap-4",
+      "internal_padding": "p-6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "style": "rounded-none border border-zinc-700 bg-transparent hover:bg-zinc-900 hover:border-zinc-500 transition-all text-sm font-mono uppercase",
+      "primary": "bg-zinc-100 text-black hover:bg-zinc-300 border-transparent",
+      "ghost": "hover:bg-zinc-900 text-zinc-400 hover:text-white"
+    },
+    "cards": {
+      "style": "rounded-none border border-zinc-800 bg-[#0A0A0A] p-6 shadow-none",
+      "hover": "hover:border-zinc-700 transition-colors"
+    },
+    "inputs": {
+      "style": "rounded-none bg-black border border-zinc-800 focus:border-zinc-500 focus:ring-0 font-mono text-sm placeholder:text-zinc-700"
+    },
+    "sidebar": {
+      "style": "fixed inset-y-0 left-0 z-50 w-64 bg-[#0A0A0A] border-r border-zinc-800 flex flex-col",
+      "link_active": "bg-zinc-900 text-white border-r-2 border-[#00F0FF]",
+      "link_inactive": "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50"
+    },
+    "status_indicators": {
+      "success": "text-[#00FF94] before:content-['●'] before:mr-2",
+      "error": "text-[#FF3333] before:content-['●'] before:mr-2",
+      "neutral": "text-zinc-500 before:content-['○'] before:mr-2"
+    }
+  },
+  "visual_enhancers": {
+    "borders": "1px solid #27272A (zinc-800)",
+    "shadows": "none",
+    "gradients": "none",
+    "textures": "Optional: Subtle scanline overlay or dot grid pattern in empty states",
+    "animations": "Minimal. Instant state changes or very fast (100ms) opacity transitions. No bounces or springs."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "stroke-1 w-4 h-4 text-zinc-500",
+    "usage": "Minimal. Use only for functional actions (download, copy, external link). Avoid decorative icons."
+  },
+  "pages": {
+    "landing": {
+      "layout": "Centered vertically, but left-aligned text. Big ASCII-style or Mono title.",
+      "elements": ["Hero Title", "Mission Statement (1 sentence)", "Primary Actions (Docs, Verify)"]
+    },
+    "docs": {
+      "layout": "Sidebar + Markdown Content",
+      "elements": ["Table of Contents", "Code Blocks", "Next/Prev Navigation"]
+    },
+    "verify": {
+      "layout": "Split view or Central Card",
+      "elements": ["Dropzone (Dashed Border)", "Status Terminal", "JSON Preview", "Verification Badge"]
+    }
+  },
+  "universal_rules": [
+    "NO rounded corners > 2px (prefer 0px)",
+    "NO box-shadows (use borders)",
+    "NO gradients (use solid colors)",
+    "NO center alignment for body text (always left)",
+    "NO marketing fluff (keep it dry, technical, 'spec-like')",
+    "ALWAYS use Monospace for numbers, data, and UI labels",
+    "Dark Mode ONLY (Force 'dark' class on html/body)"
+  ],
+  "instructions_to_main_agent": "You are building a tool for audio engineers and cryptographers. They value precision over beauty. The UI should feel like a well-crafted CLI tool that happens to be in a browser. Use 'JetBrains Mono' (from Google Fonts) for all headings. Ensure the 'Verify' flow feels robust—like a bank vault opening, not a confetti party.",
+  "image_urls": {}
+}
