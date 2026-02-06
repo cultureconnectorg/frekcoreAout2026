@@ -412,7 +412,10 @@ export function PublicVerify() {
             {/* Developer Mode Toggle */}
             <div className="border-t border-zinc-800 pt-6">
               <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
+                onClick={() => {
+                  setShowAdvanced(!showAdvanced);
+                  if (!showAdvanced) setMode('developer');
+                }}
                 className="w-full flex items-center justify-between py-3 text-zinc-600 hover:text-zinc-400 transition-colors"
               >
                 <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest">
@@ -438,7 +441,7 @@ export function PublicVerify() {
                           : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'
                       }`}
                     >
-                      Public Mode
+                      Audio Only
                     </button>
                     <button
                       onClick={() => setMode('developer')}
@@ -448,42 +451,40 @@ export function PublicVerify() {
                           : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'
                       }`}
                     >
-                      Developer Mode
+                      FREK + Audio
                     </button>
                   </div>
 
-                  {/* FREK File Upload */}
-                  {mode === 'developer' && (
-                    <label 
-                      className={`
-                        flex flex-col items-center justify-center p-6 cursor-pointer
-                        border border-dashed transition-colors
-                        ${frekFile ? 'border-[#00F0FF] bg-[#00F0FF]/5' : 'border-zinc-700 hover:border-zinc-600'}
-                      `}
-                      data-testid="frek-upload-zone"
-                    >
-                      <input
-                        type="file"
-                        accept=".json,.frek.json"
-                        onChange={handleFrekUpload}
-                        className="hidden"
-                        data-testid="frek-file-input"
-                      />
-                      {frekFile ? (
-                        <>
-                          <FileJson className="w-8 h-8 text-[#00F0FF] mb-2" />
-                          <p className="font-mono text-sm text-white">{frekFile.name}</p>
-                        </>
-                      ) : (
-                        <>
-                          <FileJson className="w-8 h-8 text-zinc-700 mb-2" />
-                          <p className="font-mono text-sm text-zinc-600">
-                            Upload .frek.json file
-                          </p>
-                        </>
-                      )}
-                    </label>
-                  )}
+                  {/* FREK File Upload - Always visible in developer section */}
+                  <label 
+                    className={`
+                      flex flex-col items-center justify-center p-6 cursor-pointer
+                      border border-dashed transition-colors
+                      ${frekFile ? 'border-[#00F0FF] bg-[#00F0FF]/5' : 'border-zinc-700 hover:border-zinc-600'}
+                    `}
+                    data-testid="frek-upload-zone"
+                  >
+                    <input
+                      type="file"
+                      accept=".json,.frek.json"
+                      onChange={handleFrekUpload}
+                      className="hidden"
+                      data-testid="frek-file-input"
+                    />
+                    {frekFile ? (
+                      <>
+                        <FileJson className="w-8 h-8 text-[#00F0FF] mb-2" />
+                        <p className="font-mono text-sm text-white">{frekFile.name}</p>
+                      </>
+                    ) : (
+                      <>
+                        <FileJson className="w-8 h-8 text-zinc-700 mb-2" />
+                        <p className="font-mono text-sm text-zinc-600">
+                          Upload .frek.json attestation file
+                        </p>
+                      </>
+                    )}
+                  </label>
 
                   {/* Info */}
                   <p className="font-mono text-[10px] text-zinc-700 mt-4">
