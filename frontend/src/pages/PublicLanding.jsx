@@ -310,9 +310,9 @@ export function PublicLanding() {
               <div>
                 <p className="font-mono text-xs uppercase tracking-wide text-zinc-600 mb-3">Protocol</p>
                 <div className="space-y-2">
-                  <NavLink to="/docs" className="block font-mono text-sm text-zinc-500 hover:text-white">Documentation</NavLink>
-                  <NavLink to="/docs/spec" className="block font-mono text-sm text-zinc-500 hover:text-white">Specification</NavLink>
-                  <NavLink to="/docs/changelog" className="block font-mono text-sm text-zinc-500 hover:text-white">Changelog</NavLink>
+                  <a href={`${docsUrl}`} target="_blank" rel="noopener noreferrer" className="block font-mono text-sm text-zinc-500 hover:text-white">Documentation</a>
+                  <a href={`${docsUrl}/spec`} target="_blank" rel="noopener noreferrer" className="block font-mono text-sm text-zinc-500 hover:text-white">Specification</a>
+                  <a href={`${docsUrl}/changelog`} target="_blank" rel="noopener noreferrer" className="block font-mono text-sm text-zinc-500 hover:text-white">Changelog</a>
                 </div>
               </div>
               <div>
