@@ -61,15 +61,22 @@ const DocsSidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
         
-        {/* Back to main site */}
+        {/* Back to public site */}
         <div className="px-4 py-4 border-b border-zinc-800">
-          <NavLink 
-            to="/"
+          <a 
+            href="/"
             className="flex items-center gap-2 text-zinc-500 hover:text-white font-mono text-xs uppercase tracking-wide transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
-            Back to FREK.org
-          </NavLink>
+            Back to frekcore.com
+          </a>
+        </div>
+        
+        {/* Portal indicator */}
+        <div className="px-4 py-3 bg-zinc-900/50 border-b border-zinc-800">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#00F0FF]">
+            Developer Portal
+          </p>
         </div>
         
         {/* Navigation */}
