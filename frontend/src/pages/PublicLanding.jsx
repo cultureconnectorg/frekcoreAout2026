@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ArrowRight, Shield, Code, Building2, Play } from 'lucide-react';
+import { DOMAINS } from '../lib/domains';
 
 export function PublicLanding() {
+  const docsUrl = DOMAINS.DOCS_BASE;
   return (
     <div className="min-h-screen bg-[#030303]">
       {/* Navigation */}
