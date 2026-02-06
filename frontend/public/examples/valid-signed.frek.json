@@ -1,0 +1,23 @@
+{
+  "frek_version": "0.4",
+  "fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "segments": [
+    {
+      "t0": 0,
+      "t1": 5,
+      "h": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "t0": 5,
+      "t1": 10,
+      "h": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "metadata": {
+    "timestamp": "2024-04-20T15:30:00Z",
+    "duration": 3600,
+    "source_type": "live"
+  },
+  "signature": "ed25519:YHekHZ2IG3etJfcyEn351gy6tZ2pvG9iCph52IWa7RdrfUE0px15zSE7AyiiOXSNI+yKzaNVqhRT5uj64WFWCQ==",
+  "public_key": "MmKRpk8kB2p0dnkME2f+Xq/7PTa1gUt4a1bSAvUaPJs="
+}
