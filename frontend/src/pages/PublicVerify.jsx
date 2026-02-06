@@ -287,12 +287,20 @@ export function PublicVerify() {
             <NavLink to="/standard" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
               Standard
             </NavLink>
+            <NavLink to="/manifesto" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
+              Manifesto
+            </NavLink>
             <NavLink to="/industry" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
               Industry
             </NavLink>
-            <NavLink to="/docs" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Docs
-            </NavLink>
+            <a 
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              Developers
+            </a>
             <span className="font-mono text-sm px-4 py-2 bg-[#00F0FF] text-black">
               Verify
             </span>
