@@ -307,9 +307,10 @@ export function PublicLanding() {
               <div>
                 <p className="font-mono text-xs uppercase tracking-wide text-zinc-600 mb-3">Resources</p>
                 <div className="space-y-2">
-                  <NavLink to="/app" className="block font-mono text-sm text-zinc-500 hover:text-white">Verify Tool</NavLink>
+                  <NavLink to="/verify" className="block font-mono text-sm text-zinc-500 hover:text-white">Verify Tool</NavLink>
+                  <NavLink to="/standard" className="block font-mono text-sm text-zinc-500 hover:text-white">Standard</NavLink>
+                  <NavLink to="/manifesto" className="block font-mono text-sm text-zinc-500 hover:text-white">Manifesto</NavLink>
                   <NavLink to="/industry" className="block font-mono text-sm text-zinc-500 hover:text-white">Industry</NavLink>
-                  <NavLink to="/docs/governance" className="block font-mono text-sm text-zinc-500 hover:text-white">Governance</NavLink>
                 </div>
               </div>
             </div>
