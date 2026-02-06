@@ -16,14 +16,20 @@ export function Industry() {
           </NavLink>
           
           <div className="hidden md:flex items-center gap-8">
-            <NavLink to="/docs" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Documentation
+            <NavLink to="/standard" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
+              Standard
+            </NavLink>
+            <NavLink to="/manifesto" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
+              Manifesto
             </NavLink>
             <NavLink to="/industry" className="font-mono text-sm text-white">
               Industry
             </NavLink>
+            <NavLink to="/docs" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
+              Docs
+            </NavLink>
             <NavLink 
-              to="/app" 
+              to="/verify" 
               className="font-mono text-sm px-4 py-2 bg-[#00F0FF] text-black hover:bg-[#00F0FF]/90 transition-colors"
             >
               Verify
