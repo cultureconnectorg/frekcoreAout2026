@@ -4,6 +4,7 @@ import { Upload, Music, CheckCircle, XCircle, AlertCircle, Download, FileJson, S
 import { validateFrekJson, canonicalizeMetadata } from '../lib/frek-schema';
 import { verifySignature, sha256, calculateDemoFingerprint } from '../lib/crypto';
 import { downloadFile, readFileAsText, readFileAsArrayBuffer, formatDate, formatDuration, truncateHash } from '../lib/utils';
+import { DOMAINS } from '../lib/domains';
 
 const STATUS = {
   VALID: 'VERIFIED',
