@@ -254,16 +254,18 @@ export function PublicLanding() {
               <div className="w-12 h-12 bg-zinc-800 flex items-center justify-center mb-6">
                 <Code className="w-6 h-6 text-zinc-400" />
               </div>
-              <h3 className="font-mono text-lg text-white mb-3">Developer Documentation</h3>
+              <h3 className="font-mono text-lg text-white mb-3">Developer Portal</h3>
               <p className="text-zinc-500 text-sm mb-6 flex-1">
                 Technical specification, JSON schema, cryptographic protocol details, and integration guides.
               </p>
-              <NavLink 
-                to="/docs"
+              <a 
+                href={docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 font-mono text-sm text-zinc-400 hover:text-white hover:underline"
               >
-                Read Docs <ArrowRight className="w-4 h-4" />
-              </NavLink>
+                Open Developer Portal <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
 
             {/* Industry */}
