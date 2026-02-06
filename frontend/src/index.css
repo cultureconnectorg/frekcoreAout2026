@@ -39,6 +39,14 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
+.font-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-sans {
+  font-family: 'Inter', sans-serif;
+}
+
 code, pre {
   font-family: 'JetBrains Mono', monospace;
 }
