@@ -1,31 +1,40 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Layout } from "./components/Layout";
-import { Home } from "./pages/Home";
-import { Docs } from "./pages/Docs";
-import { Architecture } from "./pages/Architecture";
-import { Spec } from "./pages/Spec";
-import { Governance } from "./pages/Governance";
-import { Changelog } from "./pages/Changelog";
-import { Verify } from "./pages/Verify";
+
+// Public pages
+import { PublicLanding } from "./pages/PublicLanding";
+import { Industry } from "./pages/Industry";
+
+// App (standalone tool)
+import { AppVerify } from "./pages/AppVerify";
+
+// Docs layout and pages
+import { DocsLayout } from "./components/DocsLayout";
+import { DocsManifesto } from "./pages/docs/DocsManifesto";
+import { DocsArchitecture } from "./pages/docs/DocsArchitecture";
+import { DocsSpec } from "./pages/docs/DocsSpec";
+import { DocsGovernance } from "./pages/docs/DocsGovernance";
+import { DocsChangelog } from "./pages/docs/DocsChangelog";
+
 import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Landing page without sidebar */}
-        <Route path="/" element={<Layout><Home /></Layout>} />
+        {/* PUBLIC LAYER */}
+        <Route path="/" element={<PublicLanding />} />
+        <Route path="/industry" element={<Industry />} />
         
-        {/* Documentation pages with sidebar */}
-        <Route path="/docs" element={<Layout><Docs /></Layout>} />
-        <Route path="/architecture" element={<Layout><Architecture /></Layout>} />
-        <Route path="/spec" element={<Layout><Spec /></Layout>} />
-        <Route path="/governance" element={<Layout><Governance /></Layout>} />
-        <Route path="/changelog" element={<Layout><Changelog /></Layout>} />
+        {/* APP LAYER - Standalone verification tool */}
+        <Route path="/app" element={<AppVerify />} />
         
-        {/* Verify tool */}
-        <Route path="/verify" element={<Layout><Verify /></Layout>} />
+        {/* DOCS LAYER - Developer documentation */}
+        <Route path="/docs" element={<DocsLayout><DocsManifesto /></DocsLayout>} />
+        <Route path="/docs/architecture" element={<DocsLayout><DocsArchitecture /></DocsLayout>} />
+        <Route path="/docs/spec" element={<DocsLayout><DocsSpec /></DocsLayout>} />
+        <Route path="/docs/governance" element={<DocsLayout><DocsGovernance /></DocsLayout>} />
+        <Route path="/docs/changelog" element={<DocsLayout><DocsChangelog /></DocsLayout>} />
       </Routes>
     </BrowserRouter>
   );
