@@ -3,13 +3,13 @@
 // djproof = Developer portal / infrastructure
 
 export const DOMAINS = {
-  // Public website (frekcore.com)
-  PUBLIC: '',  // Same origin for public pages
+  // Public website
+  PUBLIC: 'https://www.frekcore.com',
   
   // Developer portal (djproof)
   DEVELOPER: 'https://djproof.preview.emergentagent.com',
   
-  // Documentation base URL
+  // Documentation base URL (developer portal)
   DOCS_BASE: 'https://djproof.preview.emergentagent.com/docs'
 };
 
@@ -24,8 +24,8 @@ export function isDeveloperPortal() {
   return window.location.hostname.includes('djproof');
 }
 
-// Check if we're on the public site
+// Check if we're on the public site (frekcore.com)
 export function isPublicSite() {
   if (typeof window === 'undefined') return true;
-  return !window.location.hostname.includes('djproof');
+  return window.location.hostname.includes('frekcore');
 }
