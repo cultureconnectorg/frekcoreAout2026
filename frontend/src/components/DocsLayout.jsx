@@ -129,9 +129,11 @@ const DocsSidebar = ({ isOpen, onClose }) => {
         
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800">
-          <p className="font-mono text-[10px] text-zinc-700 leading-relaxed">
-            FREK v0.4 — Open Standard<br/>
-            No tracking. No cloud required.
+          <p className="font-mono text-[10px] text-zinc-700 leading-relaxed mb-2">
+            FREK v0.4 — Developer Portal
+          </p>
+          <p className="font-mono text-[10px] text-zinc-700">
+            Infrastructure & Technical Documentation
           </p>
         </div>
       </aside>
