@@ -10,8 +10,12 @@ import {
   Menu,
   X,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  ExternalLink
 } from 'lucide-react';
+
+// Developer portal domain config
+const PUBLIC_SITE = 'https://frekcore.com'; // Public site URL (placeholder until domain is configured)
 
 const navItems = [
   { path: '/docs', label: 'Manifesto', icon: BookOpen, exact: true },
