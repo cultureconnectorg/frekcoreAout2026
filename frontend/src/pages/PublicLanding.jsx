@@ -81,14 +81,16 @@ export function PublicLanding() {
               <Building2 className="w-4 h-4" />
               Industry
             </NavLink>
-            <NavLink 
-              to="/docs"
+            <a 
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-zinc-700 text-white font-mono text-sm uppercase tracking-wide hover:border-zinc-500 hover:bg-zinc-900/50 transition-colors"
               data-testid="hero-docs-btn"
             >
               <Code className="w-4 h-4" />
-              Documentation
-            </NavLink>
+              Developers
+            </a>
           </div>
         </div>
       </section>
