@@ -400,7 +400,7 @@ export function Industry() {
           <div className="flex gap-6">
             <NavLink to="/" className="font-mono text-sm text-zinc-500 hover:text-white">Home</NavLink>
             <NavLink to="/standard" className="font-mono text-sm text-zinc-500 hover:text-white">Standard</NavLink>
-            <NavLink to="/docs" className="font-mono text-sm text-zinc-500 hover:text-white">Docs</NavLink>
+            <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-sm text-zinc-500 hover:text-white">Developers</a>
             <NavLink to="/verify" className="font-mono text-sm text-zinc-500 hover:text-white">Verify</NavLink>
           </div>
         </div>
