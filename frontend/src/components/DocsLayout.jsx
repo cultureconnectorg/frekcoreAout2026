@@ -106,7 +106,7 @@ const DocsSidebar = ({ isOpen, onClose }) => {
               Tools
             </p>
             <NavLink
-              to="/app"
+              to="/verify"
               onClick={onClose}
               className="flex items-center gap-3 px-3 py-2.5 mb-1 font-mono text-sm text-[#00F0FF] hover:bg-zinc-900/50 transition-colors"
             >
