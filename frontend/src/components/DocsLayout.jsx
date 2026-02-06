@@ -64,7 +64,7 @@ const DocsSidebar = ({ isOpen, onClose }) => {
         {/* Back to public site */}
         <div className="px-4 py-4 border-b border-zinc-800">
           <a 
-            href="/"
+            href="https://www.frekcore.com"
             className="flex items-center gap-2 text-zinc-500 hover:text-white font-mono text-xs uppercase tracking-wide transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
