@@ -392,8 +392,9 @@ export function Industry() {
           </div>
           <div className="flex gap-6">
             <NavLink to="/" className="font-mono text-sm text-zinc-500 hover:text-white">Home</NavLink>
+            <NavLink to="/standard" className="font-mono text-sm text-zinc-500 hover:text-white">Standard</NavLink>
             <NavLink to="/docs" className="font-mono text-sm text-zinc-500 hover:text-white">Docs</NavLink>
-            <NavLink to="/app" className="font-mono text-sm text-zinc-500 hover:text-white">App</NavLink>
+            <NavLink to="/verify" className="font-mono text-sm text-zinc-500 hover:text-white">Verify</NavLink>
           </div>
         </div>
       </footer>
