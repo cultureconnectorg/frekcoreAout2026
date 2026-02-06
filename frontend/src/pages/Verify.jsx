@@ -111,8 +111,9 @@ export function Verify() {
       verificationResults.json = { status: STATUS.VALID, errors: [] };
 
       // Step 2: Verify signature
-      const canonicalJson = canonicalize(frekData);
-      const messageToVerify = frekData.fingerprint + canonicalJson;
+      // Message to verify = fingerprint + canonical(metadata)
+      const canonicalMetadata = canonicalizeMetadata(frekData.metadata);
+      const messageToVerify = frekData.fingerprint + canonicalMetadata;
       const messageHash = await sha256(messageToVerify);
       
       // Extract signature (remove ed25519: prefix)
