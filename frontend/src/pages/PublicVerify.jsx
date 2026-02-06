@@ -65,6 +65,7 @@ const StatusDisplay = ({ status }) => {
 };
 
 export function PublicVerify() {
+  const docsUrl = DOMAINS.DOCS_BASE;
   const [mode, setMode] = useState('public'); // 'public' or 'developer'
   const [audioFile, setAudioFile] = useState(null);
   const [frekFile, setFrekFile] = useState(null);
