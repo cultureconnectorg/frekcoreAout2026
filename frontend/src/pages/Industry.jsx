@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ArrowRight, Shield, Check, Building2, Users, Globe, Lock, Scale, Mail } from 'lucide-react';
+import { DOMAINS } from '../lib/domains';
 
 export function Industry() {
+  const docsUrl = DOMAINS.DOCS_BASE;
   return (
     <div className="min-h-screen bg-[#030303]">
       {/* Navigation */}
