@@ -19,12 +19,20 @@ export function Standard() {
           
           <div className="hidden md:flex items-center gap-8">
             <span className="font-mono text-sm text-white">Standard</span>
+            <NavLink to="/manifesto" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
+              Manifesto
+            </NavLink>
             <NavLink to="/industry" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
               Industry
             </NavLink>
-            <NavLink to="/docs" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Docs
-            </NavLink>
+            <a 
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              Developers
+            </a>
             <NavLink 
               to="/verify" 
               className="font-mono text-sm px-4 py-2 bg-[#00F0FF] text-black hover:bg-[#00F0FF]/90 transition-colors"
