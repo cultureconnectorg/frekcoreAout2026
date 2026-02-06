@@ -207,13 +207,15 @@ export function Manifesto() {
               <Shield className="w-4 h-4" />
               Verify Now
             </NavLink>
-            <NavLink 
-              to="/docs"
+            <a 
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-zinc-700 text-white font-mono text-sm uppercase tracking-wide hover:border-zinc-500 transition-colors"
             >
-              Developer Docs
+              Developer Portal
               <ArrowRight className="w-4 h-4" />
-            </NavLink>
+            </a>
           </div>
         </div>
       </section>
