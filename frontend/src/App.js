@@ -3,12 +3,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Public pages
 import { PublicLanding } from "./pages/PublicLanding";
+import { Standard } from "./pages/Standard";
+import { Manifesto } from "./pages/Manifesto";
 import { Industry } from "./pages/Industry";
+import { PublicVerify } from "./pages/PublicVerify";
 
-// App (standalone tool)
-import { AppVerify } from "./pages/AppVerify";
-
-// Docs layout and pages
+// Docs layout and pages (existing technical documentation - unchanged)
 import { DocsLayout } from "./components/DocsLayout";
 import { DocsManifesto } from "./pages/docs/DocsManifesto";
 import { DocsArchitecture } from "./pages/docs/DocsArchitecture";
@@ -22,14 +22,14 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* PUBLIC LAYER */}
+        {/* PUBLIC LAYER - New public-facing pages */}
         <Route path="/" element={<PublicLanding />} />
+        <Route path="/standard" element={<Standard />} />
+        <Route path="/manifesto" element={<Manifesto />} />
         <Route path="/industry" element={<Industry />} />
+        <Route path="/verify" element={<PublicVerify />} />
         
-        {/* APP LAYER - Standalone verification tool */}
-        <Route path="/app" element={<AppVerify />} />
-        
-        {/* DOCS LAYER - Developer documentation */}
+        {/* DOCS LAYER - Existing technical documentation (unchanged) */}
         <Route path="/docs" element={<DocsLayout><DocsManifesto /></DocsLayout>} />
         <Route path="/docs/architecture" element={<DocsLayout><DocsArchitecture /></DocsLayout>} />
         <Route path="/docs/spec" element={<DocsLayout><DocsSpec /></DocsLayout>} />
