@@ -13,10 +13,10 @@ export const DOMAINS = {
   PUBLIC: getEnvOrOrigin('REACT_APP_PUBLIC_URL', window?.location?.origin || ''),
   
   // Developer portal URL
-  DEVELOPER: getEnvOrOrigin('REACT_APP_DEVELOPER_URL', 'https://djproof.preview.emergentagent.com'),
+  DEVELOPER: getEnvOrOrigin('REACT_APP_DEVELOPER_URL', 'https://frek-demo.preview.emergentagent.com'),
   
   // Documentation base URL (developer portal)
-  DOCS_BASE: getEnvOrOrigin('REACT_APP_DOCS_URL', 'https://djproof.preview.emergentagent.com/docs')
+  DOCS_BASE: getEnvOrOrigin('REACT_APP_DOCS_URL', 'https://frek-demo.preview.emergentagent.com/docs')
 };
 
 // Helper to get docs URL
