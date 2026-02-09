@@ -80,6 +80,9 @@ export function Navigation({ currentPage }) {
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="text-zinc-400 hover:text-white"
             data-testid="mobile-menu-btn"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -88,7 +91,7 @@ export function Navigation({ currentPage }) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#030303] border-t border-zinc-900 px-6 py-4 space-y-4">
+        <div id="mobile-menu" className="md:hidden bg-[#030303] border-t border-zinc-900 px-6 py-4 space-y-4" role="menu">
           {navItems.map(item => (
             <NavLink
               key={item.key}
