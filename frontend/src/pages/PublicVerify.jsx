@@ -232,29 +232,28 @@ export function PublicVerify() {
     setIsVerifying(false);
   }, [frekData, audioFile, t]);
 
-  // Export report
+  // Export report using frek-core
   const handleExportReport = useCallback(() => {
     if (!results) return;
 
-    const report = {
-      frek_verification_report: {
-        version: '0.4',
-        timestamp: new Date().toISOString(),
-        mode: mode,
-        status: results.global,
-        message: results.message,
-        details: results.details,
-        audio_file: audioFile?.name || null,
-        frek_file: frekFile?.name || null
-      }
-    };
+    const report = generateReport({
+      status: results.global,
+      message: results.message,
+      details: results.details,
+      frekData: frekData,
+      audioInfo: audioFile ? {
+        name: audioFile.name,
+        size: audioFile.size,
+        type: audioFile.type
+      } : null
+    });
 
     downloadFile(
       JSON.stringify(report, null, 2),
       `frek-verification-${Date.now()}.json`,
       'application/json'
     );
-  }, [results, mode, audioFile, frekFile]);
+  }, [results, frekData, audioFile]);
 
   return (
     <div className="min-h-screen bg-[#030303]">
