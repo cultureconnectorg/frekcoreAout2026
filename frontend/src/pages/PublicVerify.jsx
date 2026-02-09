@@ -149,28 +149,28 @@ export function PublicVerify() {
     setProgress(0);
   }, []);
 
-  // Verify in PUBLIC mode
+  // Verify in PUBLIC mode - uses real FFT fingerprinting
   const handlePublicVerify = useCallback(async () => {
     if (!audioFile) return;
     
     setIsVerifying(true);
-    setProgress(10);
+    setProgress(5);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProgress(30);
-      
       const audioBuffer = await readFileAsArrayBuffer(audioFile);
-      setProgress(60);
       
-      const fingerprint = await calculateDemoFingerprint(audioBuffer);
-      setProgress(100);
+      // Use real FFT-based fingerprinting from frek-core
+      const result = await hashAudio(audioBuffer, {
+        onProgress: (p, msg) => setProgress(p)
+      });
       
       setResults({
         global: STATUS.UNKNOWN,
         message: `${t.verify.fingerprintCalculated}. ${t.verify.noAttestation}`,
         details: {
-          fingerprint: fingerprint,
+          fingerprint: result.fingerprint,
+          duration: `${result.duration.toFixed(2)}s`,
+          segments: result.segments.length,
           audioFile: audioFile.name,
           audioSize: `${(audioFile.size / 1024 / 1024).toFixed(2)} MB`
         }
@@ -186,88 +186,40 @@ export function PublicVerify() {
     setIsVerifying(false);
   }, [audioFile, t]);
 
-  // Verify in DEVELOPER mode
+  // Verify in DEVELOPER mode - uses full FREK verification pipeline
   const handleDeveloperVerify = useCallback(async () => {
     if (!frekData) return;
 
     setIsVerifying(true);
-    setProgress(10);
+    setProgress(5);
 
     try {
-      // Step 1: Validate JSON schema
-      const jsonValidation = validateFrekJson(frekData);
-      setProgress(30);
+      // Use the full verification pipeline from frek-core
+      const audioBuffer = audioFile ? await readFileAsArrayBuffer(audioFile) : null;
       
-      if (!jsonValidation.valid) {
-        setResults({
-          global: STATUS.INVALID,
-          message: t.verify.invalidStructure,
-          details: {
-            errors: jsonValidation.errors.map(e => `${e.path}: ${e.message}`)
-          }
-        });
-        setIsVerifying(false);
-        return;
-      }
+      const result = await verifyFrek(frekData, audioBuffer, (p, msg) => {
+        setProgress(p);
+      });
 
-      // Step 2: Verify signature
-      setProgress(50);
-      const canonicalMetadata = canonicalizeMetadata(frekData.metadata);
-      const messageToVerify = frekData.fingerprint + canonicalMetadata;
-      const messageHash = await sha256(messageToVerify);
-      
-      const signatureBase64 = frekData.signature.replace('ed25519:', '');
-      const publicKey = frekData.public_key;
+      const statusMap = {
+        'VERIFIED': STATUS.VALID,
+        'MODIFIED': STATUS.MODIFIED,
+        'INVALID': STATUS.INVALID,
+        'ERROR': STATUS.INVALID
+      };
 
-      const sigResult = verifySignature(messageHash, signatureBase64, publicKey);
-      setProgress(70);
-      
-      if (!sigResult.valid) {
-        setResults({
-          global: STATUS.INVALID,
-          message: t.verify.signatureFailed,
-          details: {
-            error: sigResult.error,
-            json: 'Valid',
-            signature: 'Invalid'
-          }
-        });
-        setIsVerifying(false);
-        return;
-      }
+      const messageMap = {
+        'VERIFIED': result.details.fingerprint === 'Match' ? t.verify.audioMatch : t.verify.structureVerified,
+        'MODIFIED': t.verify.audioMismatch,
+        'INVALID': result.details.errors ? t.verify.invalidStructure : t.verify.signatureFailed,
+        'ERROR': result.message
+      };
 
-      // Step 3: Check fingerprint against audio if provided
-      setProgress(85);
-      if (audioFile) {
-        const audioBuffer = await readFileAsArrayBuffer(audioFile);
-        const calculatedFingerprint = await calculateDemoFingerprint(audioBuffer);
-        setProgress(100);
-        
-        if (calculatedFingerprint === frekData.fingerprint) {
-          setResults({
-            global: STATUS.VALID,
-            message: t.verify.audioMatch,
-            details: {
-              json: 'Valid',
-              signature: 'Valid',
-              fingerprint: 'Match',
-              timestamp: frekData.metadata?.timestamp,
-              duration: frekData.metadata?.duration,
-              source_type: frekData.metadata?.source_type
-            }
-          });
-        } else {
-          setResults({
-            global: STATUS.MODIFIED,
-            message: t.verify.audioMismatch,
-            details: {
-              json: 'Valid',
-              signature: 'Valid',
-              fingerprint: 'Mismatch',
-              expected: truncateHash(frekData.fingerprint, 12),
-              calculated: truncateHash(calculatedFingerprint, 12)
-            }
-          });
+      setResults({
+        global: statusMap[result.status] || STATUS.UNKNOWN,
+        message: messageMap[result.status] || result.message,
+        details: result.details
+      });
         }
       } else {
         setProgress(100);
