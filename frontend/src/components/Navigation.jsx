@@ -17,16 +17,16 @@ export function Navigation({ currentPage }) {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#030303]/90 backdrop-blur-sm border-b border-zinc-900">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#030303]/90 backdrop-blur-sm border-b border-zinc-900" role="navigation" aria-label="Main navigation">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <NavLink to="/" className="flex items-center gap-3" data-testid="nav-logo">
+        <NavLink to="/" className="flex items-center gap-3" data-testid="nav-logo" aria-label="FREK Home">
           <img 
             src="/logo.svg" 
-            alt="FREK" 
+            alt="FREK Logo" 
             className="w-8 h-8"
           />
-          <span className="font-mono font-bold text-lg tracking-tight text-white">FREK</span>
+          <span className="font-mono font-bold text-lg tracking-tight text-white" aria-hidden="true">FREK</span>
         </NavLink>
         
         {/* Desktop Navigation */}
