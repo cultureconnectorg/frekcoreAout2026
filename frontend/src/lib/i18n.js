@@ -1,7 +1,8 @@
 // Internationalization for FREK
-// Supported languages: English (en), Spanish (es), Arabic (ar)
+// Supported languages: French (fr), English (en), Spanish (es), Arabic (ar)
 
 export const LANGUAGES = {
+  fr: { code: 'fr', name: 'Français', dir: 'ltr', flag: '🇫🇷' },
   en: { code: 'en', name: 'English', dir: 'ltr', flag: '🇬🇧' },
   es: { code: 'es', name: 'Español', dir: 'ltr', flag: '🇪🇸' },
   ar: { code: 'ar', name: 'العربية', dir: 'rtl', flag: '🇸🇦' }

@@ -5,11 +5,11 @@ const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
   const [lang, setLang] = useState(() => {
-    // Get from localStorage or default to 'en'
+    // Get from localStorage or default to 'fr' (French is primary)
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('frek-lang') || 'en';
+      return localStorage.getItem('frek-lang') || 'fr';
     }
-    return 'en';
+    return 'fr';
   });
 
   const t = getTranslation(lang);
