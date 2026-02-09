@@ -220,22 +220,6 @@ export function PublicVerify() {
         message: messageMap[result.status] || result.message,
         details: result.details
       });
-        }
-      } else {
-        setProgress(100);
-        setResults({
-          global: STATUS.VALID,
-          message: t.verify.structureVerified,
-          details: {
-            json: 'Valid',
-            signature: 'Valid',
-            fingerprint: 'Not checked (no audio provided)',
-            timestamp: frekData.metadata?.timestamp,
-            duration: frekData.metadata?.duration,
-            source_type: frekData.metadata?.source_type
-          }
-        });
-      }
 
     } catch (err) {
       setResults({
