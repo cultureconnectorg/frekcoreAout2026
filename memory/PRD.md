@@ -1,93 +1,156 @@
-# FREK v0.4 — Product Requirements Document
+# FREK v0.4 - Product Requirements Document
 
-## Original Problem Statement
-Construire FREK v0.4: une infrastructure de preuve pour DJ mixes.
-- Application web local-first avec documentation + démo de vérification
-- Sans plateforme, sans tracking, sans cloud obligatoire
-- Principes non négociables: pas de comptes, pas d'analytics, pas de réseau social
+## Project Overview
+FREK est un protocole ouvert de preuve-de-travail pour les mixes DJ. C'est une infrastructure cryptographique qui permet de certifier l'authenticité des performances musicales.
+
+**Principe fondamental:** *"FREK ne reconnaît pas la musique. FREK reconnaît un fait technique, dans un contexte précis."*
 
 ## Architecture
 
-### Frontend (React + Tailwind)
-- Pages: /, /docs, /architecture, /spec, /governance, /changelog, /verify
-- Module de vérification: validation JSON (Zod), signature Ed25519 (tweetnacl)
-- Tout fonctionne dans le navigateur, aucune donnée ne sort
+```
+/app/frontend/
+├── public/
+│   ├── logo.svg                    # Official FREK logo
+│   └── examples/                   # Test vectors (.frek.json files)
+├── src/
+│   ├── core/
+│   │   ├── frek-core.js           # Core verification module
+│   │   └── frek-core.test.js      # Conformance tests
+│   ├── components/
+│   │   ├── Navigation.jsx         # Main nav with logo + language selector
+│   │   ├── Footer.jsx             # Site footer
+│   │   └── LanguageSelector.jsx   # Language dropdown (FR/EN/ES/AR)
+│   ├── lib/
+│   │   ├── i18n.js                # Translation strings (4 languages)
+│   │   ├── LanguageContext.jsx    # React context for i18n + RTL
+│   │   ├── crypto.js              # Cryptographic utilities
+│   │   ├── frek-schema.js         # Zod schema validation
+│   │   ├── domains.js             # Domain URL configuration
+│   │   └── utils.js               # Helper functions
+│   └── pages/
+│       ├── PublicLanding.jsx      # Landing page
+│       ├── PublicVerify.jsx       # Verification tool
+│       ├── Standard.jsx           # Standard explanation
+│       ├── Manifesto.jsx          # Vision & principles
+│       ├── Industry.jsx           # Industry solutions
+│       └── docs/                   # Developer portal
+```
 
-### Backend (FastAPI - optionnel, désactivé par défaut)
-- Non utilisé pour les fonctionnalités core
-- Disponible pour extensions futures
+## Implemented Features
 
-## User Personas
-1. **DJs professionnels** — Besoin de prouver l'authenticité de leurs mixes
-2. **Développeurs d'outils audio** — Intégration du standard FREK
-3. **Organismes de standardisation** — Référence technique
+### ✅ Phase 1 - Foundations (COMPLETED 2024-12-19)
 
-## Core Requirements (Implémenté)
-- [x] Site FREK Standard (docs) public
-- [x] Module FREK Verify (demo) local
-- [x] Schéma JSON officiel (.frek.json) + validateurs Zod
-- [x] README avec installation et limites
-- [x] Changelog v0.4
+#### i18n System
+- [x] 4 languages: French (primary), English, Spanish, Arabic
+- [x] RTL support for Arabic with automatic `dir="rtl"` on document
+- [x] Language persistence via localStorage (`frek-lang`)
+- [x] LanguageProvider React context
 
-## What's Been Implemented (Jan 2026)
+#### Logo Integration
+- [x] FREK logo (`/public/logo.svg`) - cyan F on black background
+- [x] Logo in Navigation header
+- [x] Logo in Footer
 
-### Phase 1: Core Implementation
-1. Landing page sobre avec accès Docs/Verify
-2. Manifeste complet (principes, philosophie)
-3. Architecture pipeline (4 étapes visuelles)
-4. Spécification .frek.json détaillée
-5. Modèle de gouvernance anti-capture
-6. Changelog avec roadmap v0.5
-7. Module de vérification fonctionnel:
-   - Validation JSON schema v0.4
-   - Vérification signature Ed25519
-   - Comparaison fingerprint (demo mode)
-   - Export rapport JSON
+#### Accessibility
+- [x] ARIA labels on navigation, buttons, language selector
+- [x] Keyboard navigation support (`:focus-visible` states)
+- [x] High contrast mode support
+- [x] Screen reader compatible
 
-### Phase 2: Professional Architecture Upgrade
-1. **PUBLIC Layer** (`/`, `/industry`)
-   - Cinematic landing page with Playfair Display typography
-   - What is FREK, Why it exists, Use cases sections
-   - Industry positioning page for enterprise adoption
-2. **DOCS Layer** (`/docs/*`)
-   - Developer documentation with sidebar navigation
-   - Manifesto, Architecture, Specification, Governance, Changelog
-   - English language for international audience
-3. **APP Layer** (`/app`)
-   - Standalone verification tool
-   - Clean, focused UI without documentation clutter
-   - Full Ed25519 + JSON schema validation
+### ✅ Phase 2 - Core Module (COMPLETED 2024-12-19)
 
-## Prioritized Backlog
+#### frek-core.js Module
+- [x] `canonicalize(metadata)` - Deterministic JSON canonicalization
+- [x] `verifySignature(message, signature, publicKey)` - Ed25519 verification
+- [x] `validateSchema(data)` - Zod-based FREK JSON validation
+- [x] `hashAudio(audioBuffer, options)` - FFT-based audio fingerprinting
+- [x] `sha256(data)` - SHA-256 hashing via Web Crypto API
+- [x] `generateReport(results)` - Verification report generation
+- [x] `verifyFrek(frekData, audioBuffer)` - Complete verification pipeline
 
-### P0 (Critical) - Done
-- [x] Module verify fonctionnel
-- [x] Validation signature Ed25519
+#### Test Vectors
+- [x] `valid-signed.frek.json` - Valid signed attestation
+- [x] `invalid.frek.json` - Invalid schema
+- [x] `invalid-signature.frek.json` - Valid structure, bad signature
+- [x] `corrupted-metadata.frek.json` - Corrupted metadata fields
+- [x] `demo-studio.frek.json` - Demo studio attestation
 
-### P1 (High)
-- [ ] Fingerprint audio avancé (spectral analysis)
-- [ ] SDK de référence (Python, JavaScript)
-- [ ] Tests automatisés complets
+#### Conformance Tests
+- [x] Schema validation tests
+- [x] Canonicalization tests
+- [x] Hashing tests (SHA-256 golden vectors)
+- [x] Signature verification tests
+- [x] Failure mode tests
 
-### P2 (Medium)
-- [ ] Mode offline PWA
-- [ ] Extension navigateur
-- [ ] Plugin VST/AU pour DAW
+### ✅ Phase 3 - Verification UX (COMPLETED 2024-12-19)
 
-### P3 (Low)
-- [ ] Intégration blockchain optionnelle
-- [ ] API volontaire
-- [ ] Multilingue (EN, ES, DE)
+- [x] Drag & drop audio upload
+- [x] Progress indicator with percentage
+- [x] Clear status states (VERIFIED, MODIFIED, NOT VERIFIED, INCONCLUSIVE)
+- [x] Export verification report as JSON
+- [x] Developer mode toggle for FREK JSON uploads
 
-## Technical Constraints
-- Local-first: tout doit fonctionner hors-ligne
-- Pas de tracking/analytics
-- Ed25519 pour signatures
-- SHA-256 pour fingerprints
-- JSON comme format d'échange
+### ✅ Audio Fingerprinting (COMPLETED 2024-12-19)
 
-## Next Tasks
-1. Améliorer le fingerprint audio (FFT réel au lieu de hash simple)
-2. Ajouter tests unitaires pour crypto
-3. Créer un générateur de fichiers .frek.json
-4. Documentation CLI pour intégrations
+Implemented FFT-based fingerprinting:
+1. Decode audio to PCM via Web Audio API
+2. Downsample to mono 22050Hz
+3. Apply windowed FFT analysis (2048-sample Hann window)
+4. Extract 32 spectral band energies
+5. Generate segment hashes (5-second windows)
+6. Compute final fingerprint hash
+
+## Remaining Tasks
+
+### 🔶 P1 - Polish
+- [ ] Add loading states/spinners during FFT computation
+- [ ] Improve error messages for audio decode failures
+- [ ] Add example audio file for demo
+
+### 🔶 P2 - Enhancements
+- [ ] Generate FREK attestation wizard (sign your own mixes)
+- [ ] Visual fingerprint comparison (waveform/spectrogram view)
+- [ ] Batch verification mode
+
+### 🔶 P3 - Future
+- [ ] Reference SDK (JS/Python/Rust)
+- [ ] CLI tool for attestation generation
+- [ ] Integration guides for DAWs (Ableton, Traktor)
+
+## Technical Specifications
+
+### FREK v0.4 JSON Schema
+```json
+{
+  "frek_version": "0.4",
+  "fingerprint": "sha256:<64 hex chars>",
+  "segments": [{ "t0": 0, "t1": 5, "h": "sha256:..." }],
+  "metadata": {
+    "timestamp": "ISO 8601",
+    "duration": 3600,
+    "source_type": "live|studio|rehearsal|dispute"
+  },
+  "signature": "ed25519:<base64>",
+  "public_key": "<base64>"
+}
+```
+
+### Cryptographic Primitives
+- **Hash:** SHA-256
+- **Signature:** Ed25519
+- **Fingerprint:** FFT spectral analysis + SHA-256
+
+### Domain Configuration
+- Public site: `frekcore.com`
+- Developer portal: `{preview-url}/docs`
+- Configured via `.env` variables
+
+## Deployment Notes
+- Local-first: No backend required for verification
+- Offline-capable: All verification runs in browser
+- Zero tracking: No analytics, no data collection
+- Anti-surveillance: Proof without monitoring
+
+---
+
+*Last updated: 2024-12-19*
