@@ -9,6 +9,250 @@ export const LANGUAGES = {
 };
 
 export const translations = {
+  // French translations (primary language)
+  fr: {
+    // Navigation
+    nav: {
+      standard: 'Standard',
+      manifesto: 'Manifeste',
+      industry: 'Industrie',
+      developers: 'Développeurs',
+      verify: 'Vérifier'
+    },
+    
+    // Landing page
+    landing: {
+      openProtocol: 'Protocole Ouvert',
+      title: 'FREK',
+      subtitle: 'Standard de Preuve Musicale',
+      description: 'Un protocole ouvert pour vérifier les performances DJ et l&apos;intégrité audio.',
+      verifyAudio: 'Vérifier Audio',
+      industry: 'Industrie',
+      documentation: 'Documentation',
+      
+      // What is FREK
+      whatIs: {
+        section: '01 — Qu&apos;est-ce que FREK',
+        title: 'Un standard pour l&apos;authenticité musicale',
+        p1: 'FREK est un protocole cryptographique qui crée des enregistrements inviolables des performances musicales. Il génère des empreintes uniques à partir du contenu audio et les lie aux signatures du créateur.',
+        p2: 'Contrairement aux systèmes traditionnels d&apos;identification de contenu, FREK fonctionne localement sur votre appareil. Pas de traitement cloud. Pas de base de données centrale. Pas d&apos;infrastructure de surveillance.'
+      },
+      
+      // Why it exists
+      why: {
+        section: '02 — Pourquoi il existe',
+        title: 'La confiance par la transparence',
+        proof: 'Preuve',
+        proofDesc: 'Preuve cryptographique qu&apos;une performance spécifique a existé à un moment précis, créée par un artiste spécifique.',
+        authorship: 'Paternité',
+        authorshipDesc: 'Les signatures numériques Ed25519 lient l&apos;empreinte audio au créateur, établissant une attribution indéniable.',
+        neutrality: 'Neutralité',
+        neutralityDesc: 'FREK ne juge pas la qualité musicale. Il ne classe pas les artistes. Il fournit une preuve technique, rien de plus.',
+        privacy: 'Vie privée',
+        privacyDesc: 'Aucune donnée personnelle requise. Pas de suivi. Pas d&apos;analytics. L&apos;artiste contrôle entièrement sa preuve.'
+      },
+      
+      // Use cases
+      useCases: {
+        section: '03 — Cas d&apos;Usage',
+        title: 'Construit pour l&apos;écosystème musical',
+        djs: 'DJs & Producteurs',
+        djsDesc: 'Prouvez l&apos;authenticité de vos sets live et mixes studio. Protégez votre travail créatif.',
+        labels: 'Labels',
+        labelsDesc: 'Vérifiez les masters et tracez la provenance dans les chaînes de distribution.',
+        dsps: 'DSPs & Plateformes',
+        dspsDesc: 'Intégrez la vérification de preuve dans les services de streaming et les systèmes de gestion de contenu.',
+        festivals: 'Festivals & Événements',
+        festivalsDesc: 'Documentez les performances live avec des horodatages cryptographiques à des fins d&apos;archivage.',
+        archives: 'Archives & Institutions',
+        archivesDesc: 'Préservez le patrimoine musical avec des enregistrements vérifiables et inviolables.'
+      },
+      
+      // CTA
+      cta: {
+        verifyTitle: 'Vérifier Audio',
+        verifyDesc: 'Vérifiez si un fichier audio possède une attestation FREK valide. Téléchargez votre fichier et vérifiez localement.',
+        startVerification: 'Démarrer la Vérification',
+        devPortal: 'Portail Développeurs',
+        devPortalDesc: 'Spécification technique, schéma JSON, détails du protocole cryptographique et guides d&apos;intégration.',
+        openDevPortal: 'Ouvrir le Portail Développeurs',
+        industryTitle: 'Adoption Industrielle',
+        industryDesc: 'Découvrez comment FREK peut s&apos;intégrer dans votre organisation. Informations sur les partenariats et l&apos;implémentation.',
+        learnMore: 'En Savoir Plus'
+      },
+      
+      // Footer
+      footer: {
+        protocol: 'Protocole',
+        documentation: 'Documentation',
+        specification: 'Spécification',
+        changelog: 'Journal des modifications',
+        resources: 'Ressources',
+        verifyTool: 'Outil de Vérification',
+        tagline: 'Standard ouvert pour la preuve musicale. Sans tracking. Sans cloud. Sans plateforme.'
+      }
+    },
+    
+    // Verify page
+    verify: {
+      title: 'Vérifier Audio',
+      description: 'Vérifiez si un fichier audio possède une attestation FREK valide. Toute la vérification s&apos;exécute localement dans votre navigateur.',
+      uploadAudio: 'Télécharger un Fichier Audio',
+      dropAudio: 'Déposez le fichier audio ici',
+      supported: 'MP3, WAV, AIFF, FLAC supportés',
+      verifyBtn: 'Vérifier',
+      verifying: 'Vérification...',
+      status: 'Statut',
+      verified: 'VÉRIFIÉ',
+      notVerified: 'NON VÉRIFIÉ',
+      modified: 'MODIFIÉ',
+      inconclusive: 'NON CONCLUANT',
+      checking: 'VÉRIFICATION...',
+      exportReport: 'Exporter le Rapport de Vérification',
+      developerMode: 'Mode Développeur',
+      audioOnly: 'Audio Seul',
+      frekAudio: 'FREK + Audio',
+      uploadFrek: 'Télécharger le fichier d&apos;attestation .frek.json',
+      devModeDesc: 'Le mode développeur active la vérification complète de signature Ed25519 et la validation du schéma JSON.',
+      privacyNotice: 'Toute la vérification s&apos;exécute localement dans votre navigateur. Aucun audio ou donnée n&apos;est envoyé à un serveur.',
+      fingerprintCalculated: 'Empreinte audio calculée',
+      noAttestation: 'Aucun fichier d&apos;attestation disponible pour comparaison.',
+      audioMatch: 'L&apos;empreinte audio correspond.',
+      audioMismatch: 'L&apos;audio ne correspond pas à l&apos;empreinte de l&apos;attestation.',
+      structureVerified: 'Structure et signature de l&apos;attestation vérifiées.',
+      invalidStructure: 'Structure de fichier FREK invalide',
+      signatureFailed: 'Échec de la vérification de signature'
+    },
+    
+    // Standard page
+    standard: {
+      section: 'Le Standard',
+      title: 'Qu&apos;est-ce que FREK?',
+      description: 'FREK est un moyen de prouver qu&apos;une performance musicale a eu lieu, quand elle a eu lieu, et qui l&apos;a créée — sans tracking ni surveillance.',
+      simpleTitle: 'En Termes Simples',
+      p1: 'Imaginez que vous puissiez créer une "empreinte" unique de votre set DJ ou performance musicale. Cette empreinte est comme un sceau numérique qui prouve que votre travail est authentique.',
+      p2: 'FREK fait exactement cela. Il analyse votre audio et crée une signature mathématique qui ne peut jamais être falsifiée ou altérée. Cette signature est stockée dans un petit fichier que vous contrôlez entièrement.',
+      p3: 'N&apos;importe qui peut vérifier votre travail plus tard — en vérifiant que l&apos;audio n&apos;a pas été modifié et que vous êtes bien le créateur. Tout cela se passe sur leur propre appareil, sans envoyer votre musique nulle part.',
+      keyDifference: 'La différence clé:',
+      keyDifferenceDesc: 'Contrairement aux plateformes qui suivent et surveillent votre musique, FREK vous donne une preuve sans surveillance. Vous possédez votre attestation. Aucune entreprise ne la contrôle.',
+      howItWorks: 'Comment Ça Marche',
+      create: 'Créer',
+      createDesc: 'Enregistrez votre performance ou mix. FREK analyse l&apos;audio localement et crée une empreinte unique.',
+      sign: 'Signer',
+      signDesc: 'Votre clé privée signe l&apos;empreinte, la liant à votre identité. Vous seul pouvez créer cette signature.',
+      verifyStep: 'Vérifier',
+      verifyStepDesc: 'N&apos;importe qui peut vérifier votre attestation. Ils vérifient la signature et comparent l&apos;empreinte — tout localement.',
+      whatIsNot: 'Ce que FREK N&apos;est Pas',
+      notPlatform: 'Pas une Plateforme',
+      notPlatformDesc: 'FREK est un standard, pas un service. Il n&apos;y a pas de site web où votre musique réside. Vous gardez vos fichiers où vous voulez.',
+      notTracking: 'Pas un Système de Suivi',
+      notTrackingDesc: 'FREK ne surveille pas les lectures, ne collecte pas d&apos;analytics, ni ne suit qui écoute quoi. Il prouve seulement l&apos;authenticité quand vous choisissez de vérifier.',
+      notRecognition: 'Pas un Service de Reconnaissance Musicale',
+      notRecognitionDesc: 'Contrairement à Shazam ou services similaires, FREK n&apos;identifie pas les chansons et ne les compare pas à une base de données. Il vérifie seulement ce que vous choisissez d&apos;attester.',
+      notRanking: 'Pas un Système de Classement',
+      notRankingDesc: 'FREK ne juge pas la qualité ou la popularité. Il ne note pas les artistes. Il prouve simplement des faits techniques.',
+      whoUses: 'Qui Utilise FREK',
+      tryIt: 'Essayez Vous-Même',
+      tryItDesc: 'Vérifiez un fichier audio maintenant. Pas besoin de compte. Tout s&apos;exécute dans votre navigateur.',
+      verifyAudio: 'Vérifier Audio',
+      readManifesto: 'Lire le Manifeste'
+    },
+    
+    // Manifesto page  
+    manifesto: {
+      section: 'Manifeste',
+      title: 'La Vision FREK',
+      description: 'Une déclaration de principes pour l&apos;authenticité musicale à l&apos;ère numérique.',
+      djGesture: 'Sur le Geste du DJ',
+      djGestureP1: 'Le mix DJ est un acte de création. Chaque sélection, chaque transition, chaque effet est une décision qui façonne un voyage sonore unique. Cet acte créatif mérite reconnaissance et protection.',
+      djGestureP2: 'FREK existe pour honorer ce geste créatif — non pas pour le juger, non pas pour le classer, mais pour fournir une preuve irréfutable qu&apos;il s&apos;est produit, exactement comme il s&apos;est produit.',
+      sovereignty: 'Sur la Souveraineté Artistique',
+      sovereigntyP1: 'Nous croyons que les artistes doivent contrôler leurs propres preuves. Aucune entreprise, aucune plateforme, aucun gouvernement ne devrait avoir le pouvoir d&apos;accorder ou de révoquer la reconnaissance du travail créatif.',
+      sovereigntyP2: 'Dans le modèle FREK, votre clé privée est votre autorité. Votre attestation vous appartient. Elle ne peut être supprimée, modifiée ou contrôlée par qui que ce soit d&apos;autre.',
+      proofWithout: 'Sur la Preuve Sans Surveillance',
+      proofWithoutP1: 'L&apos;économie de la surveillance nous a appris que les services "gratuits" ont un coût: notre vie privée. Les plateformes de reconnaissance musicale suivent ce que nous écoutons, quand et où.',
+      proofWithoutP2: 'FREK rejette ce marché. Nous croyons qu&apos;il est possible d&apos;avoir une preuve sans surveillance. Votre musique peut être authentifiée sans être surveillée. Votre identité peut être vérifiée sans être suivie.',
+      openStandards: 'Sur les Standards Ouverts',
+      openStandardsP1: 'FREK n&apos;est pas un produit. Ce n&apos;est pas une plateforme. C&apos;est un standard — comme HTTP pour le web ou MIDI pour le matériel musical. N&apos;importe qui peut l&apos;implémenter. N&apos;importe qui peut le vérifier.',
+      openStandardsP2: 'Nous publions nos spécifications ouvertement. Nous accueillons les implémentations par d&apos;autres. Nous résistons à la capture par une entité unique. Le standard appartient à tous ceux qui l&apos;utilisent.',
+      commitments: 'Nos Engagements',
+      commitment1: 'FREK ne jugera jamais la qualité de la musique',
+      commitment2: 'FREK ne classera jamais les artistes',
+      commitment3: 'FREK ne nécessitera jamais de données personnelles',
+      commitment4: 'FREK ne deviendra jamais une plateforme',
+      commitment5: 'FREK fonctionnera toujours hors ligne',
+      commitment6: 'FREK restera toujours ouvert',
+      future: 'L&apos;Avenir',
+      futureP1: 'Nous envisageons un avenir où chaque set DJ, chaque performance live, chaque création musicale peut être authentifiée sans compromis. Où la preuve est abondante mais la surveillance absente.',
+      futureP2: 'Ce n&apos;est pas seulement un projet technique. C&apos;est une déclaration sur la façon dont la technologie devrait servir les artistes et les créateurs. C&apos;est un choix de construire des outils qui habilitent plutôt qu&apos;exploitent.',
+      closing: 'FREK reconnaît un fait technique, dans un contexte précis. L&apos;humain reste l&apos;interprète. Le légal reste l&apos;arbitre.',
+      joinMovement: 'Rejoignez le Mouvement',
+      joinMovementDesc: 'Essayez FREK aujourd&apos;hui. Vérifiez votre premier fichier audio. Faites partie d&apos;un nouveau standard pour l&apos;authenticité musicale.',
+      verifyNow: 'Vérifier Maintenant',
+      devPortal: 'Portail Développeurs'
+    },
+    
+    // Industry page
+    industry: {
+      section: 'Solutions Industrielles',
+      title: 'FREK pour l&apos;Industrie Musicale',
+      description: 'Une couche d&apos;infrastructure neutre et ouverte pour vérifier l&apos;authenticité musicale dans tout l&apos;écosystème musical.',
+      infrastructure: 'Infrastructure',
+      infraTitle: 'Une couche fondamentale, pas une plateforme',
+      infraP1: 'FREK est conçu comme une infrastructure — comme TCP/IP pour internet ou MIDI pour le matériel musical. Il fournit un protocole commun que tout système peut implémenter indépendamment.',
+      infraP2: 'Contrairement aux plateformes propriétaires, FREK ne crée pas de dépendance. Les organisations maintiennent un contrôle total sur leurs implémentations et données.',
+      architecture: 'Architecture',
+      localFirst: 'Traitement local en priorité',
+      ed25519: 'Signatures cryptographiques Ed25519',
+      sha256: 'Empreinte audio SHA-256',
+      jsonFormat: 'Format JSON portable',
+      noAuthority: 'Pas d&apos;autorité centrale requise',
+      neutrality: 'Neutralité',
+      neutralTitle: 'Positionné comme un standard neutre',
+      noLockIn: 'Pas de Dépendance Fournisseur',
+      noLockInDesc: 'Spécification ouverte. Toute organisation peut implémenter FREK indépendamment sans frais de licence.',
+      governance: 'Gouvernance Non Commerciale',
+      governanceDesc: 'Le standard est maintenu par un organisme indépendant avec des mécanismes explicites anti-capture.',
+      agnostic: 'Agnostique de l&apos;Industrie',
+      agnosticDesc: 'Fonctionne également pour les artistes indépendants, les majors, les plateformes de streaming et les institutions d&apos;archivage.',
+      benefits: 'Avantages',
+      benefitsTitle: 'Pourquoi adopter FREK',
+      benefit1: 'Réduction des Coûts de Résolution de Litiges',
+      benefit1Desc: 'La preuve cryptographique d&apos;authenticité peut résoudre les litiges de propriété et de timing sans litige coûteux ou processus de vérification manuel.',
+      benefit2: 'Infrastructure de Confiance Améliorée',
+      benefit2Desc: 'Fournissez aux artistes, labels et plateformes une preuve vérifiable de la provenance du contenu musical tout au long de la chaîne de distribution.',
+      benefit3: 'Conformité à la Vie Privée par Conception',
+      benefit3Desc: 'Pas de collecte de données personnelles requise. Les attestations FREK contiennent uniquement des données de preuve technique, simplifiant la conformité RGPD.',
+      benefit4: 'Interopérabilité Pérenne',
+      benefit4Desc: 'Le format JSON standard assure la compatibilité entre les systèmes. La spécification versionnée garantit la rétrocompatibilité.',
+      integration: 'Intégration',
+      integrationTitle: 'Scénarios d&apos;implémentation',
+      streaming: 'Plateformes de Streaming',
+      streamingItems: ['Intégrer la vérification FREK dans les flux de téléchargement', 'Afficher des badges de preuve sur le contenu vérifié', 'Intégration API pour vérification automatisée'],
+      recordLabels: 'Labels',
+      recordLabelsItems: ['Certification des masters', 'Vérification de la chaîne de distribution', 'Preuve de conformité aux contrats artistes'],
+      daw: 'Intégration DAW',
+      dawItems: ['Plugin pour Ableton, Logic, Traktor', 'Attestation en temps réel pendant le mixage', 'Exporter les fichiers FREK avec l&apos;audio'],
+      archivesLib: 'Archives & Bibliothèques',
+      archivesLibItems: ['Métadonnées de préservation à long terme', 'Documentation de la chaîne de provenance', 'Interopérabilité avec les standards existants'],
+      governanceSection: 'Gouvernance',
+      governanceTitle: 'Modèle de gouvernance anti-capture',
+      governanceP1: 'FREK est maintenu par une fondation indépendante avec des mécanismes explicites pour empêcher la capture commerciale ou la centralisation du contrôle.',
+      governanceItems: ['Licences copyleft empêchent les forks propriétaires', 'Mainteneurs tournants avec règles de conflit d&apos;intérêts', 'Pouvoir de veto communautaire sur les changements de spécification', 'Processus de proposition publique pour toutes les modifications'],
+      visionLayer: 'Couche Vision',
+      visionLayerDesc: 'Définit ce qu&apos;est et n&apos;est pas FREK',
+      specLayer: 'Couche Spécification',
+      specLayerDesc: 'Format technique et règles',
+      implLayer: 'Couche Implémentation',
+      implLayerDesc: 'Indépendante, sans restrictions',
+      partnership: 'Partenariat',
+      partnershipTitle: 'Intéressé par l&apos;adoption de FREK?',
+      partnershipDesc: 'Nous travaillons avec des organisations à travers l&apos;industrie musicale pour implémenter l&apos;infrastructure de vérification FREK.',
+      contactPartnership: 'Contact pour Partenariat',
+      techDocs: 'Documentation Technique'
+    }
+  },
+  
   en: {
     // Navigation
     nav: {
