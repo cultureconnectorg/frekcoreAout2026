@@ -23,14 +23,21 @@ export function LanguageSelector() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 text-zinc-400 hover:text-white transition-colors font-mono text-sm"
         data-testid="language-selector"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label={`Select language. Current: ${langInfo.name}`}
       >
-        <Globe className="w-4 h-4" />
+        <Globe className="w-4 h-4" aria-hidden="true" />
         <span className="hidden sm:inline">{langInfo.name}</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 bg-[#0A0A0A] border border-zinc-800 shadow-xl z-50 min-w-[140px]">
+        <div 
+          className="absolute top-full right-0 mt-2 bg-[#0A0A0A] border border-zinc-800 shadow-xl z-50 min-w-[140px]"
+          role="listbox"
+          aria-label="Available languages"
+        >
           {Object.values(LANGUAGES).map((language) => (
             <button
               key={language.code}
@@ -46,8 +53,10 @@ export function LanguageSelector() {
                 }
               `}
               dir={language.dir}
+              role="option"
+              aria-selected={lang === language.code}
             >
-              <span>{language.flag}</span>
+              <span aria-hidden="true">{language.flag}</span>
               <span>{language.name}</span>
             </button>
           ))}
