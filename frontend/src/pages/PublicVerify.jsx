@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, Music, CheckCircle, XCircle, AlertCircle, Download, FileJson, Settings, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { validateFrekJson, canonicalizeMetadata } from '../lib/frek-schema';
-import { verifySignature, sha256, calculateDemoFingerprint } from '../lib/crypto';
+import { Music, CheckCircle, XCircle, AlertCircle, Download, FileJson, Settings, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { verifyFrek, hashAudio, validateSchema, canonicalize, verifySignature, sha256, generateReport } from '../core/frek-core';
 import { downloadFile, readFileAsText, readFileAsArrayBuffer, truncateHash } from '../lib/utils';
 import { useLanguage } from '../lib/LanguageContext';
 import { Navigation } from '../components/Navigation';
