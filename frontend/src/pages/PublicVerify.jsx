@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
-import { Upload, Music, CheckCircle, XCircle, AlertCircle, Download, FileJson, Settings, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import { Upload, Music, CheckCircle, XCircle, AlertCircle, Download, FileJson, Settings, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { validateFrekJson, canonicalizeMetadata } from '../lib/frek-schema';
 import { verifySignature, sha256, calculateDemoFingerprint } from '../lib/crypto';
-import { downloadFile, readFileAsText, readFileAsArrayBuffer, formatDate, formatDuration, truncateHash } from '../lib/utils';
-import { DOMAINS } from '../lib/domains';
+import { downloadFile, readFileAsText, readFileAsArrayBuffer, truncateHash } from '../lib/utils';
+import { useLanguage } from '../lib/LanguageContext';
+import { Navigation } from '../components/Navigation';
+import { Footer } from '../components/Footer';
 
 const STATUS = {
   VALID: 'VERIFIED',
@@ -14,42 +15,42 @@ const STATUS = {
   PENDING: 'CHECKING'
 };
 
-const StatusDisplay = ({ status }) => {
+const StatusDisplay = ({ status, t }) => {
   const config = {
     [STATUS.VALID]: { 
       bg: 'bg-[#00FF94]/10', 
       border: 'border-[#00FF94]/30', 
       text: 'text-[#00FF94]',
       icon: CheckCircle,
-      label: 'VERIFIED'
+      label: t.verify.verified
     },
     [STATUS.MODIFIED]: { 
       bg: 'bg-[#FFB800]/10', 
       border: 'border-[#FFB800]/30', 
       text: 'text-[#FFB800]',
       icon: AlertCircle,
-      label: 'MODIFIED'
+      label: t.verify.modified
     },
     [STATUS.INVALID]: { 
       bg: 'bg-[#FF3333]/10', 
       border: 'border-[#FF3333]/30', 
       text: 'text-[#FF3333]',
       icon: XCircle,
-      label: 'NOT VERIFIED'
+      label: t.verify.notVerified
     },
     [STATUS.UNKNOWN]: { 
       bg: 'bg-zinc-800', 
       border: 'border-zinc-700', 
       text: 'text-zinc-400',
       icon: AlertCircle,
-      label: 'INCONCLUSIVE'
+      label: t.verify.inconclusive
     },
     [STATUS.PENDING]: { 
       bg: 'bg-zinc-800', 
       border: 'border-zinc-700', 
       text: 'text-zinc-400',
-      icon: AlertCircle,
-      label: 'CHECKING...'
+      icon: Loader2,
+      label: t.verify.checking
     }
   };
 
@@ -57,38 +58,69 @@ const StatusDisplay = ({ status }) => {
   const Icon = c.icon;
 
   return (
-    <div className={`${c.bg} ${c.border} border p-8 text-center`}>
-      <Icon className={`w-16 h-16 ${c.text} mx-auto mb-4`} strokeWidth={1.5} />
+    <div className={`${c.bg} ${c.border} border p-8 text-center`} data-testid="verification-status">
+      <Icon className={`w-16 h-16 ${c.text} mx-auto mb-4 ${status === STATUS.PENDING ? 'animate-spin' : ''}`} strokeWidth={1.5} />
       <p className={`font-mono text-2xl ${c.text} tracking-widest`}>{c.label}</p>
     </div>
   );
 };
 
 export function PublicVerify() {
-  const docsUrl = DOMAINS.DOCS_BASE;
-  const [mode, setMode] = useState('public'); // 'public' or 'developer'
+  const { t } = useLanguage();
+  const [mode, setMode] = useState('public');
   const [audioFile, setAudioFile] = useState(null);
   const [frekFile, setFrekFile] = useState(null);
   const [frekData, setFrekData] = useState(null);
   const [results, setResults] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const audioInputRef = useRef(null);
+  const frekInputRef = useRef(null);
 
-  // Handle audio file upload (public mode)
-  const handleAudioUpload = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAudioFile(file);
-    setResults(null);
+  // Handle drag events
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
   }, []);
 
-  // Handle FREK file upload (developer mode)
-  const handleFrekUpload = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
 
+  const handleDrop = useCallback((e, type) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer?.files;
+    if (files && files[0]) {
+      if (type === 'audio') {
+        handleAudioFile(files[0]);
+      } else {
+        handleFrekFile(files[0]);
+      }
+    }
+  }, []);
+
+  // Handle audio file
+  const handleAudioFile = useCallback((file) => {
+    setAudioFile(file);
+    setResults(null);
+    setProgress(0);
+  }, []);
+
+  const handleAudioUpload = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (file) handleAudioFile(file);
+  }, [handleAudioFile]);
+
+  // Handle FREK file
+  const handleFrekFile = useCallback(async (file) => {
     setFrekFile(file);
     setResults(null);
+    setProgress(0);
 
     try {
       const content = await readFileAsText(file);
@@ -104,36 +136,44 @@ export function PublicVerify() {
     }
   }, []);
 
+  const handleFrekUpload = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (file) handleFrekFile(file);
+  }, [handleFrekFile]);
+
   // Clear all
   const handleClear = useCallback(() => {
     setAudioFile(null);
     setFrekFile(null);
     setFrekData(null);
     setResults(null);
+    setProgress(0);
   }, []);
 
-  // Verify in PUBLIC mode (audio only - demo simulation)
+  // Verify in PUBLIC mode
   const handlePublicVerify = useCallback(async () => {
     if (!audioFile) return;
     
     setIsVerifying(true);
+    setProgress(10);
     
     try {
-      // Simulate verification process
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProgress(30);
       
-      // In demo mode, we calculate fingerprint but can't verify without a .frek.json
       const audioBuffer = await readFileAsArrayBuffer(audioFile);
-      const fingerprint = await calculateDemoFingerprint(audioBuffer);
+      setProgress(60);
       
-      // For public demo, show INCONCLUSIVE since we have no attestation to compare
+      const fingerprint = await calculateDemoFingerprint(audioBuffer);
+      setProgress(100);
+      
       setResults({
         global: STATUS.UNKNOWN,
-        message: 'Audio fingerprint calculated. No attestation file available for comparison.',
+        message: `${t.verify.fingerprintCalculated}. ${t.verify.noAttestation}`,
         details: {
           fingerprint: fingerprint,
           audioFile: audioFile.name,
-          audioSize: audioFile.size
+          audioSize: `${(audioFile.size / 1024 / 1024).toFixed(2)} MB`
         }
       });
     } catch (err) {
@@ -145,21 +185,24 @@ export function PublicVerify() {
     }
     
     setIsVerifying(false);
-  }, [audioFile]);
+  }, [audioFile, t]);
 
-  // Verify in DEVELOPER mode (full FREK verification)
+  // Verify in DEVELOPER mode
   const handleDeveloperVerify = useCallback(async () => {
     if (!frekData) return;
 
     setIsVerifying(true);
+    setProgress(10);
 
     try {
       // Step 1: Validate JSON schema
       const jsonValidation = validateFrekJson(frekData);
+      setProgress(30);
+      
       if (!jsonValidation.valid) {
         setResults({
           global: STATUS.INVALID,
-          message: 'Invalid FREK file structure',
+          message: t.verify.invalidStructure,
           details: {
             errors: jsonValidation.errors.map(e => `${e.path}: ${e.message}`)
           }
@@ -169,6 +212,7 @@ export function PublicVerify() {
       }
 
       // Step 2: Verify signature
+      setProgress(50);
       const canonicalMetadata = canonicalizeMetadata(frekData.metadata);
       const messageToVerify = frekData.fingerprint + canonicalMetadata;
       const messageHash = await sha256(messageToVerify);
@@ -177,11 +221,12 @@ export function PublicVerify() {
       const publicKey = frekData.public_key;
 
       const sigResult = verifySignature(messageHash, signatureBase64, publicKey);
+      setProgress(70);
       
       if (!sigResult.valid) {
         setResults({
           global: STATUS.INVALID,
-          message: 'Signature verification failed',
+          message: t.verify.signatureFailed,
           details: {
             error: sigResult.error,
             json: 'Valid',
@@ -193,16 +238,16 @@ export function PublicVerify() {
       }
 
       // Step 3: Check fingerprint against audio if provided
-      let fingerprintStatus = 'Not checked';
+      setProgress(85);
       if (audioFile) {
         const audioBuffer = await readFileAsArrayBuffer(audioFile);
         const calculatedFingerprint = await calculateDemoFingerprint(audioBuffer);
+        setProgress(100);
         
         if (calculatedFingerprint === frekData.fingerprint) {
-          fingerprintStatus = 'Match';
           setResults({
             global: STATUS.VALID,
-            message: 'Attestation verified. Audio fingerprint matches.',
+            message: t.verify.audioMatch,
             details: {
               json: 'Valid',
               signature: 'Valid',
@@ -215,7 +260,7 @@ export function PublicVerify() {
         } else {
           setResults({
             global: STATUS.MODIFIED,
-            message: 'Audio does not match the attestation fingerprint.',
+            message: t.verify.audioMismatch,
             details: {
               json: 'Valid',
               signature: 'Valid',
@@ -226,10 +271,10 @@ export function PublicVerify() {
           });
         }
       } else {
-        // No audio provided, signature valid
+        setProgress(100);
         setResults({
           global: STATUS.VALID,
-          message: 'Attestation structure and signature verified.',
+          message: t.verify.structureVerified,
           details: {
             json: 'Valid',
             signature: 'Valid',
@@ -250,18 +295,23 @@ export function PublicVerify() {
     }
 
     setIsVerifying(false);
-  }, [frekData, audioFile]);
+  }, [frekData, audioFile, t]);
 
   // Export report
   const handleExportReport = useCallback(() => {
     if (!results) return;
 
     const report = {
-      timestamp: new Date().toISOString(),
-      mode: mode,
-      status: results.global,
-      message: results.message,
-      details: results.details
+      frek_verification_report: {
+        version: '0.4',
+        timestamp: new Date().toISOString(),
+        mode: mode,
+        status: results.global,
+        message: results.message,
+        details: results.details,
+        audio_file: audioFile?.name || null,
+        frek_file: frekFile?.name || null
+      }
     };
 
     downloadFile(
@@ -269,44 +319,11 @@ export function PublicVerify() {
       `frek-verification-${Date.now()}.json`,
       'application/json'
     );
-  }, [results, mode]);
+  }, [results, mode, audioFile, frekFile]);
 
   return (
     <div className="min-h-screen bg-[#030303]">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#030303]/90 backdrop-blur-sm border-b border-zinc-900">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <NavLink to="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#00F0FF] flex items-center justify-center">
-              <span className="font-mono font-bold text-black text-sm">F</span>
-            </div>
-            <span className="font-mono font-bold text-lg tracking-tight text-white">FREK</span>
-          </NavLink>
-          
-          <div className="hidden md:flex items-center gap-8">
-            <NavLink to="/standard" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Standard
-            </NavLink>
-            <NavLink to="/manifesto" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Manifesto
-            </NavLink>
-            <NavLink to="/industry" className="font-mono text-sm text-zinc-400 hover:text-white transition-colors">
-              Industry
-            </NavLink>
-            <a 
-              href={docsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-sm text-zinc-400 hover:text-white transition-colors"
-            >
-              Developers
-            </a>
-            <span className="font-mono text-sm px-4 py-2 bg-[#00F0FF] text-black">
-              Verify
-            </span>
-          </div>
-        </div>
-      </nav>
+      <Navigation currentPage="verify" />
 
       {/* Main Content */}
       <div className="pt-24 pb-16 px-6">
@@ -314,33 +331,39 @@ export function PublicVerify() {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="font-serif text-4xl md:text-5xl text-white mb-4 font-light">
-              Verify Audio
+              {t.verify.title}
             </h1>
-            <p className="text-zinc-500 max-w-md mx-auto">
-              Check if an audio file has a valid FREK attestation.
-              All verification runs locally in your browser.
-            </p>
+            <p 
+              className="text-zinc-500 max-w-md mx-auto"
+              dangerouslySetInnerHTML={{ __html: t.verify.description }}
+            />
           </div>
 
           {/* PUBLIC MODE - Default */}
           <div className="space-y-6">
-            {/* Audio Upload */}
+            {/* Audio Upload with Drag & Drop */}
             <div className="bg-[#0A0A0A] border border-zinc-800 p-8">
               <p className="font-mono text-xs uppercase tracking-widest text-zinc-600 mb-6 text-center">
-                Upload Audio File
+                {t.verify.uploadAudio}
               </p>
               
               <label 
                 className={`
                   flex flex-col items-center justify-center p-12 cursor-pointer
                   border-2 border-dashed transition-all duration-200
-                  ${audioFile 
-                    ? 'border-[#00F0FF] bg-[#00F0FF]/5' 
-                    : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900/30'}
+                  ${isDragging 
+                    ? 'border-[#00F0FF] bg-[#00F0FF]/10' 
+                    : audioFile 
+                      ? 'border-[#00F0FF] bg-[#00F0FF]/5' 
+                      : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900/30'}
                 `}
                 data-testid="audio-upload-zone"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'audio')}
               >
                 <input
+                  ref={audioInputRef}
                   type="file"
                   accept="audio/*,.wav,.mp3,.aiff,.flac,.m4a"
                   onChange={handleAudioUpload}
@@ -354,27 +377,51 @@ export function PublicVerify() {
                     <p className="font-mono text-sm text-zinc-600">
                       {(audioFile.size / 1024 / 1024).toFixed(2)} MB
                     </p>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleClear();
+                      }}
+                      className="mt-4 font-mono text-xs text-zinc-500 hover:text-white underline"
+                    >
+                      Clear
+                    </button>
                   </>
                 ) : (
                   <>
                     <Music className="w-16 h-16 text-zinc-700 mb-4" strokeWidth={1} />
                     <p className="font-mono text-lg text-zinc-400 mb-1">
-                      Drop audio file here
+                      {t.verify.dropAudio}
                     </p>
                     <p className="font-mono text-sm text-zinc-700">
-                      MP3, WAV, AIFF, FLAC supported
+                      {t.verify.supported}
                     </p>
                   </>
                 )}
               </label>
             </div>
 
+            {/* Progress Bar */}
+            {isVerifying && (
+              <div className="bg-[#0A0A0A] border border-zinc-800 p-4">
+                <div className="h-2 bg-zinc-800 overflow-hidden">
+                  <div 
+                    className="h-full bg-[#00F0FF] transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="font-mono text-xs text-zinc-600 mt-2 text-center">
+                  {progress}% - {t.verify.verifying}
+                </p>
+              </div>
+            )}
+
             {/* Verify Button */}
             <button
               onClick={mode === 'public' ? handlePublicVerify : handleDeveloperVerify}
-              disabled={mode === 'public' ? !audioFile : !frekData}
+              disabled={(mode === 'public' ? !audioFile : !frekData) || isVerifying}
               className={`
-                w-full py-5 font-mono text-lg uppercase tracking-widest transition-all
+                w-full py-5 font-mono text-lg uppercase tracking-widest transition-all flex items-center justify-center gap-3
                 ${(mode === 'public' ? audioFile : frekData) && !isVerifying
                   ? 'bg-white text-black hover:bg-zinc-200'
                   : 'bg-zinc-900 text-zinc-600 cursor-not-allowed'
@@ -382,13 +429,14 @@ export function PublicVerify() {
               `}
               data-testid="verify-btn"
             >
-              {isVerifying ? 'Verifying...' : 'Verify'}
+              {isVerifying && <Loader2 className="w-5 h-5 animate-spin" />}
+              {isVerifying ? t.verify.verifying : t.verify.verifyBtn}
             </button>
 
             {/* Results */}
             {results && (
               <div className="space-y-4">
-                <StatusDisplay status={results.global} />
+                <StatusDisplay status={results.global} t={t} />
                 
                 <div className="bg-[#0A0A0A] border border-zinc-800 p-6">
                   <p className="text-zinc-400 mb-4">{results.message}</p>
@@ -398,7 +446,7 @@ export function PublicVerify() {
                       {Object.entries(results.details).map(([key, value]) => (
                         <div key={key} className="flex justify-between">
                           <span className="text-zinc-600">{key}</span>
-                          <span className="text-zinc-400">
+                          <span className="text-zinc-400 max-w-[60%] text-right break-all">
                             {Array.isArray(value) ? value.join(', ') : String(value)}
                           </span>
                         </div>
@@ -414,7 +462,7 @@ export function PublicVerify() {
                   data-testid="export-report-btn"
                 >
                   <Download className="w-4 h-4" />
-                  Export Verification Report
+                  {t.verify.exportReport}
                 </button>
               </div>
             )}
@@ -427,19 +475,21 @@ export function PublicVerify() {
                   if (!showAdvanced) setMode('developer');
                 }}
                 className="w-full flex items-center justify-between py-3 text-zinc-600 hover:text-zinc-400 transition-colors"
+                data-testid="developer-mode-toggle"
               >
                 <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest">
                   <Settings className="w-4 h-4" />
-                  Developer Mode
+                  {t.verify.developerMode}
                 </span>
                 {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
 
               {showAdvanced && (
                 <div className="mt-4 p-6 bg-zinc-900/50 border border-zinc-800 space-y-4">
-                  <p className="font-mono text-xs text-zinc-600 mb-4">
-                    Upload .frek.json attestation file for full cryptographic verification.
-                  </p>
+                  <p 
+                    className="font-mono text-xs text-zinc-600 mb-4"
+                    dangerouslySetInnerHTML={{ __html: t.verify.uploadFrek }}
+                  />
                   
                   {/* Mode Toggle */}
                   <div className="flex gap-2 mb-4">
@@ -451,7 +501,7 @@ export function PublicVerify() {
                           : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'
                       }`}
                     >
-                      Audio Only
+                      {t.verify.audioOnly}
                     </button>
                     <button
                       onClick={() => setMode('developer')}
@@ -461,11 +511,11 @@ export function PublicVerify() {
                           : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'
                       }`}
                     >
-                      FREK + Audio
+                      {t.verify.frekAudio}
                     </button>
                   </div>
 
-                  {/* FREK File Upload - Always visible in developer section */}
+                  {/* FREK File Upload */}
                   <label 
                     className={`
                       flex flex-col items-center justify-center p-6 cursor-pointer
@@ -473,8 +523,12 @@ export function PublicVerify() {
                       ${frekFile ? 'border-[#00F0FF] bg-[#00F0FF]/5' : 'border-zinc-700 hover:border-zinc-600'}
                     `}
                     data-testid="frek-upload-zone"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, 'frek')}
                   >
                     <input
+                      ref={frekInputRef}
                       type="file"
                       accept=".json,.frek.json"
                       onChange={handleFrekUpload}
@@ -489,17 +543,19 @@ export function PublicVerify() {
                     ) : (
                       <>
                         <FileJson className="w-8 h-8 text-zinc-700 mb-2" />
-                        <p className="font-mono text-sm text-zinc-600">
-                          Upload .frek.json attestation file
-                        </p>
+                        <p 
+                          className="font-mono text-sm text-zinc-600"
+                          dangerouslySetInnerHTML={{ __html: t.verify.uploadFrek }}
+                        />
                       </>
                     )}
                   </label>
 
                   {/* Info */}
-                  <p className="font-mono text-[10px] text-zinc-700 mt-4">
-                    Developer mode enables full Ed25519 signature verification and JSON schema validation.
-                  </p>
+                  <p 
+                    className="font-mono text-[10px] text-zinc-700 mt-4"
+                    dangerouslySetInnerHTML={{ __html: t.verify.devModeDesc }}
+                  />
                 </div>
               )}
             </div>
@@ -507,13 +563,15 @@ export function PublicVerify() {
 
           {/* Privacy Notice */}
           <div className="mt-12 text-center">
-            <p className="font-mono text-xs text-zinc-700">
-              All verification runs locally in your browser.<br/>
-              No audio or data is uploaded to any server.
-            </p>
+            <p 
+              className="font-mono text-xs text-zinc-700"
+              dangerouslySetInnerHTML={{ __html: t.verify.privacyNotice }}
+            />
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
