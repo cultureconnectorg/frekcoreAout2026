@@ -1,0 +1,11 @@
+{
+  "frek_version": "0.4",
+  "fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "metadata": {
+    "timestamp": "invalid-timestamp",
+    "duration": -100,
+    "source_type": "invalid_type"
+  },
+  "signature": "ed25519:YHekHZ2IG3etJfcyEn351gy6tZ2pvG9iCph52IWa7RdrfUE0px15zSE7AyiiOXSNI+yKzaNVqhRT5uj64WFWCQ==",
+  "public_key": "MmKRpk8kB2p0dnkME2f+Xq/7PTa1gUt4a1bSAvUaPJs="
+}
