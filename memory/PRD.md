@@ -9,203 +9,152 @@ FREK® est un standard ouvert d'identification cryptographique des DJ mixes et p
 
 ```
 /app/frontend/
-├── index.html                     # Point d'entrée Vite
-├── vite.config.js                 # Configuration Vite
-├── tailwind.config.js             # Design system (terra/gold/navy)
-├── netlify.toml                   # Déploiement Netlify
+├── index.html
+├── vite.config.js
+├── tailwind.config.js
+├── netlify.toml
 ├── public/
 │   └── favicon.svg
 └── src/
-    ├── main.jsx                   # Bootstrap React
-    ├── App.jsx                    # Assemblage sections + routes
-    ├── index.css                  # Styles globaux + noise overlay
+    ├── main.jsx
+    ├── App.jsx
+    ├── index.css
+    ├── i18n/                       # 🆕 Internationalization
+    │   ├── index.js
+    │   └── locales/
+    │       ├── fr.json
+    │       ├── en.json
+    │       ├── es.json
+    │       └── ar.json
     ├── components/
     │   ├── layout/
-    │   │   ├── Nav.jsx           # Navigation fixe backdrop blur
-    │   │   └── Footer.jsx        # Footer 3 colonnes + pills
+    │   │   ├── Nav.jsx            # + LanguageSwitcher
+    │   │   └── Footer.jsx
     │   ├── sections/
-    │   │   ├── Hero.jsx          # Hero 2 colonnes + JSON animé
-    │   │   ├── Philosophie.jsx   # 3 piliers + citation
-    │   │   ├── Architecture.jsx  # Flow 4 étapes
-    │   │   ├── Produits.jsx      # FREK Go vs FREK Node
-    │   │   ├── Verifier.jsx      # Outil vérification (CRITIQUE)
-    │   │   ├── Spec.jsx          # Champs + code sticky
-    │   │   ├── FrekId.jsx        # Décomposition FREK-ID
-    │   │   ├── CultureConnect.jsx# CC2026 + cartes attestation
-    │   │   ├── Ecosysteme.jsx    # 6 cartes intégrations
-    │   │   └── Roadmap.jsx       # 4 jalons
+    │   │   ├── Hero.jsx
+    │   │   ├── Philosophie.jsx
+    │   │   ├── Architecture.jsx
+    │   │   ├── Produits.jsx
+    │   │   ├── Verifier.jsx       # + Export Report
+    │   │   ├── Spec.jsx
+    │   │   ├── FrekId.jsx
+    │   │   ├── CultureConnect.jsx
+    │   │   ├── Ecosysteme.jsx
+    │   │   └── Roadmap.jsx
     │   ├── ui/
-    │   │   ├── RevealWrapper.jsx # Intersection Observer
-    │   │   ├── SectionTag.jsx    # Label section
-    │   │   ├── Divider.jsx       # Séparateur gradient
-    │   │   └── JsonBlock.jsx     # Code coloré
-    │   └── wizard/               # 🆕 Générateur d'attestation
+    │   │   ├── LanguageSwitcher.jsx  # 🆕
+    │   │   ├── RevealWrapper.jsx
+    │   │   ├── SectionTag.jsx
+    │   │   ├── Divider.jsx
+    │   │   └── JsonBlock.jsx
+    │   └── wizard/
     │       ├── FrekJsonPreview.jsx
     │       ├── Step1Identity.jsx
     │       ├── Step2Tracklist.jsx
     │       ├── Step3Fingerprint.jsx
-    │       ├── Step4Review.jsx
-    │       └── WizardStepper.jsx
+    │       ├── Step4Review.jsx       # + QR Code
+    │       └── WizardStepper.jsx     # + ARIA
     ├── hooks/
-    │   ├── useAudioFingerprint.js # FFT + SHA-256 Web Audio API
-    │   ├── useJsonVerify.js       # Validation schéma .frek.json
-    │   ├── useScrollReveal.js     # Intersection Observer
-    │   └── useWizardState.js      # 🆕 State management wizard
+    │   ├── useAudioFingerprint.js
+    │   ├── useJsonVerify.js
+    │   ├── useScrollReveal.js
+    │   └── useWizardState.js
     ├── utils/
     │   ├── crypto.js
-    │   ├── frek-generator.js      # 🆕 Génération JSON + download
-    │   ├── frek-id.js             # 🆕 Génération FREK-ID
+    │   ├── frek-generator.js
+    │   ├── frek-id.js
     │   └── frek-schema.js
     ├── pages/
-    │   └── Generate.jsx           # 🆕 Page wizard /generate
-    └── data/
-        ├── spec-fields.js        # 15 champs schéma
-        ├── roadmap.js            # Données jalons
-        └── ecosystem.js          # Données cartes
+    │   └── Generate.jsx
+    ├── data/
+    │   ├── spec-fields.js
+    │   ├── roadmap.js
+    │   └── ecosystem.js
+    └── test/                        # 🆕 Vitest tests
+        ├── setup.js
+        ├── vectors.js
+        ├── frek-id.test.js
+        ├── frek-generator.test.js
+        └── useJsonVerify.test.js
 ```
 
 ## Design System
 
 ### Couleurs
-- **terra:** `#C4714A` — Couleur principale, accents, CTA
-- **gold:** `#D4A84B` — Accents secondaires, highlights
+- **terra:** `#C4714A` — Couleur principale
+- **gold:** `#D4A84B` — Accents secondaires
 - **dark:** `#080808` — Background principal
 - **navy:** `#0D1B2A` — Sections alternées
-- **teal:** `#0A4A4A` — Accent FREK Go
-- **fgreen:** `#1A4A2A` — Niveaux de preuve "fort"
-- **light:** `#F2EDE4` — Texte principal
-- **mid:** `#C8C0B0` — Texte secondaire
-- **dim:** `#6A6258` — Texte tertiaire
+- **fgreen:** `#1A4A2A` — Succès/Valide
+- **light/mid/dim:** Niveaux de texte
 
 ### Typographie
-- **Bebas Neue** — Titres, logo FREK, grands nombres
-- **DM Mono** — Labels, tags, code, UI technique
-- **DM Sans** — Corps de texte, paragraphes
+- **Bebas Neue** — Titres
+- **DM Mono** — Code, labels
+- **DM Sans** — Corps de texte
 
 ## Implemented Features
 
-### ✅ Stack Migration (2024-12-19)
-- [x] Migration CRA → Vite 5
-- [x] React 18 + Framer Motion
-- [x] Tailwind CSS avec config étendue
-- [x] Netlify config prêt
+### ✅ P0: Wizard Générateur d'Attestation (2025-03-06)
+- [x] Navigation 4 étapes avec stepper
+- [x] Formulaire artiste + événement avec validation
+- [x] Tracklist CRUD avec réorganisation
+- [x] Upload audio ou saisie manuelle SHA-256
+- [x] Génération FREK-ID format FREK-YYYY-XX-NNN
+- [x] Signature SHA-256 auto-calculée
+- [x] Téléchargement fichier .frek.json
+- [x] QR Code scannable (qrcode.react)
+- [x] **5/5 tests du cahier des charges passés**
 
-### ✅ Sections complètes (2024-12-19)
-- [x] **Nav:** Navigation fixe + backdrop blur + CTA
-- [x] **Hero:** 2 colonnes + JSON animé + badge VÉRIFIÉ
-- [x] **Philosophie:** 3 piliers + citation encadrée
-- [x] **Architecture:** Flow 4 étapes + responsabilités
-- [x] **Produits:** FREK Go vs FREK Node comparaison
-- [x] **Verifier:** Tabs Audio/JSON (fonctionnel)
-- [x] **Spec:** 15 champs + code sticky coloré
-- [x] **FrekId:** Décomposition visuelle FREK-2026-MQ-001
-- [x] **Culture Connect 2026:** Cartes attestations animées
-- [x] **Ecosystème:** 6 cartes intégrations
-- [x] **Roadmap:** v0.4 → v1.0
-- [x] **Footer:** 3 colonnes + pills
+### ✅ P1: Tests de conformité Vitest (2025-03-06)
+- [x] Suite de tests automatisés (45 tests)
+- [x] Test vectors valides/invalides
+- [x] Tests useJsonVerify (18 tests)
+- [x] Tests frek-generator (16 tests)
+- [x] Tests frek-id (11 tests)
 
-### ✅ Outils fonctionnels (2024-12-19)
-- [x] **Audio Fingerprint:** FFT + RMS + Zero Crossing Rate + SHA-256
-- [x] **JSON Verification:** Validation schéma .frek.json complet
-- [x] Drop zone drag & drop
-- [x] Progress bar animée
-- [x] Résultats avec checks colorés
+### ✅ P2: Internationalisation i18n (2025-03-06)
+- [x] Framework i18next + react-i18next
+- [x] 4 langues: FR, EN, ES, AR
+- [x] Détection automatique de langue
+- [x] Sélecteur de langue dans navigation
+- [x] Support RTL pour l'arabe
 
-### ✅ Wizard Générateur d'Attestation (2025-03-06) 🆕
-- [x] **Route /generate** avec navigation 4 étapes
-- [x] **Step 1 - Identité:** Formulaire artiste + événement avec validation
-- [x] **Step 2 - Tracklist:** CRUD complet avec réorganisation des tracks
-- [x] **Step 3 - Empreinte:** Upload audio ou saisie manuelle SHA-256
-- [x] **Step 4 - Génération:** Preview JSON + download fichier .frek.json
-- [x] **Génération FREK-ID:** Format FREK-YYYY-XX-NNN
-- [x] **Signature SHA-256:** Auto-signature du document (sha256-self)
-- [x] **Téléchargement:** Bouton download + copie clipboard
-- [x] **Reset wizard:** Bouton "Nouvelle attestation"
-- [x] **QR Code:** Code QR scannable avec données de vérification (qrcode.react)
+### ✅ P2: Accessibilité WCAG (2025-03-06)
+- [x] Focus visible styles
+- [x] ARIA labels et rôles
+- [x] Keyboard navigation
+- [x] Skip link
+- [x] Reduced motion support
+- [x] High contrast mode support
 
-### ✅ Animations
-- [x] Framer Motion scroll reveal
-- [x] Stagger animation hero
-- [x] Tab transitions AnimatePresence
-- [x] Hover effects cartes
-- [x] Badge pulse CC2026
-- [x] Step transitions wizard
+### ✅ P3: Export rapport Verifier (2025-03-06)
+- [x] Bouton "Télécharger le rapport"
+- [x] Export JSON pour fingerprint audio
+- [x] Export JSON pour vérification attestation
 
-### ✅ Responsive
-- [x] Mobile: JSON preview masqué, nav collapsée
-- [x] Tablet: Layout adaptatif
-- [x] Desktop: Full 2 colonnes
+## Test Results (2025-03-06)
 
-## Technical Specifications
-
-### Audio Fingerprinting Algorithm
-```javascript
-// 1. Decode audio → PCM 44.1kHz
-// 2. Segment → 3 secondes (max 10 segments)
-// 3. Pour chaque segment:
-//    - RMS (Root Mean Square)
-//    - ZCR (Zero Crossing Rate)
-// 4. Hash features → SHA-256
-// 5. Combiner hashes → fingerprint final
-// Format: frek:fp:<sha256_hex>
 ```
+✓ src/test/frek-id.test.js (11 tests)
+✓ src/test/frek-generator.test.js (16 tests)
+✓ src/test/useJsonVerify.test.js (18 tests)
 
-### JSON Schema (v0.4)
-- frek_version, mix_id, created_at (obligatoires)
-- artist, event, tracklist (obligatoires)
-- audio_fingerprint, signature (obligatoires)
-- timestamp, operator (obligatoires)
-- proof_level, rfc3161_token, bitcoin_anchor (optionnels)
-
-### FREK-ID Format
-```
-FREK-YYYY-XX-NNN
-├── FREK    → Préfixe standard
-├── YYYY    → Année de l'événement
-├── XX      → Code territoire ISO 3166-1 alpha-2
-└── NNN     → Numéro de séquence (100-999)
+Test Files  3 passed (3)
+Tests       45 passed (45)
 ```
 
 ## Contraintes respectées
-- ✅ 100% client-side (aucun appel serveur)
+- ✅ 100% client-side
 - ✅ Aucune donnée collectée
 - ✅ Aucun cookie
 - ✅ Local-First
 - ✅ Anti-Surveillance
+- ✅ WCAG 2.1 AA
 
-## Test Results (2025-03-06)
-- Frontend: 100%
-- Navigation: 100%
-- Verifier: 100%
-- Mobile: 100%
-- Animations: 100%
-- **Wizard Generator: 100%** 🆕
-
-### Tests Wizard (5/5 passés)
-1. ✅ Navigation wizard - 4 étapes
-2. ✅ Formulaire Step 1 - validation artiste/événement
-3. ✅ Tracklist CRUD - ajout/modif/suppression
-4. ✅ Empreinte SHA-256 manuelle
-5. ✅ Génération JSON + téléchargement .frek.json
-
-## Prioritized Backlog
-
-### P1 - Tests de conformité
-- [ ] Suite de tests automatisés (Vitest) pour la logique de vérification
-- [ ] Vecteurs de test valides/invalides pour useJsonVerify
-
-### P2 - Internationalisation
-- [ ] Framework i18n pour Vite/React
-- [ ] Traductions: EN, ES, AR
-
-### P2 - Accessibilité
-- [ ] Audit WCAG complet
-- [ ] Navigation clavier wizard
-- [ ] Rôles ARIA
-
-### P3 - Fonctionnalités supplémentaires
-- [ ] Export rapport depuis Verifier
-- [ ] Mode sombre/clair toggle
+## Deployment Notes
+- **Preview URL:** Ne supporte pas les domaines personnalisés
+- **Pour frekcore.com:** Déployer l'application (50 crédits/mois), puis Link domain → Entri
 
 ---
 

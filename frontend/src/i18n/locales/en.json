@@ -1,0 +1,175 @@
+{
+  "nav": {
+    "products": "Products",
+    "verifier": "Verify",
+    "spec": "Spec",
+    "generate": "Generate",
+    "backToSite": "Back to site"
+  },
+  "hero": {
+    "badge": "OPEN STANDARD",
+    "title": "Cryptographic proof for DJ mixes",
+    "subtitle": "FREK® establishes a universal standard for identifying composite musical performances. Each mix becomes a verifiable, timestamped, immutable fact.",
+    "cta": "Generate an attestation",
+    "verify": "Verify a mix"
+  },
+  "philosophy": {
+    "tag": "Philosophy",
+    "title": "Why FREK exists",
+    "pillar1": {
+      "title": "Proof > Service",
+      "description": "FREK doesn't depend on any platform. Your attestations belong to you, readable in 2050."
+    },
+    "pillar2": {
+      "title": "Local-First",
+      "description": "All computation runs on your device. No data leaves your machine."
+    },
+    "pillar3": {
+      "title": "Anti-Surveillance",
+      "description": "Zero tracking, zero analytics. Your art, your rules."
+    },
+    "quote": "FREK doesn't recognize music. FREK recognizes a technical fact, in a precise context."
+  },
+  "products": {
+    "tag": "Products",
+    "title": "Choose your level",
+    "go": {
+      "title": "FREK Go",
+      "subtitle": "Free web application",
+      "features": [
+        "Attestation generation",
+        "File verification",
+        "100% client-side",
+        "No registration"
+      ],
+      "cta": "Launch FREK Go"
+    },
+    "node": {
+      "title": "FREK Node",
+      "subtitle": "Professional infrastructure",
+      "features": [
+        "Complete REST API",
+        "RFC 3161 timestamping",
+        "Blockchain anchoring",
+        "Enterprise support"
+      ],
+      "cta": "Contact the team"
+    }
+  },
+  "verifier": {
+    "tag": "Verifier",
+    "title": "Verify an attestation",
+    "subtitle": "Drop an audio file to generate its fingerprint, or a .frek.json file to verify its validity.",
+    "tabs": {
+      "audio": "Audio file",
+      "json": "JSON file"
+    },
+    "dropzone": {
+      "audio": "Drop your audio file",
+      "audioFormats": "MP3, WAV, FLAC, AAC, OGG — Max 500MB",
+      "json": "Drop your .frek.json file",
+      "jsonFormats": "JSON file only"
+    },
+    "processing": "Processing...",
+    "results": {
+      "valid": "VALID ATTESTATION",
+      "invalid": "INVALID ATTESTATION",
+      "fingerprint": "FINGERPRINT GENERATED"
+    }
+  },
+  "spec": {
+    "tag": "Specification",
+    "title": ".frek.json Structure",
+    "required": "Required",
+    "optional": "Optional"
+  },
+  "wizard": {
+    "generator": "Attestation Generator",
+    "steps": {
+      "identity": "Identity",
+      "tracklist": "Tracklist",
+      "fingerprint": "Fingerprint",
+      "generation": "Generation"
+    },
+    "step1": {
+      "artistTitle": "Artist / DJ",
+      "stageName": "Stage name",
+      "legalName": "Legal name",
+      "territory": "Territory",
+      "eventTitle": "Event / Performance",
+      "eventName": "Event name",
+      "date": "Date",
+      "startTime": "Start time",
+      "venue": "Venue",
+      "city": "City",
+      "context": "Context"
+    },
+    "step2": {
+      "title": "Tracklist",
+      "description": "The tracklist strengthens the probative value of the attestation. It's not mandatory but strongly recommended.",
+      "addTrack": "Add a track",
+      "noTracks": "No tracks added",
+      "optional": "This step is optional. You can proceed to the next step even without a tracklist.",
+      "trackTitle": "Title",
+      "trackArtist": "Artist",
+      "trackIsrc": "ISRC",
+      "trackStart": "Start time"
+    },
+    "step3": {
+      "title": "Audio Fingerprint",
+      "description": "The audio fingerprint is the heart of the FREK attestation. It allows verification of the mix's authenticity.",
+      "audioTab": "Audio file",
+      "manualTab": "Manual entry",
+      "dropzone": "Drop your audio file",
+      "formats": "MP3, WAV, FLAC, AAC, OGG — Max 500MB — Local FFT analysis",
+      "manualWarning": "Without an audio file, the probative value is reduced. You can complete this attestation later.",
+      "manualLabel": "Existing SHA-256 hash",
+      "manualValidate": "Validate manual fingerprint",
+      "generated": "FINGERPRINT GENERATED",
+      "manualSaved": "Manual fingerprint saved"
+    },
+    "step4": {
+      "title": "Review & Generation",
+      "description": "Check the information before generating your FREK attestation.",
+      "generate": "Generate attestation",
+      "generating": "Generating...",
+      "download": "Download attestation",
+      "downloaded": "Downloaded",
+      "copy": "Copy JSON",
+      "copied": "Copied",
+      "scanQr": "Scan QR code to verify",
+      "success": "Your attestation has been generated.",
+      "keepFile": "Keep this file — it constitutes your proof."
+    },
+    "navigation": {
+      "previous": "Previous",
+      "next": "Next",
+      "newAttestation": "New attestation",
+      "verify": "Verify"
+    },
+    "validation": {
+      "required": "required",
+      "optional": "optional",
+      "missingFields": "Missing required fields",
+      "noFingerprint": "No audio fingerprint — reduced probative value"
+    }
+  },
+  "footer": {
+    "tagline": "Proof > Service | Local-First | Anti-Surveillance",
+    "copyright": "© 2025–2026 CVLN Group",
+    "links": {
+      "spec": "Specification",
+      "github": "GitHub",
+      "contact": "Contact"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit"
+  }
+}

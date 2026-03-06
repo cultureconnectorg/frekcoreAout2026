@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const navLinks = [
-  { label: 'Philosophie', href: '#philosophie' },
-  { label: 'Produits', href: '#produits' },
-  { label: 'Vérifier', href: '#verifier' },
-  { label: 'Générer', href: '/generate', isRoute: true },
-  { label: 'Spec', href: '#spec' },
-  { label: 'Écosystème', href: '#ecosysteme' },
-];
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 
 export function Nav() {
+  const { t } = useTranslation();
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const navLinks = [
+    { label: t('philosophy.tag'), href: '#philosophie' },
+    { label: t('nav.products'), href: '#produits' },
+    { label: t('nav.verifier'), href: '#verifier' },
+    { label: t('nav.generate'), href: '/generate', isRoute: true },
+    { label: t('nav.spec'), href: '#spec' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -68,14 +70,17 @@ export function Nav() {
           ))}
         </div>
 
-        {/* CTA Button */}
-        <a
-          href="#verifier"
-          onClick={(e) => scrollToSection(e, '#verifier')}
-          className="btn-primary text-xs"
-        >
-          Vérifier un mix
-        </a>
+        {/* Right side: Language + CTA */}
+        <div className="flex items-center gap-4">
+          <LanguageSwitcher />
+          <a
+            href="#verifier"
+            onClick={(e) => scrollToSection(e, '#verifier')}
+            className="btn-primary text-xs hidden sm:inline-block"
+          >
+            {t('hero.verify')}
+          </a>
+        </div>
       </div>
     </nav>
   );

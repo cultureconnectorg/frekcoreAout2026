@@ -1,0 +1,175 @@
+{
+  "nav": {
+    "products": "Productos",
+    "verifier": "Verificar",
+    "spec": "Spec",
+    "generate": "Generar",
+    "backToSite": "Volver al sitio"
+  },
+  "hero": {
+    "badge": "ESTÁNDAR ABIERTO",
+    "title": "Prueba criptográfica para DJ mixes",
+    "subtitle": "FREK® establece un estándar universal para identificar actuaciones musicales compuestas. Cada mix se convierte en un hecho verificable, con marca de tiempo e inalterable.",
+    "cta": "Generar una atestación",
+    "verify": "Verificar un mix"
+  },
+  "philosophy": {
+    "tag": "Filosofía",
+    "title": "Por qué existe FREK",
+    "pillar1": {
+      "title": "Prueba > Servicio",
+      "description": "FREK no depende de ninguna plataforma. Tus atestaciones te pertenecen, legibles en 2050."
+    },
+    "pillar2": {
+      "title": "Local-First",
+      "description": "Todo el cálculo se ejecuta en tu dispositivo. Ningún dato sale de tu máquina."
+    },
+    "pillar3": {
+      "title": "Anti-Vigilancia",
+      "description": "Cero rastreo, cero analytics. Tu arte, tus reglas."
+    },
+    "quote": "FREK no reconoce la música. FREK reconoce un hecho técnico, en un contexto preciso."
+  },
+  "products": {
+    "tag": "Productos",
+    "title": "Elige tu nivel",
+    "go": {
+      "title": "FREK Go",
+      "subtitle": "Aplicación web gratuita",
+      "features": [
+        "Generación de atestaciones",
+        "Verificación de archivos",
+        "100% del lado del cliente",
+        "Sin registro"
+      ],
+      "cta": "Lanzar FREK Go"
+    },
+    "node": {
+      "title": "FREK Node",
+      "subtitle": "Infraestructura profesional",
+      "features": [
+        "API REST completa",
+        "Marca de tiempo RFC 3161",
+        "Anclaje blockchain",
+        "Soporte empresarial"
+      ],
+      "cta": "Contactar al equipo"
+    }
+  },
+  "verifier": {
+    "tag": "Verificador",
+    "title": "Verificar una atestación",
+    "subtitle": "Suelta un archivo de audio para generar su huella digital, o un archivo .frek.json para verificar su validez.",
+    "tabs": {
+      "audio": "Archivo de audio",
+      "json": "Archivo JSON"
+    },
+    "dropzone": {
+      "audio": "Suelta tu archivo de audio",
+      "audioFormats": "MP3, WAV, FLAC, AAC, OGG — Máx 500MB",
+      "json": "Suelta tu archivo .frek.json",
+      "jsonFormats": "Solo archivo JSON"
+    },
+    "processing": "Procesando...",
+    "results": {
+      "valid": "ATESTACIÓN VÁLIDA",
+      "invalid": "ATESTACIÓN INVÁLIDA",
+      "fingerprint": "HUELLA DIGITAL GENERADA"
+    }
+  },
+  "spec": {
+    "tag": "Especificación",
+    "title": "Estructura .frek.json",
+    "required": "Obligatorio",
+    "optional": "Opcional"
+  },
+  "wizard": {
+    "generator": "Generador de atestación",
+    "steps": {
+      "identity": "Identidad",
+      "tracklist": "Tracklist",
+      "fingerprint": "Huella",
+      "generation": "Generación"
+    },
+    "step1": {
+      "artistTitle": "Artista / DJ",
+      "stageName": "Nombre artístico",
+      "legalName": "Nombre legal",
+      "territory": "Territorio",
+      "eventTitle": "Evento / Actuación",
+      "eventName": "Nombre del evento",
+      "date": "Fecha",
+      "startTime": "Hora de inicio",
+      "venue": "Lugar",
+      "city": "Ciudad",
+      "context": "Contexto"
+    },
+    "step2": {
+      "title": "Tracklist",
+      "description": "El tracklist refuerza el valor probatorio de la atestación. No es obligatorio pero muy recomendado.",
+      "addTrack": "Añadir un título",
+      "noTracks": "Ningún título añadido",
+      "optional": "Este paso es opcional. Puedes pasar al siguiente paso incluso sin tracklist.",
+      "trackTitle": "Título",
+      "trackArtist": "Artista",
+      "trackIsrc": "ISRC",
+      "trackStart": "Tiempo de inicio"
+    },
+    "step3": {
+      "title": "Huella de audio",
+      "description": "La huella de audio es el corazón de la atestación FREK. Permite verificar la autenticidad del mix.",
+      "audioTab": "Archivo de audio",
+      "manualTab": "Entrada manual",
+      "dropzone": "Suelta tu archivo de audio",
+      "formats": "MP3, WAV, FLAC, AAC, OGG — Máx 500MB — Análisis FFT local",
+      "manualWarning": "Sin archivo de audio, el valor probatorio se reduce. Puedes completar esta atestación más tarde.",
+      "manualLabel": "Hash SHA-256 existente",
+      "manualValidate": "Validar huella manual",
+      "generated": "HUELLA GENERADA",
+      "manualSaved": "Huella manual guardada"
+    },
+    "step4": {
+      "title": "Revisión y Generación",
+      "description": "Verifica la información antes de generar tu atestación FREK.",
+      "generate": "Generar atestación",
+      "generating": "Generando...",
+      "download": "Descargar atestación",
+      "downloaded": "Descargado",
+      "copy": "Copiar JSON",
+      "copied": "Copiado",
+      "scanQr": "Escanea el código QR para verificar",
+      "success": "Tu atestación ha sido generada.",
+      "keepFile": "Guarda este archivo — constituye tu prueba."
+    },
+    "navigation": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "newAttestation": "Nueva atestación",
+      "verify": "Verificar"
+    },
+    "validation": {
+      "required": "obligatorio",
+      "optional": "opcional",
+      "missingFields": "Campos obligatorios faltantes",
+      "noFingerprint": "Sin huella de audio — valor probatorio reducido"
+    }
+  },
+  "footer": {
+    "tagline": "Prueba > Servicio | Local-First | Anti-Vigilancia",
+    "copyright": "© 2025–2026 CVLN Group",
+    "links": {
+      "spec": "Especificación",
+      "github": "GitHub",
+      "contact": "Contacto"
+    }
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar"
+  }
+}

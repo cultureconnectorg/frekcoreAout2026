@@ -1,17 +1,72 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { RevealWrapper } from '../ui/RevealWrapper';
 import { SectionTag } from '../ui/SectionTag';
 import { useAudioFingerprint } from '../../hooks/useAudioFingerprint';
 import { useJsonVerify } from '../../hooks/useJsonVerify';
 
+/**
+ * Generate a downloadable verification report
+ */
+function generateReport(result, type) {
+  const timestamp = new Date().toISOString();
+  const report = {
+    report_type: type === 'audio' ? 'AUDIO_FINGERPRINT' : 'JSON_VERIFICATION',
+    generated_at: timestamp,
+    frek_version: '0.4',
+    ...(type === 'audio' ? {
+      fingerprint: result.fingerprint,
+      file: {
+        name: result.filename,
+        size: result.fileSize,
+        duration: result.duration,
+        sample_rate: result.sampleRate,
+        channels: result.channels,
+        segments_analyzed: result.segments,
+      },
+    } : {
+      verification_status: result.isValid ? 'VALID' : 'INVALID',
+      proof_level: result.proofLevel,
+      summary: result.summary,
+      checks: result.checks,
+      missing_fields: result.missing,
+    }),
+    client: {
+      user_agent: navigator.userAgent,
+      timestamp: timestamp,
+    },
+  };
+  return report;
+}
+
+function downloadReport(report, filename) {
+  const jsonString = JSON.stringify(report, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function Verifier() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('audio');
   const [isDragging, setIsDragging] = useState(false);
   const [jsonText, setJsonText] = useState('');
 
   const { analyzeAudio, isProcessing, progress, result: audioResult, error: audioError, reset: resetAudio } = useAudioFingerprint();
   const { verifyJson, isVerifying, result: jsonResult, error: jsonError, reset: resetJson } = useJsonVerify();
+
+  const handleDownloadReport = useCallback((result, type) => {
+    const report = generateReport(result, type);
+    const filename = type === 'audio' 
+      ? `frek-fingerprint-${Date.now()}.json`
+      : `frek-verification-${result.summary?.mixId || Date.now()}.json`;
+    downloadReport(report, filename);
+  }, []);
 
   // Audio drop handlers
   const handleAudioDrop = useCallback(
@@ -215,6 +270,14 @@ export function Verifier() {
                         {audioResult.fingerprint}
                       </p>
                     </div>
+                    {/* Download Report Button */}
+                    <button
+                      onClick={() => handleDownloadReport(audioResult, 'audio')}
+                      className="mt-4 w-full py-3 border border-fgreen/30 text-[#5DC882] font-mono text-sm uppercase tracking-wider hover:bg-fgreen/10 transition-colors"
+                      aria-label={t('verifier.results.fingerprint') + ' - Download report'}
+                    >
+                      Télécharger le rapport
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -363,6 +426,19 @@ export function Verifier() {
                         </p>
                       </div>
                     )}
+
+                    {/* Download Report Button */}
+                    <button
+                      onClick={() => handleDownloadReport(jsonResult, 'json')}
+                      className={`mt-4 w-full py-3 border font-mono text-sm uppercase tracking-wider transition-colors ${
+                        jsonResult.isValid
+                          ? 'border-fgreen/30 text-[#5DC882] hover:bg-fgreen/10'
+                          : 'border-gold/30 text-gold hover:bg-gold/10'
+                      }`}
+                      aria-label="Download verification report"
+                    >
+                      Télécharger le rapport de vérification
+                    </button>
                   </div>
                 </motion.div>
               )}
