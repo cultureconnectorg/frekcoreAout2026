@@ -41,9 +41,12 @@ export function Nav() {
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <a href="#" className="flex items-baseline gap-0.5" aria-label="FREK Home">
-          <span className="font-display text-2xl text-terra tracking-tight">FREK</span>
-          <span className="font-display text-sm text-gold">®</span>
+        <a href="#" className="flex items-center gap-2" aria-label="FREK Home">
+          <img 
+            src="/frek-logo.png" 
+            alt="FREK" 
+            className="h-8 w-auto"
+          />
         </a>
 
         {/* Desktop Navigation */}

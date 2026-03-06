@@ -69,9 +69,12 @@ export function Generate() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-dark/95 backdrop-blur-md border-b border-terra/20">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-baseline gap-0.5">
-            <span className="font-display text-2xl text-terra">FREK</span>
-            <span className="font-display text-sm text-gold">®</span>
+          <Link to="/" className="flex items-center gap-2">
+            <img 
+              src="/frek-logo.png" 
+              alt="FREK" 
+              className="h-8 w-auto"
+            />
           </Link>
           <span className="font-mono text-xs text-mid hidden sm:block">
             Générateur d&apos;attestation

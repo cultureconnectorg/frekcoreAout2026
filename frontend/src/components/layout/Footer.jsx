@@ -30,9 +30,12 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Brand */}
           <div>
-            <div className="flex items-baseline gap-0.5 mb-4">
-              <span className="font-display text-3xl text-terra">FREK</span>
-              <span className="font-display text-lg text-gold">®</span>
+            <div className="flex items-center gap-3 mb-4">
+              <img 
+                src="/frek-logo.png" 
+                alt="FREK" 
+                className="h-12 w-auto"
+              />
             </div>
             <p className="font-body text-sm text-dim leading-relaxed">
               Infrastructure de Preuve Audio Locale
