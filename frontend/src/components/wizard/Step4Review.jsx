@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { QRCodeSVG } from 'qrcode.react';
 import { generateFrekJson, downloadFrekJson, copyFrekJson, validateWizardState } from '../../utils/frek-generator';
 import { FrekJsonPreview } from './FrekJsonPreview';
 
@@ -191,15 +192,40 @@ export function Step4Review({
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          {/* FREK-ID Display */}
-          <div className="p-8 bg-[#0a0a0a] border border-fgreen/30 text-center">
-            <p className="font-mono text-xs text-dim mb-2">FREK-ID</p>
-            <p className="font-display text-5xl md:text-6xl text-gold">
-              {generatedDoc.mix_id}
-            </p>
-            <p className="font-mono text-xs text-dim mt-4">
-              Généré le {new Date(generatedDoc.created_at).toLocaleString('fr-FR')}
-            </p>
+          {/* FREK-ID Display with QR Code */}
+          <div className="p-8 bg-[#0a0a0a] border border-fgreen/30">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+              {/* QR Code */}
+              <div className="p-4 bg-white rounded-lg">
+                <QRCodeSVG
+                  value={JSON.stringify({
+                    frek_id: generatedDoc.mix_id,
+                    signature: generatedDoc.signature.value,
+                    artist: generatedDoc.artist.name,
+                    event: generatedDoc.event.name,
+                    date: generatedDoc.event.date,
+                  })}
+                  size={140}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#FFFFFF"
+                  fgColor="#080808"
+                />
+              </div>
+              {/* FREK-ID Text */}
+              <div className="text-center md:text-left">
+                <p className="font-mono text-xs text-dim mb-2">FREK-ID</p>
+                <p className="font-display text-4xl md:text-5xl lg:text-6xl text-gold">
+                  {generatedDoc.mix_id}
+                </p>
+                <p className="font-mono text-xs text-dim mt-4">
+                  Généré le {new Date(generatedDoc.created_at).toLocaleString('fr-FR')}
+                </p>
+                <p className="font-mono text-[10px] text-dim/60 mt-2">
+                  Scannez le QR code pour vérifier
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* JSON Preview */}

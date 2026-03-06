@@ -121,6 +121,7 @@ FREK® est un standard ouvert d'identification cryptographique des DJ mixes et p
 - [x] **Signature SHA-256:** Auto-signature du document (sha256-self)
 - [x] **Téléchargement:** Bouton download + copie clipboard
 - [x] **Reset wizard:** Bouton "Nouvelle attestation"
+- [x] **QR Code:** Code QR scannable avec données de vérification (qrcode.react)
 
 ### ✅ Animations
 - [x] Framer Motion scroll reveal
