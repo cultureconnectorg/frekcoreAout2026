@@ -2,241 +2,129 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@300;400;500;600&display=swap');
-
-:root {
-  --frek-bg: #050505;
-  --frek-surface: #0A0A0A;
-  --frek-surface-highlight: #121212;
-  --frek-border: #27272A;
-  --frek-text: #FAFAFA;
-  --frek-text-dim: #A1A1AA;
-  --frek-text-muted: #52525B;
-  --frek-accent: #00F0FF;
-  --frek-success: #00FF94;
-  --frek-error: #FF3333;
-  --frek-warning: #FFB800;
-}
-
+/* Base styles */
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
 html {
-  background-color: var(--frek-bg);
+  scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--frek-bg);
-  color: var(--frek-text);
+  font-family: 'DM Sans', sans-serif;
+  background-color: #080808;
+  color: #F2EDE4;
+  line-height: 1.6;
+  overflow-x: hidden;
 }
 
-.font-mono {
-  font-family: 'JetBrains Mono', monospace;
+/* Noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
-.font-serif {
-  font-family: 'Playfair Display', Georgia, serif;
-}
-
-.font-sans {
-  font-family: 'Inter', sans-serif;
-}
-
-code, pre {
-  font-family: 'JetBrains Mono', monospace;
-}
-
-@layer base {
-  :root {
-    --background: 0 0% 2%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 180 100% 50%;
-    --radius: 0rem;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+/* Selection color */
+::selection {
+  background-color: rgba(196, 113, 74, 0.3);
+  color: #F2EDE4;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--frek-bg);
+  background: #080808;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--frek-border);
+  background: rgba(196, 113, 74, 0.4);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--frek-text-muted);
+  background: rgba(196, 113, 74, 0.6);
 }
 
-/* Status indicators */
-.status-valid::before {
-  content: '●';
-  margin-right: 0.5rem;
-  color: var(--frek-success);
+/* Animation utilities */
+.animate-delay-100 { animation-delay: 0.1s; }
+.animate-delay-200 { animation-delay: 0.2s; }
+.animate-delay-300 { animation-delay: 0.3s; }
+.animate-delay-400 { animation-delay: 0.4s; }
+.animate-delay-500 { animation-delay: 0.5s; }
+
+/* Stagger animation base */
+.stagger-item {
+  opacity: 0;
 }
 
-.status-invalid::before {
-  content: '●';
-  margin-right: 0.5rem;
-  color: var(--frek-error);
+.stagger-item.visible {
+  animation: fadeInUp 0.7s ease forwards;
 }
 
-.status-unknown::before {
-  content: '○';
-  margin-right: 0.5rem;
-  color: var(--frek-text-muted);
+/* JSON syntax highlighting */
+.json-key { color: #D4A84B; }
+.json-string { color: #9EC8A0; }
+.json-number { color: #89BDDE; }
+.json-bracket { color: #6A6258; }
+.json-comment { color: #6A6258; font-style: italic; }
+
+/* Button styles */
+.btn-primary {
+  @apply bg-terra text-fwhite px-6 py-3 font-mono text-sm uppercase tracking-wider transition-all duration-300;
 }
 
-/* Dropzone */
-.dropzone {
-  border: 1px dashed var(--frek-border);
-  transition: border-color 0.1s ease;
+.btn-primary:hover {
+  @apply bg-opacity-90 transform scale-[1.02];
 }
 
-.dropzone:hover,
-.dropzone.active {
-  border-color: var(--frek-accent);
+.btn-outline {
+  @apply border border-terra text-terra px-6 py-3 font-mono text-sm uppercase tracking-wider transition-all duration-300 bg-transparent;
 }
 
-/* Code blocks */
-.code-block {
-  background: var(--frek-surface);
-  border: 1px solid var(--frek-border);
-  padding: 1rem;
-  overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
+.btn-outline:hover {
+  @apply bg-terra bg-opacity-10;
 }
 
-/* Scanline effect (optional) */
-.scanlines::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.1) 0px,
-    rgba(0, 0, 0, 0.1) 1px,
-    transparent 1px,
-    transparent 2px
-  );
-  opacity: 0.3;
+/* Section tag style */
+.section-tag {
+  @apply font-mono text-sm uppercase tracking-widest text-terra mb-4;
 }
 
-/* RTL Support */
-[dir="rtl"] {
-  text-align: right;
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-300;
 }
 
-[dir="rtl"] .status-valid::before,
-[dir="rtl"] .status-invalid::before,
-[dir="rtl"] .status-unknown::before {
-  margin-right: 0;
-  margin-left: 0.5rem;
+.card-hover:hover {
+  @apply bg-opacity-80;
 }
 
-[dir="rtl"] .font-mono {
-  direction: ltr;
-  unicode-bidi: embed;
-}
-
-/* Accessibility */
-.sr-only {
-  position: absolute;
-  width: 1px;
+/* Gradient divider */
+.divider-gradient {
   height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  background: linear-gradient(90deg, transparent, rgba(196, 113, 74, 0.5), transparent);
 }
 
-/* Focus states for keyboard navigation */
+/* Focus states */
 :focus-visible {
-  outline: 2px solid var(--frek-accent);
+  outline: 2px solid #C4714A;
   outline-offset: 2px;
 }
 
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-[tabindex]:focus-visible {
-  outline: 2px solid var(--frek-accent);
-  outline-offset: 2px;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --frek-border: #71717A;
-    --frek-text-dim: #D4D4D8;
-    --frek-text-muted: #A1A1AA;
-  }
-  
-  .border-zinc-800 {
-    border-color: var(--frek-border);
+/* Responsive text */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
   }
 }
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Progress bar animation */
-.progress-bar {
-  transition: width 0.3s ease-out;
-}
-
-/* Drag and drop visual feedback */
-.drag-over {
-  background-color: rgba(0, 240, 255, 0.1);
-  border-color: var(--frek-accent) !important;
-}
-
