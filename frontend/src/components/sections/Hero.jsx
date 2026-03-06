@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { JsonBlock } from '../ui/JsonBlock';
 
 const heroJsonExample = `{
@@ -96,7 +97,10 @@ export function Hero() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
-            <button onClick={scrollToVerifier} className="btn-primary">
+            <Link to="/generate" className="btn-primary">
+              Générer mon attestation
+            </Link>
+            <button onClick={scrollToVerifier} className="btn-outline">
               Vérifier un mix
             </button>
             <button onClick={scrollToSpec} className="btn-outline">

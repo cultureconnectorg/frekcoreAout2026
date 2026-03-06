@@ -1,3 +1,4 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { Hero } from './components/sections/Hero';
@@ -10,8 +11,9 @@ import { FrekId } from './components/sections/FrekId';
 import { CultureConnect } from './components/sections/CultureConnect';
 import { Ecosysteme } from './components/sections/Ecosysteme';
 import { Roadmap } from './components/sections/Roadmap';
+import { Generate } from './pages/Generate';
 
-function App() {
+function HomePage() {
   return (
     <div className="min-h-screen bg-dark text-light">
       <Nav />
@@ -29,6 +31,17 @@ function App() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/generate" element={<Generate />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

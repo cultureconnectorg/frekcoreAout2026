@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 const navLinks = [
   { label: 'Philosophie', href: '#philosophie' },
   { label: 'Produits', href: '#produits' },
   { label: 'Vérifier', href: '#verifier' },
+  { label: 'Générer', href: '/generate', isRoute: true },
   { label: 'Spec', href: '#spec' },
   { label: 'Écosystème', href: '#ecosysteme' },
 ];
@@ -45,14 +47,24 @@ export function Nav() {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => scrollToSection(e, link.href)}
-              className="font-mono text-xs uppercase tracking-wider text-mid hover:text-terra transition-colors"
-            >
-              {link.label}
-            </a>
+            link.isRoute ? (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="font-mono text-xs uppercase tracking-wider text-terra hover:text-gold transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => scrollToSection(e, link.href)}
+                className="font-mono text-xs uppercase tracking-wider text-mid hover:text-terra transition-colors"
+              >
+                {link.label}
+              </a>
+            )
           ))}
         </div>
 
