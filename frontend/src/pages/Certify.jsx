@@ -718,25 +718,26 @@ export function Certify() {
       <footer className="relative z-10 bg-white/60 backdrop-blur-xl border-t border-slate-100">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
           <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mb-5">
-            {['Philosophie', 'Spécifications', 'Aide'].map((item, i) => (
-              <motion.div key={item} whileHover={{ y: -2 }}>
-                <Link 
-                  to={`/${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace('é', 'e')}`}
-                  className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors duration-300"
-                >
-                  {item}
-                </Link>
-              </motion.div>
-            ))}
-            <motion.a 
-              whileHover={{ y: -2 }}
-              href="https://frekcore.com" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors duration-300"
-            >
-              frekcore.com
-            </motion.a>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link to="/philosophy" className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors duration-300">
+                Philosophie
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link to="/spec" className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors duration-300">
+                Spécifications
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }}>
+              <Link to="/help" className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors duration-300">
+                Aide
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ y: -2 }}>
+              <a href="https://frekcore.com" target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors duration-300">
+                frekcore.com
+              </a>
+            </motion.div>
           </div>
 
           <div className="w-24 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mx-auto mb-5" />
