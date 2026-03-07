@@ -5,6 +5,10 @@ import { Generate } from './pages/Generate';
 import { Legal } from './pages/Legal';
 import { Spec as SpecPage } from './pages/Spec';
 import { Philosophy } from './pages/Philosophy';
+import { Privacy } from './pages/Privacy';
+import { Cookies } from './pages/Cookies';
+import { Terms } from './pages/Terms';
+import { Disclosure } from './pages/Disclosure';
 
 // Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
@@ -51,6 +55,10 @@ function App() {
         <Route path="/legal" element={<Legal />} />
         <Route path="/spec" element={<SpecPage />} />
         <Route path="/philosophy" element={<Philosophy />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/cookies" element={<Cookies />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/disclosure" element={<Disclosure />} />
         
         {/* Redirections anciennes URLs */}
         <Route path="/certify" element={<Navigate to="/" replace />} />

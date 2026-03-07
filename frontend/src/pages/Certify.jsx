@@ -372,8 +372,8 @@ export function Certify() {
       {/* Footer */}
       <footer className="border-t border-slate-200/50 bg-white/50 backdrop-blur-sm relative z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          {/* Liens */}
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4 sm:mb-6">
+          {/* Liens principaux */}
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4">
             <Link to="/philosophy" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               Philosophie
             </Link>
@@ -386,6 +386,22 @@ export function Certify() {
             <a href="https://frekcore.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               frekcore.com
             </a>
+          </div>
+
+          {/* Liens légaux */}
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-5 mb-4 sm:mb-6">
+            <Link to="/privacy" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
+              Politique de confidentialité
+            </Link>
+            <Link to="/cookies" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
+              Politique relative aux cookies
+            </Link>
+            <Link to="/terms" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
+              Conditions d'utilisation
+            </Link>
+            <Link to="/disclosure" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
+              Divulgation responsable
+            </Link>
           </div>
           
           {/* Copyright */}
