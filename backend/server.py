@@ -10,6 +10,9 @@ from typing import List
 import uuid
 from datetime import datetime, timezone
 
+# Import FREK v2 routes
+from frek.routes import frek_router
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -68,6 +71,9 @@ async def get_status_checks():
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Include FREK v2 router
+app.include_router(frek_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,

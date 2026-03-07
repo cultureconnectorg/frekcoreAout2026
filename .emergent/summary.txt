@@ -1,127 +1,136 @@
 <analysis>**original_problem_statement:**
-The user's initial goal was to build FREK, a proof-of-work infrastructure for DJ mixes, as a local-first React application. The project has undergone a significant evolution:
+The user's initial goal was to build FREK, a proof-of-work infrastructure for DJ mixes as a local-first React application. The project has evolved significantly.
 
-1.  **v0.4 Application:** An initial React (CRA) app was built with pages for a public site, developer docs, and a functional client-side verification tool for  files using Ed25519 signature checks. Internationalization (i18n) was partially implemented.
-2.  **v2.0 Refactor:** The user provided a comprehensive new Product Requirements Document (PRD) in the form of a detailed HTML file () and a lengthy prompt. This mandated a complete rewrite of the frontend. The application was migrated from Create React App to Vite, a new professional design system was implemented with Tailwind CSS, and all components were rebuilt from scratch to match the new specification. The core verification logic was also re-implemented using native browser APIs (Web Audio, SubtleCrypto).
-3.  **Attestation Generator Wizard:** Following the successful v2.0 refactor, the user requested a major new feature: a 4-step wizard at a new  page. This tool allows users (DJs) to create and download their own signed  attestation files directly in the browser, with no backend involvement. This feature is central to the FREK Go product offering described in the new PRD.
+The current primary goal is to build **FREK v2**, a full-stack frequentiel certification system based on a highly detailed 11-level architecture provided by the user. This represents a complete pivot from the original client-side-only application to a robust backend-driven system.
+
+**PRODUCT REQUIREMENTS (FREK v2 Architecture):**
+
+*   **Level 0 (Source):** Ingest audio from multiple sources (API, BLE, NFC, etc.).
+*   **Level 1 (Extraction):** Process audio using 6 algorithms (FFT, RMS, ZCR, Spectral Centroid, Spectral Flux, MFCC) to generate a 528-dimension vector.
+*   **Level 2 (Identity):** Create a unique, immutable FREK-ID using chained SHA-256 hashes and an ultrasonic watermark.
+*   **Level 3 (Lifecycle):** Implement a 5-stage luciole (firefly) lifecycle for creative works (Genesis, Workshop, Metamorphosis, Emission, Legacy).
+*   **Level 4 (Memory):** Use a PostgreSQL database with the  extension for efficient, scalable storage of minimal data footprints (~2.5 KB per work).
+*   **Level 5 (Resonance):** Develop engines for similarity detection, artist coherence, and collective trend analysis based on vector distances.
+*   **Levels 6-11:** Encompass a graph network, wireless transmission protocols, system-layer integration, legal framework, institutional data offerings, and a simplified user experience.
+
+The immediate task is to implement Levels 1 through 5, creating the core backend logic and database structure. The user has also provided 5 HTML files as visual specifications for new UI pages related to this new architecture.
 
 **User's preferred language**: French. The next agent MUST respond in French.
 
 **what currently exists?**
-The project is now a modern, production-grade, 100% client-side React SPA built with Vite.
+1.  **React Frontend:** A complete, production-grade Vite/React SPA. It includes a multi-language marketing site, a fully functional client-side Attestation Generator wizard (with QR code generation), a file verifier, a comprehensive  test suite, accessibility improvements, and the official brand logo. **Note: The core logic of this frontend (client-side generation) is now considered obsolete and will need to be replaced by calls to the new v2 backend.**
+2.  **FastAPI Backend (v2):** A new backend has been bootstrapped to support the FREK v2 architecture. This includes:
+    *   A complete directory and file structure for a scalable FastAPI application.
+    *   Installation of all necessary dependencies (To use the fastapi command, please install "fastapi[standard]":
 
-*   **Vite Frontend:** The entire application has been successfully migrated from Create React App to Vite.
-*   **v2.0 Marketing Site:** All sections of the main landing page () have been built according to the new PRD, including the Hero, Philosophy, Products, Verifier, and Spec sections. The new design system (colors, fonts, layout) is fully implemented.
-*   **Functional Verifier:** The audio and JSON verification tools within the main page's Verifier section are functional, using the newly implemented  and  hooks.
-*   **Attestation Wizard Scaffolding:** The new Attestation Generator feature at  has been scaffolded. This includes:
-    *   The new  route in .
-    *   Entry points on the main page (a new button in the Hero section and a link in the navigation bar).
-    *   All required UI components for the 4-step process (, , , , ).
-    *   The necessary state management hook () and utility files (, ).
-    *   The UI correctly renders and allows navigation between the four steps.
+	pip install "fastapi[standard]", , , , etc.).
+    *   Configuration for connecting to a PostgreSQL database.
+    *   Basic API endpoints (, ) that have been tested and are confirmed to be working.
 
 **Last working item**:
-*   **Last item agent was working:** The agent finished scaffolding the UI for the new 4-step Attestation Generator wizard. It created all the necessary components, hooks, and utility files, and integrated the new  page into the application. The agent performed visual verification by taking screenshots of each step of the wizard to confirm the UI was rendering as expected.
+*   **Last item agent was working:** The agent was scaffolding the entire FREK v2 backend. It created the full directory structure, dozens of placeholder files for models, schemas, services, and API routes, installed dependencies, and successfully started the FastAPI server. It then verified that the server was running by sending  requests to the  and  endpoints.
 *   **Status:** IN PROGRESS
-*   **Agent Testing Done:** N (Only visual verification via screenshots was performed for the wizard UI. No functional end-to-end test has been run.)
-*   **Which testing method agent to use?** Frontend testing agent. This is a complex, multi-step user-facing feature that requires thorough end-to-end testing.
+*   **Agent Testing Done:** Y (via  for basic backend endpoints)
+*   **Which testing method agent to use?** Backend testing agent. The task involves complex business logic, audio processing, and database interactions, which requires a dedicated testing strategy.
 *   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-There are no pending issues. The previous linting errors are obsolete due to the complete codebase rewrite.
+There are no pending issues.
 
 **In progress Task List**:
-*   **Task 1:** Complete and Test the Attestation Generator Wizard (Priority: P0)
+*   **Task 1:** Build FREK v2 Backend (Levels 1-5) (Priority: P0)
 
 **Task Detail:**
-*   **Task 1:** Complete and Test the Attestation Generator Wizard
-    *   **Where to resume:** The UI components and hooks are in place. The next steps are to wire up the functionality:
-        1.  Implement the state management logic within  to handle form data across all four steps.
-        2.  Connect the form inputs in  and  to the state management hook.
-        3.  In , integrate the existing  hook to process uploaded audio files.
-        4.  In , implement the final JSON object creation using  and the file download functionality.
-    *   **What will be achieved with this?** Users will have a fully functional wizard to create, sign, and download valid  attestation files, fulfilling a core product requirement.
+*   **Task 1:** Build FREK v2 Backend (Levels 1-5)
+    *   **Where to resume:** The backend foundation is laid. The next steps are to implement the core logic within the newly created files.
+        1.  **Implement Audio Extraction (Level 1):** In , implement the 6 required audio processing algorithms (FFT, MFCC, ZCR, etc.) using  and .
+        2.  **Implement Core Logic (Levels 2-3):** In , implement the  to manage the 5-stage lifecycle, generate FREK-IDs with chained hashes, and coordinate the overall process.
+        3.  **Implement Database Layer (Level 4):** Flesh out the SQLAlchemy models in  and the CRUD functions in  to interact with the PostgreSQL/pgvector database.
+        4.  **Implement API Endpoints:** Build out the remaining FastAPI routes in  to expose the new functionality (e.g., creating/retrieving Freks).
+        5.  **Create Integration Tests:** Develop a suite of ============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+plugins: anyio-4.12.1
+collected 0 items
+
+============================ no tests ran in 0.02s ============================= tests in  to validate the entire backend pipeline from API request to database entry.
+    *   **What will be achieved with this?** A functional backend that implements the core data processing, lifecycle management, and storage requirements of the FREK v2 architecture (Levels 1-5).
     *   **Status:** IN PROGRESS
-    *   **Should Test frontend/backend/both after fix?** Frontend
+    *   **Should Test frontend/backend/both after fix?** Backend
     *   **Blocked on something:** None
 
 **Upcoming and Future Tasks**
 *   **Upcoming Tasks:**
-    *   **P1: Conformance Testing:** Implement an automated test suite (e.g., using Vitest) for the core verification logic (). This would involve creating a set of valid and invalid test vector files and asserting that the verification function behaves correctly for each case.
+    *   **P0: Backend/Frontend Integration:** Refactor the existing React frontend to remove its client-side generation logic and replace it with API calls to the new v2 backend.
+    *   **P1: New UI Implementation:** Build the 5 new UI pages specified by the user's HTML files (, etc.).
+    *   **P1: Implement Resonance Engine (Level 5):** Build the services for calculating vector similarity, artist coherence, and trend analysis.
 *   **Future Tasks:**
-    *   **P2: Internationalization (i18n):** The v2.0 refactor was based on an HTML file with French text. The user's original request included translations for English, Spanish, and Arabic. This would require re-implementing an i18n framework (like the one that existed in the old codebase) for the new Vite application.
-    *   **P2: Full Accessibility Audit:** Perform a comprehensive accessibility review of the entire application, including the new generator wizard, to ensure compliance with WCAG standards (keyboard navigation, ARIA roles, screen reader compatibility).
-    *   **P3: Report Export from Verifier:** Add a Download Report button to the Verifier section on the main page, allowing users to save the detailed results of a JSON file verification.
+    *   **P2: Implement Levels 6-10:** Progressively build out the remaining layers of the v2 architecture, including the graph network, wireless transmission, and institutional data features.
 
 **Completed work in this session**
-*   **Complete Frontend Refactor (CRA to Vite):** Successfully rewrote the entire frontend from Create React App to Vite, establishing a new, modern project structure.
-*   **v2.0 Design System Implementation:** Built and applied a new, highly-detailed design system based on user specifications, using a custom Tailwind CSS theme.
-*   **Rebuilt All Site Components:** Created a full suite of new React components for the marketing site (, , , , , etc.), accurately reflecting the user-provided HTML reference.
-*   **Implemented v2.0 Core Logic:** Developed the new client-side audio fingerprinting () and JSON verification () hooks using native browser APIs.
-*   **Scaffolded Attestation Generator Wizard:** Created the complete UI structure, routing, and file scaffolding for the new  feature.
+*   **Attestation Generator Wizard:** Completed and tested the client-side wizard for generating  files.
+*   **QR Code Enhancement:** Added QR code generation and display to the wizard's final step.
+*   **P1 - Conformance Testing:** Implemented a full  test suite (45/45 tests passing) for the client-side verification logic.
+*   **P2 - Internationalization:** Integrated  for 4 languages (FR, EN, ES, AR) with a functional language switcher.
+*   **P2 - Accessibility:** Performed a WCAG audit and added relevant ARIA attributes to key components.
+*   **P3 - Report Export:** Added a feature to download verification results from the Verifier tool.
+*   **Logo Integration:** Added the official FREK logo to the site's header and footer.
+*   **FREK v2 Backend Scaffolding:** Created the entire directory structure, installed dependencies, and started the new FastAPI backend for the v2 architecture.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-*   **Frontend:** React 18, Vite, React Router v6
-*   **Styling:** Tailwind CSS with a custom theme extension ().
-*   **State Management:** React Hooks (, ).
-*   **Client-Side Logic:** Native Web Audio API for audio processing (FFT, RMS, ZCR) and SubtleCrypto API for SHA-256 hashing.
-*   **Architecture:** 100% Client-Side, Serverless, Single-Page Application (SPA).
+*   **Frontend:** React 18, Vite, Tailwind CSS, React Router, i18next, Vitest.
+*   **Backend:** Python 3, FastAPI, PostgreSQL,  extension, SQLAlchemy,  (for audio analysis).
+*   **Architecture:** The project is transitioning from a 100% Client-Side SPA to a Full-Stack application with a dedicated backend for all core logic and persistence.
 
 **key DB schema**
-*   N/A (No database).
-
-**changes in tech stack**
-*   **Build Tool:** Migrated from **Create React App (CRA) to Vite**.
-*   **Core Logic APIs:** Shifted from third-party libraries (like ) in the old version to native browser APIs (**SubtleCrypto**, **Web Audio API**) in the current version for all cryptographic and audio processing tasks.
+The schema is being defined in  and  and will include tables for:
+*   : { id, frek_id, artist_id, stage, created_at, vector (type: VECTOR(528)), ... }
+*   : { id, name, ... }
+*   : { id, name, date, ... }
+*   Relationships between these tables to track provenance and lifecycles.
 
 **All files of reference**
-*   : The main component for the new wizard feature.
-*   : The state management hook for the generator wizard.
-*   : The utility function to assemble the final JSON object.
-*   : The main application component, containing all routes and assembling the page sections.
-*   : The core logic for generating an audio fingerprint.
-*   : The core logic for verifying a  file.
-*   : Defines the project's specific design system (colors, fonts).
-*   : The configuration file for the Vite build tool.
+*   : Contains the full FREK v2 architecture specification.
+*   : The entry point for the new FastAPI backend.
+*   : The central service that will contain the main business logic for FREK v2.
+*   : Directory where the new audio processing algorithms will be implemented.
+*   : Database session management.
+*   : API router for all v2 endpoints.
 
 **Critical Info for New Agent**
-*   **The PRD is the Source of Truth:** The user's prompts (especially #109 and #183) and the provided  file are the definitive sources for all features, content, and design. The old application is completely obsolete.
+*   **The v2 Architecture is the New Truth:** The user's detailed prompt (message #155) and the updated PRD.md are the definitive source of truth. The project has fundamentally pivoted. The previous client-side application is now just a user interface layer that needs to be connected to the new backend.
+*   **Backend First:** The immediate priority is building and testing the core backend logic for Levels 1-5. Do not modify the frontend until the backend API is ready to be consumed.
 *   **Language is French:** All communication with the user must be in French.
-*   **Focus on the Wizard:** The immediate priority is to make the Attestation Generator at  fully functional. The UI is built; the logic for state management, data processing, and file generation needs to be implemented and connected.
-*   **100% Client-Side:** Remember that the entire application, including the new wizard, must operate entirely within the user's browser with no backend calls.
 
 **documents and test reports created in this job**
 *   
-*    (Note: This report is for the v2.0 site refactor, not the new Generator Wizard).
+*    (Covers the frontend Attestation Wizard functionality)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Provided a detailed PRD for the new Attestation Generator wizard.
-2.  **Agent:** Acknowledged the PRD and started implementation.
-3.  **Agent:** Created the utility files for the wizard (, , ).
-4.  **Agent:** Created the UI components for each step of the wizard (, , etc.).
-5.  **Agent:** Created the main page component for the wizard ().
-6.  **Agent:** Updated  with the new  route.
-7.  **Agent:** Updated the  and  components to add entry points for the new wizard.
-8.  **Agent:** Took a screenshot of the main page to verify the new buttons/links. (Success)
-9.  **Agent:** Took screenshots of each step of the  page to verify the UI. (Success)
-10. **User (implicit):** Awaiting the completion and functional testing of the Attestation Generator wizard.
+1.  **User:** Requests to implement backlog items P1, P2, P3 without stopping. (Agent completed them).
+2.  **User:** the official logo appears nowhere - new request to add the logo. (Agent completed it).
+3.  **User:** **Provides a massive, multi-part document detailing the complete FREK v2 architecture.** This is a major pivot for the project.
+4.  **User:** Confirms the agent should build Levels 1-5 of the new architecture.
+5.  **User:** Uploads 5 HTML files to serve as visual specs for new UI pages.
+The subsequent messages are from the agent, who started building the v2 backend. There are no pending user messages.
 
 **Project Health Check:**
-*   **Working:** The main marketing site at the root URL () is fully functional and visually complete according to the v2.0 specification. The verification tools on that page are operational.
-*   **Broken:** Nothing is fundamentally broken.
-*   **Mocked:** The Attestation Generator at  is a UI shell. While navigable, the forms do not yet manage state, process data, or generate the final file.
+*   **Working:** The React frontend at the root URL is fully functional *as a standalone client-side application*.
+*   **In Progress:** The new FastAPI backend is being built. The server starts and basic endpoints are reachable, but no core logic is implemented yet.
+*   **Obsolete:** The core business logic (attestation generation) within the React frontend is now considered obsolete and will be replaced by backend API calls.
 
 **3rd Party Integrations**
-*   None.
+*   **PostgreSQL with :** Required for the new v2 backend.
 
 **Testing status**
-*   **Testing agent used after significant changes:** YES (for the v2.0 site refactor, which passed 100%). It has NOT been used for the new Generator Wizard.
+*   **Testing agent used after significant changes:** YES (for the frontend wizard).
 *   **Troubleshoot agent used after agent stuck in loop:** NO
-*   **Test files created:** None.
+*   **Test files created:**
+    *    (Vitest suite for frontend logic)
 *   **Known regressions:** None.
 
 **What agent forgot to execute**
-The agent is in the middle of a large feature implementation and has not forgotten anything. It is correctly following the user's prioritized requests. Long-term tasks from previous plans (like a full conformance test suite) were implicitly de-prioritized by the user's request for the v2.0 rewrite and the subsequent wizard feature.</analysis>
+The agent is correctly executing a large, user-directed task. It has not forgotten or missed any steps in the current plan.</analysis>
