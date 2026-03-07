@@ -65,9 +65,9 @@ export function Generate() {
   };
 
   return (
-    <div className="min-h-screen bg-dark">
+    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-gray-100">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-dark/95 backdrop-blur-md border-b border-terra/20">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <img 
@@ -75,12 +75,13 @@ export function Generate() {
               alt="FREK" 
               className="h-8 w-auto"
             />
+            <span className="font-display text-xl tracking-wider text-[#2cc4f5]">FREK</span>
           </Link>
-          <span className="font-mono text-xs text-mid hidden sm:block">
+          <span className="font-mono text-xs text-slate-500 hidden sm:block">
             Générateur d&apos;attestation
           </span>
-          <Link to="/" className="font-mono text-xs text-dim hover:text-terra transition-colors">
-            Retour au site
+          <Link to="/" className="font-mono text-xs text-slate-400 hover:text-[#2cc4f5] transition-colors">
+            Retour
           </Link>
         </div>
       </header>
@@ -173,17 +174,17 @@ export function Generate() {
 
       {/* Fixed Bottom Navigation */}
       {!state.isComplete && (
-        <div className="fixed bottom-0 left-0 right-0 bg-dark/95 backdrop-blur-md border-t border-terra/20">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200/50 shadow-lg">
           <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
             <button
               onClick={handlePrev}
               disabled={state.currentStep === 1}
-              className="px-6 py-3 border border-terra/30 text-terra font-mono text-sm uppercase tracking-wider hover:bg-terra/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-3 border border-slate-300 text-slate-600 font-mono text-sm uppercase tracking-wider hover:border-[#2cc4f5] hover:text-[#2cc4f5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded-lg"
             >
               ← Précédent
             </button>
 
-            <span className="font-mono text-xs text-dim">
+            <span className="font-mono text-xs text-slate-400">
               {state.currentStep} / 4
             </span>
 
@@ -191,7 +192,7 @@ export function Generate() {
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}
-                className="px-6 py-3 bg-terra text-fwhite font-mono text-sm uppercase tracking-wider hover:bg-terra/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-3 bg-[#2cc4f5] text-white font-mono text-sm uppercase tracking-wider hover:bg-[#1a9fd4] disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg shadow-lg shadow-[#2cc4f5]/20"
               >
                 Suivant →
               </button>
@@ -204,19 +205,19 @@ export function Generate() {
 
       {/* Success State - New Attestation Button */}
       {state.isComplete && (
-        <div className="fixed bottom-0 left-0 right-0 bg-dark/95 backdrop-blur-md border-t border-fgreen/30">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-green-200/50 shadow-lg">
           <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-center gap-4">
             <button
               onClick={reset}
-              className="px-6 py-3 border border-terra text-terra font-mono text-sm uppercase tracking-wider hover:bg-terra/10 transition-colors"
+              className="px-6 py-3 border border-[#2cc4f5] text-[#2cc4f5] font-mono text-sm uppercase tracking-wider hover:bg-[#2cc4f5]/10 transition-colors rounded-lg"
             >
               Nouvelle attestation
             </button>
             <Link
-              to="/#verifier"
-              className="px-6 py-3 border border-dim/30 text-dim font-mono text-sm uppercase tracking-wider hover:text-mid hover:border-dim/50 transition-colors"
+              to="/"
+              className="px-6 py-3 border border-slate-300 text-slate-500 font-mono text-sm uppercase tracking-wider hover:text-slate-700 hover:border-slate-400 transition-colors rounded-lg"
             >
-              Vérifier
+              Accueil
             </Link>
           </div>
         </div>

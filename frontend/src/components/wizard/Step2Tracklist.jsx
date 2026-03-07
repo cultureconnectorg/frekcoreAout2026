@@ -66,7 +66,7 @@ export function Step2Tracklist({
                   type="text"
                   value={track.title}
                   onChange={(e) => updateTrack(index, { title: e.target.value })}
-                  placeholder="Zouk Is The Dance"
+                  placeholder="Titre du morceau"
                   className="w-full px-3 py-2 bg-[#111] border border-[#333] font-body text-light text-sm focus:outline-none focus:border-terra transition-colors"
                 />
               </div>
@@ -78,7 +78,7 @@ export function Step2Tracklist({
                   type="text"
                   value={track.artist}
                   onChange={(e) => updateTrack(index, { artist: e.target.value })}
-                  placeholder="Kassav'"
+                  placeholder="Nom de l'artiste"
                   className="w-full px-3 py-2 bg-[#111] border border-[#333] font-body text-light text-sm focus:outline-none focus:border-terra transition-colors"
                 />
               </div>

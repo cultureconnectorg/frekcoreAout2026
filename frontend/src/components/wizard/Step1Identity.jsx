@@ -63,7 +63,7 @@ export function Step1Identity({ state, updateArtist, updateEvent, errors }) {
               type="text"
               value={state.artist.name}
               onChange={(e) => updateArtist({ name: e.target.value })}
-              placeholder="DJ Kathy"
+              placeholder="Nom artistique"
               className={`
                 w-full px-4 py-3 bg-[#111] border font-body text-light
                 focus:outline-none focus:border-terra transition-colors
@@ -83,7 +83,7 @@ export function Step1Identity({ state, updateArtist, updateEvent, errors }) {
               type="text"
               value={state.artist.legal_name}
               onChange={(e) => updateArtist({ legal_name: e.target.value })}
-              placeholder="Kathy-Liana Bravo"
+              placeholder="Prénom Nom"
               className="w-full px-4 py-3 bg-[#111] border border-[#333] font-body text-light focus:outline-none focus:border-terra transition-colors"
             />
           </div>
@@ -119,7 +119,7 @@ export function Step1Identity({ state, updateArtist, updateEvent, errors }) {
               type="text"
               value={state.event.name}
               onChange={(e) => updateEvent({ name: e.target.value })}
-              placeholder="Culture Connect 2026 — Scène Chimin"
+              placeholder="Nom de l'événement"
               className={`
                 w-full px-4 py-3 bg-[#111] border font-body text-light
                 focus:outline-none focus:border-terra transition-colors
@@ -163,7 +163,7 @@ export function Step1Identity({ state, updateArtist, updateEvent, errors }) {
               type="text"
               value={state.event.venue}
               onChange={(e) => updateEvent({ venue: e.target.value })}
-              placeholder="La Savane"
+              placeholder="Nom du lieu"
               className="w-full px-4 py-3 bg-[#111] border border-[#333] font-body text-light focus:outline-none focus:border-terra transition-colors"
             />
           </div>
@@ -176,7 +176,7 @@ export function Step1Identity({ state, updateArtist, updateEvent, errors }) {
               type="text"
               value={state.event.city}
               onChange={(e) => updateEvent({ city: e.target.value })}
-              placeholder="Fort-de-France"
+              placeholder="Ville"
               className="w-full px-4 py-3 bg-[#111] border border-[#333] font-body text-light focus:outline-none focus:border-terra transition-colors"
             />
           </div>
