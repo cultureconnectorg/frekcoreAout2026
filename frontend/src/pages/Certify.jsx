@@ -380,8 +380,8 @@ export function Certify() {
             <Link to="/spec" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               Spécifications
             </Link>
-            <Link to="/legal" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
-              Cadre juridique
+            <Link to="/help" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
+              Aide
             </Link>
             <a href="https://frekcore.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               frekcore.com
@@ -390,17 +390,20 @@ export function Certify() {
 
           {/* Liens légaux */}
           <div className="flex flex-wrap justify-center gap-3 sm:gap-5 mb-4 sm:mb-6">
+            <Link to="/legal" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
+              Cadre juridique
+            </Link>
             <Link to="/privacy" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
-              Politique de confidentialité
+              Confidentialité
             </Link>
             <Link to="/cookies" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
-              Politique relative aux cookies
+              Cookies
             </Link>
             <Link to="/terms" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
-              Conditions d'utilisation
+              Conditions
             </Link>
-            <Link to="/disclosure" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
-              Divulgation responsable
+            <Link to="/imprint" className="font-mono text-[9px] sm:text-[10px] text-slate-300 hover:text-[#2cc4f5] transition-colors">
+              Mentions légales
             </Link>
           </div>
           

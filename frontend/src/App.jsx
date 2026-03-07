@@ -9,6 +9,8 @@ import { Privacy } from './pages/Privacy';
 import { Cookies } from './pages/Cookies';
 import { Terms } from './pages/Terms';
 import { Disclosure } from './pages/Disclosure';
+import { Imprint } from './pages/Imprint';
+import { Help } from './pages/Help';
 
 // Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
@@ -59,6 +61,8 @@ function App() {
         <Route path="/cookies" element={<Cookies />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/disclosure" element={<Disclosure />} />
+        <Route path="/imprint" element={<Imprint />} />
+        <Route path="/help" element={<Help />} />
         
         {/* Redirections anciennes URLs */}
         <Route path="/certify" element={<Navigate to="/" replace />} />
