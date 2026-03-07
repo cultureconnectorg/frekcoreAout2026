@@ -1,8 +1,8 @@
 /**
  * FREK v2 — Interface Principale
- * Design bleu #2cc4f5 - Minimaliste
+ * Design blanc avec effet 3D
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
@@ -24,7 +24,6 @@ export function Certify() {
     setError(null);
     setProgress(0);
 
-    // Animation progression
     const progressInterval = setInterval(() => {
       setProgress(prev => Math.min(prev + 5, 95));
     }, 100);
@@ -110,19 +109,26 @@ export function Certify() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#050a0d] via-[#0a1520] to-[#050a0d] text-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-gray-100 text-slate-800 flex flex-col relative overflow-hidden">
+      {/* Background 3D effect */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[#2cc4f5]/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[#2cc4f5]/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-[#2cc4f5]/5 to-transparent rounded-full blur-2xl" />
+      </div>
+
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#050a0d]/95 backdrop-blur-xl border-b border-[#2cc4f5]/10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 sm:gap-3">
             <img src="/frek-logo.png" alt="FREK" className="h-6 sm:h-8 w-auto" />
-            <span className="font-display text-lg sm:text-xl tracking-wider text-[#2cc4f5]">FREK</span>
+            <span className="font-display text-lg sm:text-xl tracking-wider text-[#2cc4f5] drop-shadow-sm">FREK</span>
           </Link>
           
           <nav className="flex items-center gap-2 sm:gap-4">
             <Link
               to="/generate"
-              className="px-3 py-1.5 font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#2cc4f5]/70 hover:text-[#2cc4f5] border border-[#2cc4f5]/20 hover:border-[#2cc4f5]/40 rounded transition-all"
+              className="px-3 py-1.5 font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#2cc4f5] hover:text-[#1a9fd4] border border-[#2cc4f5]/30 hover:border-[#2cc4f5]/60 rounded-lg transition-all hover:shadow-md hover:shadow-[#2cc4f5]/10"
             >
               Attestation
             </Link>
@@ -131,7 +137,7 @@ export function Certify() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 pt-20 sm:pt-24 pb-24 sm:pb-32">
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 pt-20 sm:pt-24 pb-24 sm:pb-32 relative z-10">
         <div className="w-full max-w-md">
           <AnimatePresence mode="wait">
             {/* IDLE */}
@@ -144,25 +150,43 @@ export function Certify() {
                 className="text-center"
               >
                 {/* Titre */}
-                <h1 className="font-display text-4xl sm:text-5xl md:text-6xl tracking-wider text-[#2cc4f5] mb-2 sm:mb-4">
+                <h1 className="font-display text-4xl sm:text-5xl md:text-6xl tracking-wider text-[#2cc4f5] mb-2 sm:mb-4 drop-shadow-lg">
                   CERTIFIER
                 </h1>
-                <p className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/60 mb-8 sm:mb-12">
+                <p className="font-mono text-[10px] sm:text-xs text-slate-500 mb-8 sm:mb-12">
                   Certification fréquentielle
                 </p>
 
-                {/* BOUTON PRINCIPAL */}
-                <button
+                {/* BOUTON PRINCIPAL 3D */}
+                <motion.button
                   onClick={() => fileInputRef.current?.click()}
-                  className="group relative w-32 h-32 sm:w-40 sm:h-40 mx-auto mb-6 sm:mb-8 rounded-full bg-gradient-to-br from-[#2cc4f5] to-[#23a0c8] hover:from-[#33cfff] hover:to-[#2cc4f5] transition-all duration-500 hover:scale-105 shadow-[0_0_30px_rgba(44,196,245,0.3)] hover:shadow-[0_0_50px_rgba(44,196,245,0.5)]"
+                  whileHover={{ scale: 1.05, rotateX: 5, rotateY: 5 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="group relative w-36 h-36 sm:w-44 sm:h-44 mx-auto mb-6 sm:mb-8 rounded-full bg-gradient-to-br from-[#2cc4f5] via-[#33cfff] to-[#1a9fd4] transition-all duration-500"
+                  style={{
+                    boxShadow: '0 20px 60px -10px rgba(44, 196, 245, 0.5), 0 10px 30px -5px rgba(44, 196, 245, 0.3), inset 0 -5px 20px rgba(0,0,0,0.1), inset 0 5px 20px rgba(255,255,255,0.3)',
+                    transform: 'perspective(500px) rotateX(5deg)',
+                  }}
                   data-testid="certify-button"
                 >
+                  {/* Inner glow */}
+                  <span className="absolute inset-2 rounded-full bg-gradient-to-br from-white/30 to-transparent" />
+                  
+                  {/* Center dot */}
                   <span className="absolute inset-0 flex items-center justify-center">
-                    <span className="w-4 h-4 sm:w-5 sm:h-5 bg-white rounded-full group-hover:scale-110 transition-transform shadow-lg" />
+                    <span 
+                      className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full group-hover:scale-110 transition-transform"
+                      style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.2), inset 0 -2px 5px rgba(0,0,0,0.1)' }}
+                    />
                   </span>
-                </button>
 
-                <p className="font-mono text-xs sm:text-sm text-[#8ab4c8]/50 mb-4 sm:mb-6">
+                  {/* Reflection */}
+                  <span className="absolute inset-0 rounded-full overflow-hidden">
+                    <span className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-white/40 to-transparent rotate-45" />
+                  </span>
+                </motion.button>
+
+                <p className="font-mono text-xs sm:text-sm text-slate-400 mb-4 sm:mb-6">
                   Sélectionner un fichier audio
                 </p>
 
@@ -177,10 +201,10 @@ export function Certify() {
 
                 <button
                   onClick={startRecording}
-                  className="font-mono text-[10px] sm:text-xs text-[#2cc4f5]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors flex items-center gap-2 mx-auto"
+                  className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-red-500 uppercase tracking-wider transition-colors flex items-center gap-2 mx-auto"
                   data-testid="record-button"
                 >
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full" />
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50" />
                   Enregistrer
                 </button>
               </motion.div>
@@ -198,18 +222,18 @@ export function Certify() {
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ repeat: Infinity, duration: 1.5 }}
-                  className="w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-6 sm:mb-8 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center"
+                  className="w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-6 sm:mb-8 rounded-full bg-red-50 border-2 border-red-400 flex items-center justify-center shadow-xl shadow-red-500/20"
                 >
-                  <span className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 rounded-full animate-pulse" />
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50" />
                 </motion.div>
 
-                <p className="font-mono text-xs sm:text-sm text-red-400/80 mb-6 sm:mb-8">
+                <p className="font-mono text-xs sm:text-sm text-red-500 mb-6 sm:mb-8">
                   Enregistrement...
                 </p>
 
                 <button
                   onClick={stopRecording}
-                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-red-500 text-white font-mono text-[10px] sm:text-xs uppercase tracking-wider rounded hover:bg-red-600 transition-colors"
+                  className="px-6 sm:px-8 py-2.5 sm:py-3 bg-red-500 text-white font-mono text-[10px] sm:text-xs uppercase tracking-wider rounded-lg hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
                   data-testid="stop-recording-button"
                 >
                   Arrêter
@@ -227,15 +251,16 @@ export function Certify() {
                 className="text-center"
               >
                 <div className="mb-6 sm:mb-8">
-                  <div className="w-full h-1 sm:h-1.5 bg-[#0a1520] rounded-full overflow-hidden mb-3 sm:mb-4">
+                  <div className="w-full h-2 sm:h-3 bg-slate-100 rounded-full overflow-hidden mb-3 sm:mb-4 shadow-inner">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-[#23a0c8] to-[#2cc4f5]"
+                      className="h-full bg-gradient-to-r from-[#2cc4f5] to-[#33cfff] rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${progress}%` }}
                       transition={{ duration: 0.1 }}
+                      style={{ boxShadow: '0 0 20px rgba(44, 196, 245, 0.5)' }}
                     />
                   </div>
-                  <div className="font-mono text-xs sm:text-sm text-[#2cc4f5]/60">
+                  <div className="font-mono text-xs sm:text-sm text-[#2cc4f5]">
                     {Math.round(progress)}%
                   </div>
                 </div>
@@ -243,7 +268,7 @@ export function Certify() {
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                  className="w-12 h-12 sm:w-16 sm:h-16 mx-auto border-2 border-[#0a1520] border-t-[#2cc4f5] rounded-full"
+                  className="w-12 h-12 sm:w-16 sm:h-16 mx-auto border-3 border-slate-200 border-t-[#2cc4f5] rounded-full shadow-lg"
                 />
               </motion.div>
             )}
@@ -261,7 +286,7 @@ export function Certify() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", duration: 0.5 }}
-                  className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-[#2cc4f5]/20 border-2 border-[#2cc4f5] flex items-center justify-center"
+                  className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-[#2cc4f5]/20 to-[#2cc4f5]/5 border-2 border-[#2cc4f5] flex items-center justify-center shadow-xl shadow-[#2cc4f5]/20"
                 >
                   <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[#2cc4f5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -269,11 +294,11 @@ export function Certify() {
                 </motion.div>
 
                 <div className="mb-4 sm:mb-6">
-                  <div className="font-mono text-[9px] sm:text-[10px] text-[#2cc4f5]/50 uppercase tracking-wider mb-1 sm:mb-2">
+                  <div className="font-mono text-[9px] sm:text-[10px] text-slate-400 uppercase tracking-wider mb-1 sm:mb-2">
                     FREK-ID
                   </div>
                   <div 
-                    className="font-mono text-xs sm:text-sm text-[#2cc4f5] break-all px-3 sm:px-4 py-2 bg-[#0a1520]/80 rounded-lg border border-[#2cc4f5]/20"
+                    className="font-mono text-xs sm:text-sm text-[#2cc4f5] break-all px-3 sm:px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-lg"
                     data-testid="frek-id"
                   >
                     {frekId}
@@ -281,12 +306,15 @@ export function Certify() {
                 </div>
 
                 {/* QR Code */}
-                <div className="inline-block p-3 sm:p-4 bg-white rounded-xl mb-4 sm:mb-6 shadow-lg shadow-[#2cc4f5]/10">
+                <div 
+                  className="inline-block p-3 sm:p-4 bg-white rounded-2xl mb-4 sm:mb-6"
+                  style={{ boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1), 0 10px 20px -5px rgba(44, 196, 245, 0.1)' }}
+                >
                   <QRCodeSVG
                     value={`${window.location.origin}/verify/${frekId}`}
                     size={120}
                     level="M"
-                    fgColor="#0a1520"
+                    fgColor="#1a9fd4"
                     data-testid="qr-code"
                   />
                 </div>
@@ -295,14 +323,14 @@ export function Certify() {
                 <div className="flex gap-3 sm:gap-4 justify-center">
                   <button
                     onClick={() => navigator.clipboard.writeText(frekId)}
-                    className="px-4 sm:px-6 py-2 sm:py-2.5 border border-[#2cc4f5]/30 text-[#2cc4f5]/70 font-mono text-[10px] sm:text-xs uppercase tracking-wider hover:border-[#2cc4f5]/50 hover:text-[#2cc4f5] rounded transition-all"
+                    className="px-4 sm:px-6 py-2 sm:py-2.5 border border-slate-300 text-slate-600 font-mono text-[10px] sm:text-xs uppercase tracking-wider hover:border-[#2cc4f5] hover:text-[#2cc4f5] rounded-lg transition-all shadow-sm hover:shadow-md"
                     data-testid="copy-button"
                   >
                     Copier
                   </button>
                   <button
                     onClick={reset}
-                    className="px-4 sm:px-6 py-2 sm:py-2.5 bg-[#2cc4f5] text-[#050a0d] font-mono text-[10px] sm:text-xs uppercase tracking-wider hover:bg-[#33cfff] rounded transition-all font-bold"
+                    className="px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-[#2cc4f5] to-[#1a9fd4] text-white font-mono text-[10px] sm:text-xs uppercase tracking-wider hover:from-[#33cfff] hover:to-[#2cc4f5] rounded-lg transition-all font-bold shadow-lg shadow-[#2cc4f5]/30"
                     data-testid="new-certification-button"
                   >
                     Nouveau
@@ -320,17 +348,17 @@ export function Certify() {
                 exit={{ opacity: 0 }}
                 className="text-center"
               >
-                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 sm:mb-8 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 sm:mb-8 rounded-full bg-red-50 border-2 border-red-400 flex items-center justify-center shadow-xl shadow-red-500/10">
                   <svg className="w-8 h-8 sm:w-10 sm:h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
 
-                <p className="font-mono text-xs sm:text-sm text-red-400/80 mb-6 sm:mb-8">{error}</p>
+                <p className="font-mono text-xs sm:text-sm text-red-500 mb-6 sm:mb-8">{error}</p>
 
                 <button
                   onClick={reset}
-                  className="px-6 sm:px-8 py-2.5 sm:py-3 border border-red-500/30 text-red-400 font-mono text-[10px] sm:text-xs uppercase tracking-wider hover:border-red-500/50 rounded transition-colors"
+                  className="px-6 sm:px-8 py-2.5 sm:py-3 border border-red-300 text-red-500 font-mono text-[10px] sm:text-xs uppercase tracking-wider hover:border-red-500 rounded-lg transition-colors shadow-sm"
                   data-testid="retry-button"
                 >
                   Réessayer
@@ -341,28 +369,28 @@ export function Certify() {
         </div>
       </main>
 
-      {/* Footer avec liens */}
-      <footer className="border-t border-[#2cc4f5]/10 bg-[#050a0d]/80">
+      {/* Footer */}
+      <footer className="border-t border-slate-200/50 bg-white/50 backdrop-blur-sm relative z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {/* Liens */}
           <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4 sm:mb-6">
-            <Link to="/philosophy" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
+            <Link to="/philosophy" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               Philosophie
             </Link>
-            <Link to="/spec" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
+            <Link to="/spec" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               Spécifications
             </Link>
-            <Link to="/legal" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
+            <Link to="/legal" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               Cadre juridique
             </Link>
-            <a href="https://frekcore.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
+            <a href="https://frekcore.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs text-slate-400 hover:text-[#2cc4f5] uppercase tracking-wider transition-colors">
               frekcore.com
             </a>
           </div>
           
           {/* Copyright */}
           <div className="text-center">
-            <p className="font-mono text-[9px] sm:text-[10px] text-[#8ab4c8]/20 uppercase tracking-wider">
+            <p className="font-mono text-[9px] sm:text-[10px] text-slate-300 uppercase tracking-wider">
               © 2026 CVLN Group · Standard ouvert
             </p>
           </div>
