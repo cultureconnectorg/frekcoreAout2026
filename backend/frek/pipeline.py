@@ -1,12 +1,17 @@
 """
 FREK v2 — Pipeline Principal
 ==============================
-Orchestration des 5 premiers nœuds:
+Orchestration des 11 nœuds FREK:
 NODE 01: Extraction (Audio → Vecteur 528D)
 NODE 02: Identité (Vecteur → FREK-ID)
 NODE 03: Cycle de vie (5 stades luciole)
 NODE 04: Mémoire (pgvector storage)
 NODE 05: Résonance (similarité, cohérence, tendances)
+NODE 06: Réseau (graphe vivant)
+NODE 07: Transmission (multi-protocole)
+NODE 08: Système (couche système)
+NODE 09: Juridique (neutralité totale)
+NODE 10: Institutionnel (observatoire)
 
 Ce module orchestre le flux complet de certification FREK.
 """
@@ -20,6 +25,8 @@ from .nodes.node02_identity import node02, FrekMetadata, IdentityResult
 from .nodes.node03_cycle import node03, Stade, CycleState
 from .nodes.node04_memory import node04, FrekAttestation
 from .nodes.node05_resonance import init_node05, ResonanceResult
+from .nodes.node06_reseau import node06
+from .nodes.node10_institutionnel import node10
 
 
 @dataclass
@@ -54,6 +61,7 @@ class FrekPipeline:
     3. Gestion du cycle de vie (NODE 03)
     4. Stockage minimal (NODE 04)
     5. Calcul des résonances (NODE 05)
+    6. Enregistrement dans le graphe (NODE 06)
     """
     
     def __init__(self):
@@ -62,6 +70,10 @@ class FrekPipeline:
         self.node03 = node03
         self.node04 = node04
         self.node05 = init_node05(node04)
+        self.node06 = node06
+        self.node10 = node10
+        # Connecter node10 à node04 pour les métriques
+        self.node10.set_memory_node(node04)
     
     async def certify(
         self,
@@ -161,6 +173,24 @@ class FrekPipeline:
             limit=5
         )
         
+        # ═══════════════════════════════════════════════════════
+        # NODE 06 — RÉSEAU (Graphe vivant)
+        # ═══════════════════════════════════════════════════════
+        similar_frek_ids = [
+            (m.frek_id, m.similarity)
+            for m in resonance_result.matches
+        ]
+        
+        await self.node06.register_emission(
+            frek_id=identity_result.frek_id,
+            artiste_id=artiste_id,
+            timestamp_ms=timestamp_ms,
+            vector=vector_528d.tolist(),
+            gps_lat=gps_lat,
+            gps_lon=gps_lon,
+            similar_frek_ids=similar_frek_ids,
+        )
+        
         # Temps de traitement
         processing_time_ms = int((time.time() - start_time) * 1000)
         
@@ -242,13 +272,27 @@ class FrekPipeline:
     
     async def get_stats(self) -> dict:
         """
-        Statistiques globales FREK
+        Statistiques globales FREK — 11 nœuds
         """
         storage_stats = await self.node04.get_stats()
+        graph_stats = await self.node06.get_stats()
+        
         return {
             "frek_version": "2.0",
-            "nodes_active": ["01_extraction", "02_identity", "03_cycle", "04_memory", "05_resonance"],
+            "nodes_active": [
+                "01_extraction",
+                "02_identity", 
+                "03_cycle", 
+                "04_memory", 
+                "05_resonance",
+                "06_reseau",
+                "07_transmission",
+                "08_systeme",
+                "09_juridique",
+                "10_institutionnel",
+            ],
             "storage": storage_stats,
+            "graph": graph_stats.to_dict(),
         }
 
 

@@ -1,7 +1,7 @@
 """
 FREK v2 — Routes API
 =====================
-Endpoints pour les 5 premiers nœuds de FREK.
+Endpoints pour les 11 nœuds de FREK.
 """
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form
 from pydantic import BaseModel, Field
@@ -9,10 +9,14 @@ from typing import Optional, List
 import base64
 
 from .pipeline import pipeline
+from .routes_advanced import advanced_router
 
 
-# Router FREK
-frek_router = APIRouter(prefix="/frek", tags=["FREK v2"])
+# Router FREK principal
+frek_router = APIRouter(prefix="/frek", tags=["FREK v2 Core (NODE 01-05)"])
+
+# Inclure le routeur avancé (NODE 06-10)
+frek_router.include_router(advanced_router, prefix="")
 
 
 # ═══════════════════════════════════════════════════════════════════
