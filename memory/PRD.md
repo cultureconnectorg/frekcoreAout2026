@@ -32,7 +32,7 @@ FREK® est un standard ouvert d'identification cryptographique des DJ mixes et p
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Score Tests Expert: 92/110 (84.1%)
+## Score Tests Expert: 92/110 (84.1%) ✅
 
 **5 Points Critiques: ✅ TOUS VALIDÉS**
 1. ✅ Vecteur 528D exactement
@@ -48,7 +48,10 @@ FREK® est un standard ouvert d'identification cryptographique des DJ mixes et p
 | `/` | **Certify** — Page principale, 1 bouton |
 | `/verify/:frekId` | Vérification publique |
 | `/generate` | Wizard génération attestation |
-| `/about` | Spec et documentation |
+| `/about` | Architecture et documentation |
+| `/legal` | Cadre juridique |
+| `/spec` | Spécifications techniques |
+| `/philosophy` | Philosophie FREK |
 
 ## Backend API Endpoints
 
@@ -90,13 +93,26 @@ GET  /api/frek/coherence/{artiste_id}     Cohérence artiste
 - [x] Certify = page principale
 - [x] 1 bouton → 17 opérations
 - [x] Page Verify.jsx publique
-- [x] Lien "Générer attestation"
+- [x] Pages Legal, Spec, Philosophy
+- [x] UI responsive (mobile/tablet/desktop)
 
 ## Technical Notes
 - **Vecteur:** 528D = 512 FFT + 1 RMS + 1 ZCR + 12 MFCC + 1 Centroid + 1 Flux
 - **Backend:** FastAPI + MongoDB (fallback) / PostgreSQL + pgvector (prod)
 - **Frontend:** React 18 + Vite + Tailwind CSS
 - **Temps certification:** ~3s
+
+## Backlog
+
+### P0 (Urgent)
+- Aucun
+
+### P1 (Important)
+- Augmenter le score de 92/110 à 100/110 (corriger les 5 warnings restants)
+
+### P2 (Nice to have)
+- Tests d'acceptation utilisateur
+- Préparation déploiement production
 
 ---
 *FREK® — Preuve > Service | Local-First | Anti-Surveillance*

@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Certify } from './pages/Certify';
 import { Verify } from './pages/Verify';
 import { Generate } from './pages/Generate';
+import { Legal } from './pages/Legal';
+import { Spec as SpecPage } from './pages/Spec';
+import { Philosophy } from './pages/Philosophy';
 
 // Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
@@ -43,6 +46,11 @@ function App() {
         
         {/* À propos / Spec */}
         <Route path="/about" element={<AboutPage />} />
+        
+        {/* Pages de contenu */}
+        <Route path="/legal" element={<Legal />} />
+        <Route path="/spec" element={<SpecPage />} />
+        <Route path="/philosophy" element={<Philosophy />} />
         
         {/* Redirections anciennes URLs */}
         <Route path="/certify" element={<Navigate to="/" replace />} />

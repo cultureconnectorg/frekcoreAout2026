@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional, List
 
-API_URL = "https://vector-resonance.preview.emergentagent.com"
+API_URL = "https://frequency-auth.preview.emergentagent.com"
 
 # Stockage des résultats
 results = []
