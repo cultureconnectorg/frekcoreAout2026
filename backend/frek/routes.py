@@ -68,8 +68,15 @@ async def frek_info():
             "03": "CYCLE — 5 stades luciole (Genesis → Legacy)",
             "04": "MÉMOIRE — pgvector, ~2.5KB/œuvre",
             "05": "RÉSONANCE — Similarité, cohérence, tendances",
+            "06": "RÉSEAU — Graphe vivant (5 types nœuds, 17 relations)",
+            "07": "TRANSMISSION — BLE/NFC/WiFi/Ultrasons",
+            "08": "SYSTÈME — Couche système audio",
+            "09": "JURIDIQUE — Notaire de fait",
+            "10": "INSTITUTIONNEL — Observatoire culturel",
+            "11": "EXPERIENCE — 3% visible, 1 bouton",
         },
         "principle": "La fréquence est la signature universelle de ce qui existe. FREK la capture. Une fois. Pour toujours.",
+        "message": "FREK atteste un fait technique — jamais un droit. Comme une luciole — elle s'allume. C'est tout.",
     }
 
 
@@ -114,19 +121,19 @@ async def certify_audio(request: CertifyRequest):
 
 @frek_router.post("/certify/upload")
 async def certify_audio_upload(
-    file: UploadFile = File(...),
-    artiste_id: str = Form(...),
-    gps_lat: Optional[float] = Form(None),
-    gps_lon: Optional[float] = Form(None),
-    device_id: Optional[str] = Form(None),
-    pre_id: Optional[str] = Form(None),
+    audio: UploadFile = File(..., alias="audio"),
+    artiste_id: str = Form(default="ARTISTE-UPLOAD"),
+    gps_lat: Optional[float] = Form(default=None),
+    gps_lon: Optional[float] = Form(default=None),
+    device_id: Optional[str] = Form(default=None),
+    pre_id: Optional[str] = Form(default=None),
 ):
     """
     Certification avec upload de fichier (multipart/form-data)
     """
-    audio_bytes = await file.read()
+    audio_bytes = await audio.read()
     
-    if len(audio_bytes) < 1000:
+    if len(audio_bytes) < 100:
         raise HTTPException(status_code=400, detail="Fichier audio trop petit")
     
     result = await pipeline.certify(
@@ -152,6 +159,122 @@ async def verify_frek_id(frek_id: str):
         raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
     
     return result
+
+
+@frek_router.get("/verify/{frek_id}/qr.png")
+async def get_qr_code(frek_id: str):
+    """
+    Génère un QR code PNG pour un FREK-ID
+    """
+    import qrcode
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    # Vérifier que le FREK-ID existe
+    result = await pipeline.verify(frek_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
+    
+    # Générer le QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    qr.add_data(f"https://frekcore.com/verify/{frek_id}")
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convertir en bytes
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    
+    return StreamingResponse(buffer, media_type="image/png")
+
+
+@frek_router.get("/verify/{frek_id}/certificat.pdf")
+async def get_certificat_pdf(frek_id: str):
+    """
+    Génère un certificat PDF pour un FREK-ID
+    """
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import cm
+    import io
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime, timezone
+    
+    # Vérifier que le FREK-ID existe
+    result = await pipeline.verify(frek_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
+    
+    # Créer le PDF
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Titre
+    c.setFont("Helvetica-Bold", 24)
+    c.drawCentredString(width/2, height - 3*cm, "ATTESTATION FREK")
+    
+    c.setFont("Helvetica", 12)
+    c.drawCentredString(width/2, height - 4*cm, "Certification Fréquentielle")
+    
+    # Ligne de séparation
+    c.line(2*cm, height - 4.5*cm, width - 2*cm, height - 4.5*cm)
+    
+    # FREK-ID
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(2*cm, height - 6*cm, "FREK-ID:")
+    c.setFont("Courier", 12)
+    c.drawString(2*cm, height - 6.7*cm, frek_id)
+    
+    # Timestamp
+    timestamp_ms = result.get("timestamp_ms", 0)
+    timestamp_str = datetime.fromtimestamp(timestamp_ms/1000, tz=timezone.utc).strftime("%d/%m/%Y à %H:%M:%S UTC")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(2*cm, height - 8*cm, "Horodatage:")
+    c.setFont("Helvetica", 12)
+    c.drawString(2*cm, height - 8.7*cm, timestamp_str)
+    
+    # SHA-256
+    sha256 = result.get("sha256_signal", "N/A")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(2*cm, height - 10*cm, "SHA-256 Signal:")
+    c.setFont("Courier", 9)
+    c.drawString(2*cm, height - 10.7*cm, sha256[:64] if sha256 else "N/A")
+    
+    # Hash chaîné
+    hash_chaine = result.get("hash_chaine", "N/A")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(2*cm, height - 12*cm, "Hash Chaîné:")
+    c.setFont("Courier", 9)
+    c.drawString(2*cm, height - 12.7*cm, hash_chaine[:64] if hash_chaine else "N/A")
+    
+    # Stade
+    stade = result.get("stade", "EMISSION")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(2*cm, height - 14*cm, "Stade:")
+    c.setFont("Helvetica", 12)
+    c.drawString(2*cm, height - 14.7*cm, str(stade))
+    
+    # Note juridique
+    c.line(2*cm, height - 16*cm, width - 2*cm, height - 16*cm)
+    c.setFont("Helvetica-Oblique", 10)
+    c.drawCentredString(width/2, height - 17*cm, "Cette attestation certifie un fait technique.")
+    c.drawCentredString(width/2, height - 17.5*cm, "Elle ne constitue pas une déclaration de droits.")
+    
+    # Footer
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(width/2, 2*cm, "FREK® — frekcore.com — © 2026 CVLN Group")
+    
+    c.save()
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=frek_{frek_id}.pdf"}
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════

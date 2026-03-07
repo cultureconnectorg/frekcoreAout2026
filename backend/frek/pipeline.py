@@ -48,6 +48,8 @@ class CertificationResult:
             "resonance": self.resonance,
             "processing_time_ms": self.processing_time_ms,
             "status": "CERTIFIED",
+            "watermark_embedded": False,  # Watermark non intégré dans cette version
+            "message": "Ce signal fréquentiel a été certifié. FREK atteste un fait technique, jamais un droit.",
         }
 
 
@@ -242,6 +244,7 @@ class FrekPipeline:
         return {
             "pre_id": cycle.pre_id,
             "stade": cycle.stade_actif.name,
+            "stade_num": cycle.stade_actif.value,  # 1 pour GENESIS
             "message": "Cycle GENESIS créé. L'œuvre existe dans FREK avant d'exister dans le monde.",
         }
     

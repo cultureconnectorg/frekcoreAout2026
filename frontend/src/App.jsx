@@ -1,20 +1,18 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Certify } from './pages/Certify';
+import { Verify } from './pages/Verify';
+import { Generate } from './pages/Generate';
+
+// Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
 import { Footer } from './components/layout/Footer';
 import { Hero } from './components/sections/Hero';
 import { Philosophie } from './components/sections/Philosophie';
 import { Architecture } from './components/sections/Architecture';
-import { Produits } from './components/sections/Produits';
-import { Verifier } from './components/sections/Verifier';
 import { Spec } from './components/sections/Spec';
-import { FrekId } from './components/sections/FrekId';
-import { CultureConnect } from './components/sections/CultureConnect';
-import { Ecosysteme } from './components/sections/Ecosysteme';
 import { Roadmap } from './components/sections/Roadmap';
-import { Generate } from './pages/Generate';
-import { Certify } from './pages/Certify';
 
-function HomePage() {
+function AboutPage() {
   return (
     <div className="min-h-screen bg-dark text-light">
       <Nav />
@@ -22,12 +20,7 @@ function HomePage() {
         <Hero />
         <Philosophie />
         <Architecture />
-        <Produits />
-        <Verifier />
         <Spec />
-        <FrekId />
-        <CultureConnect />
-        <Ecosysteme />
         <Roadmap />
       </main>
       <Footer />
@@ -39,9 +32,20 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        {/* Certify = Page principale */}
+        <Route path="/" element={<Certify />} />
+        
+        {/* Vérification publique */}
+        <Route path="/verify/:frekId" element={<Verify />} />
+        
+        {/* Génération attestation (ancien wizard) */}
         <Route path="/generate" element={<Generate />} />
-        <Route path="/certify" element={<Certify />} />
+        
+        {/* À propos / Spec */}
+        <Route path="/about" element={<AboutPage />} />
+        
+        {/* Redirections anciennes URLs */}
+        <Route path="/certify" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

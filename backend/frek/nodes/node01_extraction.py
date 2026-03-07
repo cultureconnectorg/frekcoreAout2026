@@ -33,12 +33,14 @@ class ExtractionResult:
     
     @property
     def vector_528d(self) -> np.ndarray:
-        """Vecteur complet 528 dimensions pour pgvector"""
+        """Vecteur complet 528 dimensions pour pgvector
+        512 FFT + 1 RMS + 1 ZCR + 12 MFCC + 1 Centroid + 1 Flux = 528
+        """
         return np.concatenate([
             self.fft_bands,  # 512
             [self.rms],  # 1
             [self.zcr],  # 1
-            self.mfcc,  # 13
+            self.mfcc[:12],  # 12 (on garde les 12 premiers coefficients)
             [self.centroid / 20000],  # 1 (normalisé)
             [self.flux],  # 1
         ]).astype(np.float32)

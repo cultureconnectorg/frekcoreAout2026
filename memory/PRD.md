@@ -5,7 +5,12 @@ FREK® est un standard ouvert d'identification cryptographique des DJ mixes et p
 
 **Principe fondamental:** *"FREK ne reconnaît pas la musique. FREK reconnaît un fait technique, dans un contexte précis."*
 
-## Architecture v2.0 - 11 Nœuds Complets ✅
+## Design
+- **Couleur principale:** Bleu FREK `#2cc4f5`
+- **Interface:** Certify = page principale, 1 bouton, minimaliste
+- **Philosophie:** "3% visible, 97% invisible — Comme une luciole"
+
+## Architecture v2.0 — 11 Nœuds Complets ✅
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -27,110 +32,71 @@ FREK® est un standard ouvert d'identification cryptographique des DJ mixes et p
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## Score Tests Expert: 92/110 (84.1%)
+
+**5 Points Critiques: ✅ TOUS VALIDÉS**
+1. ✅ Vecteur 528D exactement
+2. ✅ Pas d'audio stocké
+3. ✅ Hash chaîné vérifiable  
+4. ✅ EMISSION irréversible
+5. ✅ Neutralité juridique
+
 ## Frontend Routes
 
 | Route | Description |
 |-------|-------------|
-| `/` | Page d'accueil marketing |
-| `/generate` | Wizard génération attestation (client-side) |
-| `/certify` | **NODE 11** — Interface 1 bouton (backend API) |
+| `/` | **Certify** — Page principale, 1 bouton |
+| `/verify/:frekId` | Vérification publique |
+| `/generate` | Wizard génération attestation |
+| `/about` | Spec et documentation |
 
 ## Backend API Endpoints
 
 ### Core (NODE 01-05)
 ```
-GET  /api/frek/                      Info FREK v2
-GET  /api/frek/stats                 Statistiques globales (11 nœuds)
-POST /api/frek/certify               Certification audio (base64)
-POST /api/frek/certify/upload        Certification (multipart)
-GET  /api/frek/verify/{frek_id}      Vérification FREK-ID
-POST /api/frek/genesis               Démarrer cycle GENESIS
-POST /api/frek/workshop              Ajouter version WORKSHOP
-POST /api/frek/extract               Extraction seule
-GET  /api/frek/resonance/{frek_id}   Recherche résonance
-GET  /api/frek/coherence/{artiste_id} Cohérence artiste
+GET  /api/frek/                           Info FREK v2
+GET  /api/frek/stats                      Statistiques (11 nœuds)
+POST /api/frek/certify                    Certification base64
+POST /api/frek/certify/upload             Certification multipart
+GET  /api/frek/verify/{frek_id}           Vérification
+GET  /api/frek/verify/{frek_id}/qr.png    QR Code PNG
+GET  /api/frek/verify/{frek_id}/certificat.pdf  Certificat PDF
+POST /api/frek/genesis                    Démarrer GENESIS
+POST /api/frek/workshop                   Ajouter WORKSHOP
+GET  /api/frek/resonance/{frek_id}        Recherche résonance
+GET  /api/frek/coherence/{artiste_id}     Cohérence artiste
 ```
 
 ### Avancés (NODE 06-10)
 ```
-GET  /api/frek/advanced/reseau/*           Graphe vivant
-GET  /api/frek/advanced/transmission/*     Multi-protocole
-GET  /api/frek/advanced/systeme/*          Position système
-GET  /api/frek/advanced/juridique/*        Framework légal
-GET  /api/frek/advanced/institutionnel/*   Observatoire
-```
-
-## Code Architecture
-```
-/app/
-├── backend/
-│   ├── frek/
-│   │   ├── pipeline.py              # Orchestration 11 nœuds
-│   │   ├── routes.py                # API core (NODE 01-05)
-│   │   ├── routes_advanced.py       # API avancée (NODE 06-10)
-│   │   └── nodes/
-│   │       ├── node01_extraction.py  # FFT, MFCC, ZCR...
-│   │       ├── node02_identity.py    # Triple SHA-256
-│   │       ├── node03_cycle.py       # 5 stades luciole
-│   │       ├── node04_memory.py      # pgvector storage
-│   │       ├── node05_resonance.py   # Similarité engine
-│   │       ├── node06_reseau.py      # Graphe vivant
-│   │       ├── node07_transmission.py # BLE/NFC/WiFi/...
-│   │       ├── node08_systeme.py     # Couche système
-│   │       ├── node09_juridique.py   # Framework légal
-│   │       └── node10_institutionnel.py # Observatoire
-│   ├── server.py
-│   └── requirements.txt
-└── frontend/
-    └── src/
-        ├── App.jsx
-        └── pages/
-            ├── Generate.jsx          # Wizard client-side
-            └── Certify.jsx           # NODE 11 — 1 bouton
+/api/frek/advanced/reseau/*           Graphe vivant
+/api/frek/advanced/transmission/*     Multi-protocole
+/api/frek/advanced/systeme/*          Position système
+/api/frek/advanced/juridique/*        Framework légal
+/api/frek/advanced/institutionnel/*   Observatoire
 ```
 
 ## Implemented Features
 
-### ✅ Backend FREK v2 (2025-03-07)
-- [x] NODE 01-05: Core certification pipeline
-- [x] NODE 06-10: Advanced features (graph, transmission, legal, institutional)
-- [x] 30+ API endpoints testés et fonctionnels
-- [x] Graphe auto-rempli à chaque certification
+### ✅ Backend FREK v2
+- [x] 11 nœuds complets
+- [x] Vecteur exactement 528D
+- [x] QR Code PNG endpoint
+- [x] Certificat PDF endpoint
+- [x] Message juridique neutre
 
-### ✅ Frontend NODE 11 (2025-03-07)
-- [x] Interface ultra-minimaliste "3% visible"
-- [x] 1 bouton → 17 opérations invisibles → FREK-ID
-- [x] Barre de progression temps réel
-- [x] QR Code scannable
-- [x] Détails techniques en accordéon
-- [x] Support upload + enregistrement micro
-
-### ✅ Frontend Existant
-- [x] Site marketing complet
-- [x] Wizard génération attestation
-- [x] Vérificateur de mix
-- [x] i18n (FR, EN, ES, AR)
-- [x] Tests Vitest (45/45)
-
-## Stats Actuelles
-```
-Version: 2.0
-Nœuds actifs: 10/11 (11 avec frontend)
-Attestations: 2+
-Taille par œuvre: ~2.5 KB
-Graphe: Auto-alimenté
-Backend: Memory (prod: PostgreSQL + pgvector)
-```
-
-## Upcoming Tasks
-- [ ] Tests d'intégration complets (testing agent)
-- [ ] PostgreSQL + pgvector en production
-- [ ] Page de vérification publique `/verify/{frek_id}`
+### ✅ Frontend NODE 11
+- [x] Design bleu FREK #2cc4f5
+- [x] Certify = page principale
+- [x] 1 bouton → 17 opérations
+- [x] Page Verify.jsx publique
+- [x] Lien "Générer attestation"
 
 ## Technical Notes
-- **NODE 11**: L'utilisateur fait 1 geste. FREK fait 17 opérations.
-- **Principe**: La confiance vient de ce qu'on ne montre pas.
-- **Philosophie**: Comme une luciole — elle s'allume. C'est tout.
+- **Vecteur:** 528D = 512 FFT + 1 RMS + 1 ZCR + 12 MFCC + 1 Centroid + 1 Flux
+- **Backend:** FastAPI + MongoDB (fallback) / PostgreSQL + pgvector (prod)
+- **Frontend:** React 18 + Vite + Tailwind CSS
+- **Temps certification:** ~3s
 
 ---
 *FREK® — Preuve > Service | Local-First | Anti-Surveillance*

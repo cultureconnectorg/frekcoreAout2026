@@ -1,13 +1,8 @@
 /**
  * FREK v2 — NODE 11 · EXPERIENCE
  * ================================
- * 3% visible. 97% invisible. Une seule action.
- * 
- * La confiance ne vient pas de ce qu'on montre.
- * Elle vient de ce qu'on ne montre pas.
- * 
- * Comme une luciole — elle ne sait pas comment
- * fonctionne la luciferase. Elle s'allume. C'est tout.
+ * Interface principale — 1 bouton, 3 secondes, FREK-ID
+ * Design bleu FREK #2cc4f5
  */
 import { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -16,30 +11,28 @@ import { QRCodeSVG } from 'qrcode.react';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
-// Les 17 opérations invisibles
 const INVISIBLE_OPERATIONS = [
-  "Capture du signal audio brut",
-  "Extraction FFT 512 bandes fréquentielles",
+  "Capture signal audio",
+  "Extraction FFT 512 bandes",
   "Calcul RMS + ZCR",
   "Extraction MFCC 13 coefficients",
-  "Calcul centroïde spectral",
-  "Calcul flux spectral",
+  "Centroïde spectral",
+  "Flux spectral",
   "Construction vecteur 528D",
   "SHA-256 signal",
   "SHA-256 metadata",
-  "Hash chaîné avec FREK-ID précédent",
-  "Comparaison base vectorielle",
+  "Hash chaîné",
+  "Comparaison vectorielle",
   "Détection similarités",
-  "Positionnement graphe relationnel",
-  "Mise à jour réseau lucioles",
+  "Graphe relationnel",
+  "Réseau lucioles",
   "Génération certificat",
   "Archivage distribué",
-  "Synchronisation observatoire"
+  "Synchronisation"
 ];
 
 export function Certify() {
-  const [state, setState] = useState('idle'); // idle, recording, processing, complete, error
-  const [audioFile, setAudioFile] = useState(null);
+  const [state, setState] = useState('idle');
   const [frekId, setFrekId] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -49,7 +42,6 @@ export function Certify() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Simuler la progression des 17 opérations
   const simulateProgress = useCallback(() => {
     let op = 0;
     const interval = setInterval(() => {
@@ -59,34 +51,27 @@ export function Certify() {
       if (op >= INVISIBLE_OPERATIONS.length) {
         clearInterval(interval);
       }
-    }, 150);
+    }, 120);
     return interval;
   }, []);
 
-  // Certifier via l'API backend
   const certifyAudio = async (audioBlob) => {
     setState('processing');
     setError(null);
     setCurrentOperation(0);
     setProgress(0);
 
-    // Démarrer la simulation de progression
     const progressInterval = simulateProgress();
 
     try {
-      // Convertir en base64
       const reader = new FileReader();
       const base64Promise = new Promise((resolve, reject) => {
-        reader.onload = () => {
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        };
+        reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
       });
       reader.readAsDataURL(audioBlob);
       const audioBase64 = await base64Promise;
 
-      // Appeler l'API FREK
       const response = await fetch(`${API_URL}/api/frek/certify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,18 +81,13 @@ export function Certify() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Erreur ${response.status}`);
 
       const data = await response.json();
       
-      // Attendre que la progression soit complète
       clearInterval(progressInterval);
       setProgress(100);
       setCurrentOperation(INVISIBLE_OPERATIONS.length);
-
-      // Petit délai pour montrer 100%
       await new Promise(r => setTimeout(r, 300));
 
       setFrekId(data.frek_id);
@@ -116,22 +96,16 @@ export function Certify() {
 
     } catch (err) {
       clearInterval(progressInterval);
-      console.error('Certification error:', err);
-      setError(err.message || 'Erreur lors de la certification');
+      setError(err.message || 'Erreur certification');
       setState('error');
     }
   };
 
-  // Gestion du fichier uploadé
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setAudioFile(file);
-      certifyAudio(file);
-    }
+    if (file) certifyAudio(file);
   };
 
-  // Démarrer l'enregistrement
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -144,7 +118,6 @@ export function Certify() {
 
       mediaRecorderRef.current.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setAudioFile(audioBlob);
         certifyAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
       };
@@ -152,23 +125,19 @@ export function Certify() {
       mediaRecorderRef.current.start();
       setState('recording');
     } catch (err) {
-      console.error('Recording error:', err);
-      setError('Impossible d\'accéder au microphone');
+      setError('Microphone inaccessible');
       setState('error');
     }
   };
 
-  // Arrêter l'enregistrement
   const stopRecording = () => {
     if (mediaRecorderRef.current && state === 'recording') {
       mediaRecorderRef.current.stop();
     }
   };
 
-  // Reset
   const reset = () => {
     setState('idle');
-    setAudioFile(null);
     setFrekId(null);
     setResult(null);
     setError(null);
@@ -177,24 +146,38 @@ export function Certify() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
-      {/* Header minimal */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-b border-[#c26e3f]/10">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/frek-logo.png" alt="FREK" className="h-6 w-auto opacity-80" />
+    <div className="min-h-screen bg-gradient-to-b from-dark via-navy to-dark text-white flex flex-col">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-dark/90 backdrop-blur-xl border-b border-frek-500/20">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <img src="/frek-logo.png" alt="FREK" className="h-8 w-auto" />
+            <span className="font-display text-xl tracking-wider text-frek-500">FREK</span>
           </Link>
-          <span className="font-mono text-[10px] text-white/30 uppercase tracking-[0.3em]">
-            NODE 11 · EXPERIENCE
-          </span>
+          
+          <div className="flex items-center gap-4">
+            <Link
+              to="/generate"
+              className="px-4 py-2 font-mono text-xs uppercase tracking-wider text-frek-400 hover:text-frek-300 border border-frek-500/30 hover:border-frek-500/50 rounded transition-all"
+              data-testid="generate-link"
+            >
+              Génerer attestation
+            </Link>
+            <a
+              href="/#spec"
+              className="font-mono text-xs uppercase tracking-wider text-mid hover:text-frek-400 transition-colors"
+            >
+              Spec
+            </a>
+          </div>
         </div>
       </header>
 
-      {/* Contenu principal */}
-      <main className="flex-1 flex items-center justify-center px-6 pt-14">
-        <div className="w-full max-w-md">
+      {/* Main */}
+      <main className="flex-1 flex items-center justify-center px-6 pt-20 pb-12">
+        <div className="w-full max-w-lg">
           <AnimatePresence mode="wait">
-            {/* État IDLE - Bouton principal */}
+            {/* IDLE */}
             {state === 'idle' && (
               <motion.div
                 key="idle"
@@ -203,33 +186,41 @@ export function Certify() {
                 exit={{ opacity: 0, y: -20 }}
                 className="text-center"
               >
-                {/* Iceberg visuel */}
-                <div className="mb-16">
-                  <div className="font-mono text-[10px] text-white/20 uppercase tracking-[0.5em] mb-2">
+                {/* Titre */}
+                <h1 className="font-display text-5xl md:text-6xl tracking-wider text-frek-500 mb-4">
+                  CERTIFIER
+                </h1>
+                <p className="font-mono text-sm text-mid mb-12">
+                  1 geste · 17 opérations · 3 secondes
+                </p>
+
+                {/* Iceberg */}
+                <div className="mb-12 relative">
+                  <div className="font-mono text-[10px] text-frek-400 uppercase tracking-[0.5em] mb-2">
                     3% visible
                   </div>
-                  <div className="w-24 h-1 bg-[#c26e3f] mx-auto mb-4" />
-                  <div className="font-mono text-[10px] text-white/10 uppercase tracking-[0.3em]">
+                  <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-frek-500 to-transparent mx-auto mb-4" />
+                  <div className="font-mono text-[10px] text-frek-800 uppercase tracking-[0.3em]">
                     97% invisible
                   </div>
                 </div>
 
-                {/* LE BOUTON - L'unique action */}
+                {/* BOUTON PRINCIPAL */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="group relative w-32 h-32 mx-auto mb-8 rounded-full bg-[#c26e3f] hover:bg-[#d47f4f] transition-all duration-500 hover:scale-105 hover:shadow-[0_0_60px_rgba(194,110,63,0.4)]"
+                  className="group relative w-40 h-40 mx-auto mb-8 rounded-full bg-gradient-to-br from-frek-500 to-frek-600 hover:from-frek-400 hover:to-frek-500 transition-all duration-500 hover:scale-105 animate-glow"
                   data-testid="certify-button"
                 >
                   <span className="absolute inset-0 flex items-center justify-center">
-                    <span className="w-4 h-4 bg-white rounded-full group-hover:scale-110 transition-transform" />
+                    <span className="w-5 h-5 bg-white rounded-full group-hover:scale-110 transition-transform shadow-lg" />
                   </span>
+                  <span className="absolute inset-0 rounded-full border-2 border-frek-400/30 animate-ping" style={{ animationDuration: '2s' }} />
                 </button>
 
-                <p className="font-mono text-xs text-white/40 mb-4">
-                  Appuyez pour certifier
+                <p className="font-mono text-sm text-frek-400 mb-6">
+                  Cliquez pour certifier un fichier audio
                 </p>
 
-                {/* Input fichier caché */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -239,18 +230,18 @@ export function Certify() {
                   data-testid="file-input"
                 />
 
-                {/* Alternative : enregistrer */}
                 <button
                   onClick={startRecording}
-                  className="font-mono text-[10px] text-white/20 hover:text-white/40 uppercase tracking-wider transition-colors"
+                  className="font-mono text-xs text-frek-600 hover:text-frek-400 uppercase tracking-wider transition-colors flex items-center gap-2 mx-auto"
                   data-testid="record-button"
                 >
-                  ou enregistrer →
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  ou enregistrer live
                 </button>
               </motion.div>
             )}
 
-            {/* État RECORDING */}
+            {/* RECORDING */}
             {state === 'recording' && (
               <motion.div
                 key="recording"
@@ -259,23 +250,21 @@ export function Certify() {
                 exit={{ opacity: 0 }}
                 className="text-center"
               >
-                <div className="mb-8">
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    className="w-24 h-24 mx-auto rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center"
-                  >
-                    <span className="w-4 h-4 bg-red-500 rounded-full animate-pulse" />
-                  </motion.div>
-                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                  className="w-32 h-32 mx-auto mb-8 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center"
+                >
+                  <span className="w-6 h-6 bg-red-500 rounded-full animate-pulse" />
+                </motion.div>
 
-                <p className="font-mono text-xs text-white/60 mb-8">
+                <p className="font-mono text-sm text-red-400 mb-8">
                   Enregistrement en cours...
                 </p>
 
                 <button
                   onClick={stopRecording}
-                  className="px-8 py-3 bg-red-500 text-white font-mono text-xs uppercase tracking-wider hover:bg-red-600 transition-colors"
+                  className="px-8 py-3 bg-red-500 text-white font-mono text-xs uppercase tracking-wider rounded hover:bg-red-600 transition-colors"
                   data-testid="stop-recording-button"
                 >
                   Arrêter et certifier
@@ -283,7 +272,7 @@ export function Certify() {
               </motion.div>
             )}
 
-            {/* État PROCESSING - Barre de progression */}
+            {/* PROCESSING */}
             {state === 'processing' && (
               <motion.div
                 key="processing"
@@ -293,34 +282,33 @@ export function Certify() {
                 className="text-center"
               >
                 <div className="mb-8">
-                  <div className="font-mono text-[10px] text-white/30 uppercase tracking-[0.3em] mb-4">
+                  <div className="font-mono text-xs text-frek-400 uppercase tracking-wider mb-4 h-5">
                     {INVISIBLE_OPERATIONS[Math.min(currentOperation, INVISIBLE_OPERATIONS.length - 1)]}
                   </div>
                   
-                  {/* Barre de progression */}
-                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-4">
+                  <div className="w-full h-1.5 bg-frek-900 rounded-full overflow-hidden mb-4">
                     <motion.div
-                      className="h-full bg-[#c26e3f]"
+                      className="h-full bg-gradient-to-r from-frek-600 to-frek-400"
                       initial={{ width: 0 }}
                       animate={{ width: `${progress}%` }}
                       transition={{ duration: 0.1 }}
                     />
                   </div>
 
-                  <div className="font-mono text-xs text-white/40">
+                  <div className="font-mono text-xs text-frek-600">
                     {currentOperation} / {INVISIBLE_OPERATIONS.length}
                   </div>
                 </div>
 
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                  className="w-16 h-16 mx-auto border-2 border-[#c26e3f]/30 border-t-[#c26e3f] rounded-full"
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                  className="w-16 h-16 mx-auto border-2 border-frek-800 border-t-frek-500 rounded-full"
                 />
               </motion.div>
             )}
 
-            {/* État COMPLETE - FREK-ID + QR */}
+            {/* COMPLETE */}
             {state === 'complete' && frekId && (
               <motion.div
                 key="complete"
@@ -329,24 +317,25 @@ export function Certify() {
                 exit={{ opacity: 0 }}
                 className="text-center"
               >
-                {/* Animation de succès */}
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", duration: 0.5 }}
-                  className="w-20 h-20 mx-auto mb-8 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center"
+                  className="w-20 h-20 mx-auto mb-6 rounded-full bg-frek-500/20 border-2 border-frek-500 flex items-center justify-center"
                 >
-                  <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-10 h-10 text-frek-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
 
+                <h2 className="font-display text-2xl text-frek-500 mb-2">CERTIFIÉ</h2>
+
                 <div className="mb-6">
-                  <div className="font-mono text-[10px] text-white/30 uppercase tracking-[0.3em] mb-2">
+                  <div className="font-mono text-[10px] text-frek-600 uppercase tracking-wider mb-2">
                     FREK-ID
                   </div>
                   <div 
-                    className="font-mono text-sm text-[#c26e3f] break-all px-4"
+                    className="font-mono text-sm text-frek-400 break-all px-4 py-2 bg-frek-900/50 rounded-lg border border-frek-500/20"
                     data-testid="frek-id"
                   >
                     {frekId}
@@ -354,21 +343,22 @@ export function Certify() {
                 </div>
 
                 {/* QR Code */}
-                <div className="inline-block p-4 bg-white rounded-lg mb-8">
+                <div className="inline-block p-4 bg-white rounded-xl mb-6 shadow-lg shadow-frek-500/20">
                   <QRCodeSVG
                     value={`${window.location.origin}/verify/${frekId}`}
-                    size={160}
+                    size={140}
                     level="M"
+                    fgColor="#0a1520"
                     data-testid="qr-code"
                   />
                 </div>
 
-                {/* Détails (accordéon collapsed) */}
-                <details className="text-left mb-8 bg-white/5 rounded-lg overflow-hidden">
-                  <summary className="px-4 py-3 cursor-pointer font-mono text-[10px] text-white/40 uppercase tracking-wider hover:text-white/60 transition-colors">
-                    Voir les détails techniques
+                {/* Détails */}
+                <details className="text-left mb-6 bg-frek-900/30 rounded-lg overflow-hidden border border-frek-500/10">
+                  <summary className="px-4 py-3 cursor-pointer font-mono text-xs text-frek-500 uppercase tracking-wider hover:bg-frek-900/50 transition-colors">
+                    Détails techniques
                   </summary>
-                  <div className="px-4 pb-4 space-y-2 font-mono text-[10px] text-white/30">
+                  <div className="px-4 pb-4 space-y-1 font-mono text-[11px] text-frek-600">
                     {result?.extraction && (
                       <div>Vecteur: {result.extraction.vector_dimensions}D</div>
                     )}
@@ -381,9 +371,6 @@ export function Certify() {
                     {result?.cycle && (
                       <div>Stade: {result.cycle.stade_actif}</div>
                     )}
-                    {result?.resonance && (
-                      <div>Matches: {result.resonance.match_count}</div>
-                    )}
                     <div>Temps: {result?.processing_time_ms}ms</div>
                   </div>
                 </details>
@@ -391,17 +378,15 @@ export function Certify() {
                 {/* Actions */}
                 <div className="flex gap-4 justify-center">
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(frekId);
-                    }}
-                    className="px-6 py-3 border border-white/20 text-white/60 font-mono text-[10px] uppercase tracking-wider hover:border-white/40 hover:text-white/80 transition-colors"
+                    onClick={() => navigator.clipboard.writeText(frekId)}
+                    className="px-6 py-3 border border-frek-500/30 text-frek-400 font-mono text-xs uppercase tracking-wider hover:border-frek-500/60 hover:text-frek-300 rounded transition-all"
                     data-testid="copy-button"
                   >
                     Copier
                   </button>
                   <button
                     onClick={reset}
-                    className="px-6 py-3 bg-[#c26e3f] text-white font-mono text-[10px] uppercase tracking-wider hover:bg-[#d47f4f] transition-colors"
+                    className="px-6 py-3 bg-frek-500 text-dark font-mono text-xs uppercase tracking-wider hover:bg-frek-400 rounded transition-all font-bold"
                     data-testid="new-certification-button"
                   >
                     Nouvelle certification
@@ -410,7 +395,7 @@ export function Certify() {
               </motion.div>
             )}
 
-            {/* État ERROR */}
+            {/* ERROR */}
             {state === 'error' && (
               <motion.div
                 key="error"
@@ -420,18 +405,16 @@ export function Certify() {
                 className="text-center"
               >
                 <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-red-500/20 border-2 border-red-500 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
 
-                <p className="font-mono text-xs text-red-400 mb-8">
-                  {error}
-                </p>
+                <p className="font-mono text-sm text-red-400 mb-8">{error}</p>
 
                 <button
                   onClick={reset}
-                  className="px-8 py-3 border border-red-500/30 text-red-400 font-mono text-[10px] uppercase tracking-wider hover:border-red-500/50 transition-colors"
+                  className="px-8 py-3 border border-red-500/30 text-red-400 font-mono text-xs uppercase tracking-wider hover:border-red-500/50 rounded transition-colors"
                   data-testid="retry-button"
                 >
                   Réessayer
@@ -442,9 +425,9 @@ export function Certify() {
         </div>
       </main>
 
-      {/* Footer minimal */}
-      <footer className="py-8 text-center">
-        <p className="font-mono text-[10px] text-white/10 uppercase tracking-[0.3em]">
+      {/* Footer */}
+      <footer className="py-6 text-center border-t border-frek-500/10">
+        <p className="font-mono text-[10px] text-frek-800 uppercase tracking-[0.3em]">
           Comme une luciole — elle s'allume. C'est tout.
         </p>
       </footer>
