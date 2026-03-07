@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FREK</string>
+    <string name="title_activity_main">FREK</string>
+    <string name="package_name">com.frekcore.app</string>
+    <string name="custom_url_scheme">com.frekcore.app</string>
+</resources>
