@@ -12,6 +12,7 @@ import { CultureConnect } from './components/sections/CultureConnect';
 import { Ecosysteme } from './components/sections/Ecosysteme';
 import { Roadmap } from './components/sections/Roadmap';
 import { Generate } from './pages/Generate';
+import { Certify } from './pages/Certify';
 
 function HomePage() {
   return (
@@ -40,6 +41,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/generate" element={<Generate />} />
+        <Route path="/certify" element={<Certify />} />
       </Routes>
     </BrowserRouter>
   );

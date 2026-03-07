@@ -12,6 +12,7 @@ export function Nav() {
     { label: t('nav.products'), href: '#produits' },
     { label: t('nav.verifier'), href: '#verifier' },
     { label: t('nav.generate'), href: '/generate', isRoute: true },
+    { label: 'CERTIFY', href: '/certify', isRoute: true, highlight: true },
     { label: t('nav.spec'), href: '#spec' },
   ];
 
@@ -56,7 +57,11 @@ export function Nav() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="font-mono text-xs uppercase tracking-wider text-terra hover:text-gold transition-colors"
+                className={`font-mono text-xs uppercase tracking-wider transition-colors ${
+                  link.highlight 
+                    ? 'text-[#c26e3f] hover:text-[#d47f4f] font-bold' 
+                    : 'text-terra hover:text-gold'
+                }`}
               >
                 {link.label}
               </Link>
