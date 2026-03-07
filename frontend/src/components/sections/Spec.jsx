@@ -1,15 +1,30 @@
 import { RevealWrapper } from '../ui/RevealWrapper';
 import { SectionTag } from '../ui/SectionTag';
-import { specFields, sampleFrekJson } from '../../data/spec-fields';
+
+const specFields = [
+  { name: 'frek_id', type: 'string', desc: 'Identifiant unique FREK', required: true },
+  { name: 'timestamp', type: 'number', desc: 'Horodatage de l\'attestation', required: true },
+  { name: 'stade', type: 'number', desc: 'Stade du cycle de vie (1-5)', required: true },
+  { name: 'artiste_id', type: 'string', desc: 'Identifiant anonyme', required: true },
+  { name: 'hash', type: 'string', desc: 'Empreinte cryptographique', required: true },
+];
+
+const sampleFrekJson = `{
+  "frek_id": "FREK-2026-001A-ab12cd34-ef567890",
+  "timestamp": 1735689600000,
+  "stade": 4,
+  "artiste_id": "UUID-ANONYMOUS",
+  "verified": true
+}`;
 
 export function Spec() {
   return (
     <section id="spec" className="py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <RevealWrapper>
-          <SectionTag>Spécification technique</SectionTag>
+          <SectionTag>Format d'attestation</SectionTag>
           <h2 className="font-display text-5xl md:text-6xl text-fwhite mb-12">
-            Format .frek.json
+            Structure FREK
           </h2>
         </RevealWrapper>
 
@@ -49,17 +64,16 @@ export function Spec() {
             <div className="lg:sticky lg:top-24">
               <div className="bg-dark border border-terra/20 overflow-hidden">
                 <div className="px-4 py-2 bg-navy border-b border-terra/20 font-mono text-xs text-terra">
-                  example.frek.json
+                  attestation.json
                 </div>
                 <pre className="p-4 overflow-x-auto text-xs font-mono leading-relaxed max-h-[600px] overflow-y-auto">
                   <code>
                     {sampleFrekJson.split('\n').map((line, i) => {
-                      // Simple syntax highlighting
                       let highlighted = line
                         .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
                         .replace(/: "([^"]+)"/g, ': <span class="json-string">"$1"</span>')
                         .replace(/: (\d+)/g, ': <span class="json-number">$1</span>')
-                        .replace(/: (null)/g, ': <span class="json-number">$1</span>')
+                        .replace(/: (null|true|false)/g, ': <span class="json-number">$1</span>')
                         .replace(/([{}[\],])/g, '<span class="json-bracket">$1</span>');
                       
                       return (

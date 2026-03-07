@@ -6,34 +6,34 @@ const steps = [
     num: '01',
     label: 'Source',
     title: 'Capture',
-    items: ['DJ Mix live', 'Performance scénique', 'Diffusion contestée', 'WAV brut local'],
+    items: ['DJ Mix live', 'Performance scénique', 'Fichier audio'],
   },
   {
     num: '02',
-    label: 'Nœud',
-    title: 'MAC FREK NODE',
-    items: ['Machine souveraine', 'Hors réseau', 'Mono 44.1 kHz', 'Segmentation 2–5s'],
+    label: 'Traitement',
+    title: 'Analyse',
+    items: ['Machine locale', 'Hors réseau', 'Empreinte unique'],
   },
   {
     num: '03',
-    label: 'Analyse',
-    title: 'Preuve',
-    items: ['FFT / Spectrogramme', 'Fingerprint SHA-256', 'Non-réversible', 'Signature Ed25519'],
+    label: 'Preuve',
+    title: 'Attestation',
+    items: ['FREK-ID unique', 'Horodatage précis', 'Vérifiable'],
   },
   {
     num: '04',
-    label: 'Matching',
+    label: 'Usage',
     title: 'Vérification',
-    items: ['Comparaison locale', 'Seuil contrôlé', 'Score par segment', 'Décision humaine'],
+    items: ['Comparaison possible', 'Décision humaine', 'Standard ouvert'],
   },
 ];
 
 const responsibilities = [
   { role: 'Capture', who: 'Opérateur' },
-  { role: 'Analyse', who: 'Opérateur' },
-  { role: 'Matching', who: 'Automatique' },
+  { role: 'Analyse', who: 'Automatique' },
+  { role: 'Attestation', who: 'FREK' },
   { role: 'Interprétation', who: 'Humain' },
-  { role: 'Décision légale', who: 'Humain' },
+  { role: 'Décision', who: 'Humain' },
 ];
 
 export function Architecture() {
@@ -43,7 +43,7 @@ export function Architecture() {
         <RevealWrapper>
           <SectionTag>Comment ça fonctionne</SectionTag>
           <h2 className="font-display text-5xl md:text-6xl text-fwhite mb-4">
-            Architecture v0.4
+            Processus
           </h2>
         </RevealWrapper>
 

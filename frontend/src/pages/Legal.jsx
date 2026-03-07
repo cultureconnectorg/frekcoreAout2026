@@ -1,6 +1,6 @@
 /**
  * FREK v2 — Page Juridique
- * Cadre légal et neutralité FREK
+ * Version publique simplifiée
  */
 import { Link } from 'react-router-dom';
 
@@ -30,7 +30,7 @@ export function Legal() {
             Cadre Juridique
           </h1>
           <p className="font-mono text-xs sm:text-sm text-[#8ab4c8]/60 uppercase tracking-wider">
-            Neutralité et principe du notaire de fait
+            Neutralité et transparence
           </p>
         </div>
 
@@ -56,11 +56,6 @@ export function Legal() {
                 il atteste l'existence d'une empreinte fréquentielle à un instant T, sans jamais porter 
                 de jugement sur la nature, l'origine ou la qualité de l'œuvre.
               </p>
-              <p>
-                Cette neutralité absolue est garantie par l'architecture même du système : 
-                aucune donnée audio n'est stockée, seul le vecteur mathématique de 528 dimensions 
-                et son hash cryptographique sont conservés.
-              </p>
             </div>
           </section>
 
@@ -77,15 +72,11 @@ export function Legal() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#2cc4f5] mt-1">•</span>
-                  Un horodatage précis (timestamp)
+                  Un horodatage précis
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#2cc4f5] mt-1">•</span>
-                  Un identifiant cryptographique vérifiable
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#2cc4f5] mt-1">•</span>
-                  Un chaînage immuable des attestations
+                  Un identifiant vérifiable
                 </li>
               </ul>
             </div>
@@ -105,42 +96,35 @@ export function Legal() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-red-400 mt-1">•</span>
-                  Les droits d'auteur
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-400 mt-1">•</span>
-                  La qualité ou valeur artistique
+                  La qualité artistique
                 </li>
               </ul>
             </div>
           </section>
 
           {/* Confidentialité */}
-          <section>
+          <section className="bg-[#0a1520]/50 rounded-xl p-6 sm:p-8 border border-[#2cc4f5]/10">
             <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Confidentialité des Données
+              Confidentialité
             </h2>
             <div className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed space-y-4">
               <p>
-                <strong className="text-[#2cc4f5]">Aucun fichier audio n'est stocké.</strong> Le système 
-                extrait uniquement un vecteur mathématique de 528 dimensions représentant la signature 
-                fréquentielle du fichier. Ce vecteur ne permet pas de reconstituer l'audio original.
+                <strong className="text-[#2cc4f5]">Aucun fichier audio n'est stocké.</strong> Seule une 
+                empreinte mathématique est conservée, ne permettant pas de reconstituer l'audio original.
               </p>
               <p>
-                Les identifiants artiste sont anonymes (UUID). Aucune donnée personnelle n'est collectée 
-                ni associée aux attestations.
+                Les identifiants sont anonymes. Aucune donnée personnelle n'est collectée.
               </p>
             </div>
           </section>
 
           {/* Licence */}
-          <section className="bg-[#0a1520]/50 rounded-xl p-6 sm:p-8 border border-[#2cc4f5]/10">
+          <section>
             <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Licence & Standard Ouvert
+              Licence
             </h2>
             <p className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed mb-4">
-              FREK est un standard ouvert sous licence <strong className="text-[#2cc4f5]">CC BY 4.0</strong>. 
-              L'architecture, les spécifications et le protocole sont publiquement documentés.
+              FREK est un standard ouvert sous licence <strong className="text-[#2cc4f5]">CC BY 4.0</strong>.
             </p>
             <div className="font-mono text-xs text-[#8ab4c8]/40">
               © 2025–2026 CVLN Group · Bruxelles, Belgique
@@ -158,9 +142,6 @@ export function Legal() {
             </Link>
             <Link to="/philosophy" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
               Philosophie
-            </Link>
-            <Link to="/about" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
-              Architecture
             </Link>
           </div>
           <p className="font-mono text-[9px] sm:text-[10px] text-[#8ab4c8]/20 uppercase tracking-wider">

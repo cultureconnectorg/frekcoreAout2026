@@ -1,6 +1,6 @@
 /**
  * FREK v2 — Page Philosophie
- * La vision et les principes fondateurs
+ * Version publique simplifiée
  */
 import { Link } from 'react-router-dom';
 
@@ -30,7 +30,7 @@ export function Philosophy() {
             Philosophie
           </h1>
           <p className="font-mono text-xs sm:text-sm text-[#8ab4c8]/60 uppercase tracking-wider">
-            La luciole — 3% visible, 97% invisible
+            La vision FREK
           </p>
         </div>
 
@@ -54,30 +54,11 @@ export function Philosophy() {
               <p>
                 Dans un monde où la musique électronique et les DJ mixes se partagent instantanément, 
                 il manquait un système simple pour <strong className="text-[#2cc4f5]">prouver l'existence</strong> 
-                d'une création sonore à un instant précis — sans surveillance, sans collecte de données, 
-                sans jugement artistique.
+                d'une création sonore à un instant précis.
               </p>
               <p>
-                FREK répond à ce besoin avec une approche radicalement minimaliste : 
-                <strong className="text-[#2cc4f5]"> un bouton, trois secondes, une preuve immuable.</strong>
-              </p>
-            </div>
-          </section>
-
-          {/* Métaphore de la luciole */}
-          <section className="bg-[#0a1520]/50 rounded-xl p-6 sm:p-8 border border-[#2cc4f5]/10">
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              La Métaphore de la Luciole
-            </h2>
-            <div className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed space-y-4">
-              <p>
-                Comme une luciole qui ne révèle que <strong className="text-[#2cc4f5]">3% de sa lumière</strong> 
-                au monde extérieur, FREK ne montre que l'essentiel : un identifiant unique et vérifiable.
-              </p>
-              <p>
-                Les 97% restants — l'architecture complexe des 11 nœuds, les calculs vectoriels, 
-                le chaînage cryptographique — restent invisibles. L'utilisateur n'a pas besoin de 
-                comprendre la mécanique pour bénéficier de la preuve.
+                FREK répond à ce besoin avec une approche minimaliste : 
+                <strong className="text-[#2cc4f5]"> un bouton, quelques secondes, une preuve immuable.</strong>
               </p>
             </div>
           </section>
@@ -97,19 +78,19 @@ export function Philosophy() {
               <div className="bg-[#0a1520]/50 rounded-xl p-5 sm:p-6 border border-[#2cc4f5]/10">
                 <div className="font-mono text-lg sm:text-xl text-[#2cc4f5] mb-2">Local-First</div>
                 <p className="font-body text-sm text-[#8ab4c8]/60">
-                  Aucun fichier audio n'est jamais uploadé ni stocké. Traitement local.
+                  Aucun fichier audio n'est jamais uploadé ni stocké.
                 </p>
               </div>
               <div className="bg-[#0a1520]/50 rounded-xl p-5 sm:p-6 border border-[#2cc4f5]/10">
                 <div className="font-mono text-lg sm:text-xl text-[#2cc4f5] mb-2">Anti-Surveillance</div>
                 <p className="font-body text-sm text-[#8ab4c8]/60">
-                  Pas de cookies, pas de tracking, identifiants anonymes uniquement.
+                  Pas de cookies, pas de tracking, identifiants anonymes.
                 </p>
               </div>
               <div className="bg-[#0a1520]/50 rounded-xl p-5 sm:p-6 border border-[#2cc4f5]/10">
                 <div className="font-mono text-lg sm:text-xl text-[#2cc4f5] mb-2">Standard Ouvert</div>
                 <p className="font-body text-sm text-[#8ab4c8]/60">
-                  Architecture publique, licence CC BY 4.0, interopérable.
+                  Protocole ouvert, licence CC BY 4.0, interopérable.
                 </p>
               </div>
             </div>
@@ -122,20 +103,7 @@ export function Philosophy() {
             </h2>
             <p className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed">
               Premier déploiement officiel à <strong className="text-[#2cc4f5]">Fort-de-France, Martinique</strong> 
-              dans le cadre de Culture Connect 2026. FREK permettra aux artistes locaux de certifier 
-              leurs créations dans un cadre de confiance et de souveraineté numérique.
-            </p>
-          </section>
-
-          {/* Qui sommes-nous */}
-          <section>
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              CVLN Group
-            </h2>
-            <p className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed">
-              FREK est développé par <strong className="text-[#2cc4f5]">CVLN Group</strong>, basé à Bruxelles, 
-              en collaboration avec <strong className="text-[#2cc4f5]">Kilti Konet</strong> et 
-              <strong className="text-[#2cc4f5]"> Factory Maker Studio</strong>.
+              dans le cadre de Culture Connect 2026.
             </p>
           </section>
         </div>
@@ -150,9 +118,6 @@ export function Philosophy() {
             </Link>
             <Link to="/legal" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
               Cadre Juridique
-            </Link>
-            <Link to="/about" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
-              Architecture
             </Link>
           </div>
           <p className="font-mono text-[9px] sm:text-[10px] text-[#8ab4c8]/20 uppercase tracking-wider">
