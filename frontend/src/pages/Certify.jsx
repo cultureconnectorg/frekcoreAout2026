@@ -127,7 +127,7 @@ export function Certify() {
               Attestation
             </Link>
             <Link
-              to="/about"
+              to="/spec"
               className="font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#8ab4c8]/60 hover:text-[#2cc4f5] transition-colors"
             >
               Spec
@@ -360,9 +360,6 @@ export function Certify() {
             </Link>
             <Link to="/legal" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
               Cadre juridique
-            </Link>
-            <Link to="/about" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
-              Architecture
             </Link>
             <a href="https://frekcore.com" target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
               frekcore.com

@@ -137,11 +137,11 @@ export function Legal() {
       <footer className="border-t border-[#2cc4f5]/10 mt-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 text-center">
           <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4">
-            <Link to="/spec" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
-              Spécifications
-            </Link>
             <Link to="/philosophy" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
               Philosophie
+            </Link>
+            <Link to="/spec" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
+              Spécifications
             </Link>
           </div>
           <p className="font-mono text-[9px] sm:text-[10px] text-[#8ab4c8]/20 uppercase tracking-wider">
