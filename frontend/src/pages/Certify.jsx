@@ -122,15 +122,9 @@ export function Certify() {
           <nav className="flex items-center gap-2 sm:gap-4">
             <Link
               to="/generate"
-              className="hidden sm:block px-3 py-1.5 font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#2cc4f5]/70 hover:text-[#2cc4f5] border border-[#2cc4f5]/20 hover:border-[#2cc4f5]/40 rounded transition-all"
+              className="px-3 py-1.5 font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#2cc4f5]/70 hover:text-[#2cc4f5] border border-[#2cc4f5]/20 hover:border-[#2cc4f5]/40 rounded transition-all"
             >
               Attestation
-            </Link>
-            <Link
-              to="/spec"
-              className="font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#8ab4c8]/60 hover:text-[#2cc4f5] transition-colors"
-            >
-              Spec
             </Link>
           </nav>
         </div>
