@@ -13,6 +13,10 @@ from datetime import datetime, timezone
 # Import FREK v2 routes
 from frek.routes import frek_router
 
+# Import FREK v1 API (identity platform)
+from frek_v1.router import v1_router, init_v1_db
+from frek_v1.utils import hash_secret
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -22,8 +26,11 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Initialize v1 API with database
+init_v1_db(db)
+
 # Create the main app without a prefix
-app = FastAPI()
+app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -72,8 +79,11 @@ async def get_status_checks():
 # Include the router in the main app
 app.include_router(api_router)
 
-# Include FREK v2 router
+# Include FREK v2 router (legacy)
 app.include_router(frek_router, prefix="/api")
+
+# Include FREK v1 API (identity platform)
+app.include_router(v1_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
@@ -89,6 +99,42 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def seed_clients():
+    """Seed default API clients on startup"""
+    clients_to_seed = [
+        {
+            "client_id": os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026"),
+            "name": "Culture Connect 2026",
+            "secret_hash": hash_secret(os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")),
+            "permissions": ["emit", "stage", "stats"],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "client_id": os.environ.get("FREK_CLIENT_CVLBRAIN_ID", "cvl-brain"),
+            "name": "CVL Brain Analytics",
+            "secret_hash": hash_secret(os.environ.get("FREK_CLIENT_CVLBRAIN_SECRET", "")),
+            "permissions": ["stats"],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    ]
+    for c in clients_to_seed:
+        existing = await db.frek_clients.find_one({"client_id": c["client_id"]})
+        if not existing:
+            await db.frek_clients.insert_one(c)
+            logger.info(f"Client API enregistre: {c['client_id']}")
+
+    # Create indexes
+    await db.frek_identities.create_index("frek_id", unique=True)
+    await db.frek_identities.create_index("email_hash")
+    await db.frek_identities.create_index("qr_token")
+    await db.frek_identities.create_index("client_id")
+    await db.frek_stages.create_index("frek_id")
+    await db.frek_stages.create_index([("frek_id", 1), ("sequence", 1)])
+    await db.frek_clients.create_index("client_id", unique=True)
+    logger.info("FREK v1 indexes crees")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
