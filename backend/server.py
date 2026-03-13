@@ -22,10 +22,12 @@ from badges.routes import badge_router, set_db as badges_set_db
 from jetons.routes import jetons_router, set_db as jetons_set_db
 from email_service.routes import email_router, set_db as email_set_db
 from event.routes import event_router, set_db as event_set_db
+from services.stripe_pay import stripe_router, set_db as stripe_set_db
+from services.webhook import webhook_router, set_db as webhook_set_db
 
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / '.env', override=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -40,6 +42,8 @@ badges_set_db(db)
 jetons_set_db(db)
 email_set_db(db)
 event_set_db(db)
+stripe_set_db(db)
+webhook_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -102,6 +106,8 @@ app.include_router(badge_router, prefix="/api")
 app.include_router(jetons_router, prefix="/api")
 app.include_router(email_router, prefix="/api")
 app.include_router(event_router, prefix="/api")
+app.include_router(stripe_router, prefix="/api")
+app.include_router(webhook_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
@@ -167,6 +173,10 @@ async def seed_clients():
     await db.scans.create_index("zone")
     await db.scans.create_index("timestamp")
     await db.marchands.create_index("marchand_id", unique=True)
+    await db.payment_transactions.create_index("session_id", unique=True)
+    await db.payment_transactions.create_index("badge_id")
+    await db.email_logs.create_index("badge_id")
+    await db.email_campaigns.create_index("timestamp")
     logger.info("CC2026 indexes crees")
 
 
