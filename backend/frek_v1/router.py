@@ -9,6 +9,7 @@ from .identity import identity_router, set_db as identity_set_db
 from .stages import stages_router, set_db as stages_set_db
 from .stats import stats_router, set_db as stats_set_db
 from .admin import admin_router, set_db as admin_set_db
+from .dashboard import dashboard_router, set_db as dashboard_set_db
 
 
 v1_router = APIRouter(prefix="/v1", tags=["FREK v1"])
@@ -26,6 +27,7 @@ v1_router.include_router(identity_router)
 v1_router.include_router(stages_router)
 v1_router.include_router(stats_router)
 v1_router.include_router(admin_router)
+v1_router.include_router(dashboard_router)
 
 
 def init_v1_db(database):
@@ -35,3 +37,4 @@ def init_v1_db(database):
     stages_set_db(database)
     stats_set_db(database)
     admin_set_db(database)
+    dashboard_set_db(database)
