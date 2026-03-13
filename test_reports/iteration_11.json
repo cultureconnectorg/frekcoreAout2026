@@ -1,0 +1,115 @@
+{
+  "summary": "Comprehensive testing of CC2026 4-component ecosystem - 29/29 backend tests passed. All features verified: Badges (14 types, lifecycle), Jetons/Wallet (4 packs, recharge, paiement), Email SES (log mode), Event J-0 (zones, scans, access control). FREK stage recording (METAMORPHOSE, EMISSION) working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/badges/types - returns 14 badge types",
+    "POST /api/badges/create - create VIP badge with FREK identity (NFC enabled)",
+    "POST /api/badges/create - create ART badge (NFC disabled)",
+    "POST /api/badges/create - create STF badge",
+    "POST /api/badges/create - idempotent (same email returns existing badge)",
+    "POST /api/badges/{id}/activate - activate badge",
+    "POST /api/badges/{id}/confirm - confirm badge",
+    "GET /api/badges/ - list badges with filters (type, statut)",
+    "GET /api/badges/stats/overview - badge stats by type, statut, NFC count",
+    "GET /api/jetons/packs - list 4 packs (decouverte/culture/diaspora/vip)",
+    "POST /api/jetons/marchands - create marchand",
+    "POST /api/jetons/recharge - recharge wallet with pack (records METAMORPHOSE)",
+    "POST /api/jetons/paiement - pay marchand with jetons (debit badge, credit marchand)",
+    "POST /api/jetons/paiement - insufficient balance returns 400",
+    "GET /api/jetons/solde/{badge_id} - get balance",
+    "GET /api/jetons/historique/{badge_id} - transaction history",
+    "GET /api/jetons/stats - float actif and jetons in circulation",
+    "GET /api/email/templates - list campaign types (8 templates)",
+    "POST /api/email/send - send individual email (LOG MODE)",
+    "POST /api/email/campaign - launch campaign to all badges",
+    "GET /api/email/stats - email statistics",
+    "GET /api/event/zones - list all 7 zones with access rules",
+    "POST /api/event/scan - scan badge entry (authorized access)",
+    "Zone access: VIP can enter ENTREE+VIP_LOUNGE but NOT BACKSTAGE",
+    "Zone access: ART can enter SCENE+BACKSTAGE",
+    "POST /api/event/scan - denied access for wrong badge type (PRS -> VIP_LOUNGE = 403)",
+    "GET /api/event/stats/live - real-time event stats",
+    "FREK stage METAMORPHOSE recorded on jeton recharge",
+    "FREK stage EMISSION recorded on SCENE/VIP_LOUNGE scan"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_cc2026_ecosystem.py",
+    "/app/test_reports/pytest/pytest_cc2026_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_cc2026_ecosystem.py"
+  ],
+  "success_rate": {
+    "backend": "100% (29/29 tests passed)"
+  },
+  "seed_data_creation": "Tests create badges with unique UUIDs (e.g., vip_test_{uuid}@cc2026.test, art_zone_{uuid}@cc2026.test) and marchands (test-stand-{uuid}, test-marchand-{uuid})",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CC2026 4-component ecosystem fully tested. Components: 1) Badges: 14 types with NFC support (VIP, OFF, SPO, EXP-G, EXP-P, EXP-D, EXP-VIP have NFC), lifecycle INSCRIT->CONFIRME->BADGE_EMIS->ACTIVE->REVOQUE. 2) Jetons: 4 packs (decouverte=10J, culture=25J, diaspora=50J, vip=100J), 1 jeton=1.50EUR. 3) Email: LOG mode (no real SES), 8 campaign types (bienvenue, j-30, j-15, j-7, j-1, j-0, j+1, recharge). 4) Event: 7 zones with badge type access control (ENTREE, SCENE, VIP_LOUNGE, BACKSTAGE, EXPOSANTS, PRESSE, ATELIERS). Auth uses Bearer token from /api/v1/auth/token with kiltikonet-cc2026 client.",
+  "verified_endpoints": {
+    "badges": [
+      "GET /api/badges/types (public)",
+      "POST /api/badges/create (requires emit)",
+      "GET /api/badges/{badge_id}",
+      "POST /api/badges/{id}/activate (requires emit)",
+      "POST /api/badges/{id}/confirm (requires emit)",
+      "POST /api/badges/{id}/emit (requires emit)",
+      "POST /api/badges/{id}/print (requires emit)",
+      "POST /api/badges/{id}/deliver (requires emit)",
+      "GET /api/badges/ (with filters)",
+      "GET /api/badges/stats/overview"
+    ],
+    "jetons": [
+      "GET /api/jetons/packs (public)",
+      "POST /api/jetons/marchands (requires emit)",
+      "GET /api/jetons/marchands",
+      "POST /api/jetons/recharge (requires stage)",
+      "POST /api/jetons/paiement (requires stage)",
+      "GET /api/jetons/solde/{badge_id}",
+      "GET /api/jetons/historique/{badge_id}",
+      "POST /api/jetons/remboursement (requires emit)",
+      "GET /api/jetons/stats"
+    ],
+    "email": [
+      "GET /api/email/templates (public)",
+      "POST /api/email/send (requires emit)",
+      "POST /api/email/campaign (requires emit)",
+      "GET /api/email/stats"
+    ],
+    "event": [
+      "GET /api/event/zones (public)",
+      "POST /api/event/scan (requires stage)",
+      "POST /api/event/nfc/tap (requires stage)",
+      "GET /api/event/stats/live",
+      "GET /api/event/stats/export"
+    ]
+  },
+  "zone_access_matrix": {
+    "ENTREE": "All 14 badge types",
+    "SCENE": ["ART", "OFF", "VIP"],
+    "VIP_LOUNGE": ["VIP", "OFF", "SPO"],
+    "BACKSTAGE": ["ART", "STF"],
+    "EXPOSANTS": ["EXP-B", "EXP-S", "EXP-G", "EXP-P", "EXP-D", "EXP-VIP", "STF"],
+    "PRESSE": ["PRS", "OFF"],
+    "ATELIERS": "All 14 badge types"
+  },
+  "frek_integration": {
+    "GENESIS": "Recorded on badge creation",
+    "METAMORPHOSE": "Recorded on jeton recharge",
+    "EMISSION": "Recorded on SCENE/VIP_LOUNGE/BACKSTAGE scan"
+  },
+  "mocked_apis": {
+    "email_ses": "LOG mode - emails logged instead of sent via Amazon SES",
+    "stripe": "Not yet integrated - payment_method field accepts values but no real processing"
+  }
+}

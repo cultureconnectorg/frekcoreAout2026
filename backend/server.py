@@ -17,6 +17,12 @@ from frek.routes import frek_router
 from frek_v1.router import v1_router, init_v1_db
 from frek_v1.utils import hash_secret
 
+# Import CC2026 modules
+from badges.routes import badge_router, set_db as badges_set_db
+from jetons.routes import jetons_router, set_db as jetons_set_db
+from email_service.routes import email_router, set_db as email_set_db
+from event.routes import event_router, set_db as event_set_db
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,6 +34,12 @@ db = client[os.environ['DB_NAME']]
 
 # Initialize v1 API with database
 init_v1_db(db)
+
+# Initialize CC2026 modules
+badges_set_db(db)
+jetons_set_db(db)
+email_set_db(db)
+event_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -85,6 +97,12 @@ app.include_router(frek_router, prefix="/api")
 # Include FREK v1 API (identity platform)
 app.include_router(v1_router, prefix="/api")
 
+# Include CC2026 APIs
+app.include_router(badge_router, prefix="/api")
+app.include_router(jetons_router, prefix="/api")
+app.include_router(email_router, prefix="/api")
+app.include_router(event_router, prefix="/api")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -134,6 +152,22 @@ async def seed_clients():
     await db.frek_stages.create_index([("frek_id", 1), ("sequence", 1)])
     await db.frek_clients.create_index("client_id", unique=True)
     logger.info("FREK v1 indexes crees")
+
+    # CC2026 indexes
+    await db.badges.create_index("badge_id", unique=True)
+    await db.badges.create_index("frek_id")
+    await db.badges.create_index("email_hash")
+    await db.badges.create_index("qr_token")
+    await db.badges.create_index("event")
+    await db.badges.create_index("type_badge")
+    await db.transactions.create_index("tx_id")
+    await db.transactions.create_index("badge_id")
+    await db.transactions.create_index("marchand_id")
+    await db.scans.create_index("badge_id")
+    await db.scans.create_index("zone")
+    await db.scans.create_index("timestamp")
+    await db.marchands.create_index("marchand_id", unique=True)
+    logger.info("CC2026 indexes crees")
 
 
 @app.on_event("shutdown")
