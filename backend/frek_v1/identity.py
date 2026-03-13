@@ -1,7 +1,12 @@
 """
 FREK v1 — Endpoints Identite
 """
+import io
+import qrcode
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 
 from .models import (
     EmitRequest, EmitResponse, ActivateRequest,
@@ -12,6 +17,7 @@ from .auth import get_current_client, require_permission, db as _auth_db
 from .utils import hash_email, generate_frek_id, generate_qr_token, now_iso
 
 identity_router = APIRouter(prefix="/identity", tags=["FREK v1 Identity"])
+logger = logging.getLogger("frek.identity")
 
 db = None
 
@@ -172,4 +178,96 @@ async def lookup_by_qr(request: LookupRequest):
         "frek_id": identity["frek_id"],
         "current_stage": identity["current_stage"],
         "active": identity["active"],
+    }
+
+
+@identity_router.get("/{frek_id}/qr.png")
+async def get_identity_qr(frek_id: str):
+    """Genere un QR code PNG pour une identite FREK"""
+    identity = await db.frek_identities.find_one(
+        {"frek_id": frek_id}, {"_id": 0, "frek_id": 1}
+    )
+    if not identity:
+        raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=2)
+    qr.add_data(f"https://frekcore.com/verify/{frek_id}")
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#0a0a0a", back_color="white")
+
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return StreamingResponse(buffer, media_type="image/png")
+
+
+@identity_router.post("/batch-emit")
+async def batch_emit(
+    emails: list[str],
+    event: str = "CC2026",
+    source: str = "batch",
+    client: dict = Depends(require_permission("emit")),
+):
+    """
+    Emission par lot — production CC2026
+    Max 500 par requete
+    """
+    if len(emails) > 500:
+        raise HTTPException(status_code=400, detail="Max 500 emails par batch")
+
+    results = []
+    created_count = 0
+
+    for email in emails:
+        email_hash = hash_email(email)
+        existing = await db.frek_identities.find_one(
+            {"email_hash": email_hash, "client_id": client["client_id"]},
+            {"_id": 0, "frek_id": 1}
+        )
+
+        if existing:
+            results.append({"email_index": emails.index(email), "frek_id": existing["frek_id"], "created": False})
+            continue
+
+        frek_id = generate_frek_id()
+        qr_token = generate_qr_token(frek_id)
+        now = now_iso()
+
+        await db.frek_identities.insert_one({
+            "frek_id": frek_id,
+            "email_hash": email_hash,
+            "client_id": client["client_id"],
+            "source": source,
+            "event": event,
+            "current_stage": FrekStage.GENESIS.value,
+            "stages_completed": [FrekStage.GENESIS.value],
+            "active": False,
+            "qr_token": qr_token,
+            "created_at": now,
+            "activated_at": None,
+            "metadata": {},
+        })
+
+        await db.frek_stages.insert_one({
+            "frek_id": frek_id,
+            "stage": FrekStage.GENESIS.value,
+            "fingerprint": email_hash[:64],
+            "metadata_hash": None,
+            "timestamp": now,
+            "source": source,
+            "sequence": 1,
+            "client_id": client["client_id"],
+        })
+
+        results.append({"email_index": emails.index(email), "frek_id": frek_id, "created": True})
+        created_count += 1
+
+    logger.info(f"Batch emit: {created_count} created, {len(emails) - created_count} existing")
+
+    return {
+        "total": len(emails),
+        "created": created_count,
+        "existing": len(emails) - created_count,
+        "results": results,
     }

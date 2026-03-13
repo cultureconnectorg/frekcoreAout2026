@@ -1,121 +1,103 @@
-# FREK v2.0 - Product Requirements Document
+# FREK — Fichier de Referencement et d'Empreinte Kulturelle
 
-## Project Overview
-FREK® est un standard ouvert d'identification cryptographique des DJ mixes et performances musicales composites. Développé par CVLN Group (Bruxelles). Premier déploiement officiel : Culture Connect 2026, Fort-de-France, Martinique.
+## Identite
+Plateforme AUTONOME d'identite culturelle.
+FREK est un observatoire culturel, pas un tracker.
+Culture Connect 2026 est le premier client.
 
-**Principe fondamental:** *"FREK ne reconnaît pas la musique. FREK reconnaît un fait technique, dans un contexte précis."*
+## Architecture Luciole — 5 Stages
+1. **GENESIS** — Naissance identite FREK (inscription evenement)
+2. **WORKSHOP** — Participation active (atelier, creation)
+3. **METAMORPHOSE** — Echange economique culturel (achat jetons, vente)
+4. **EMISSION** — Presence performance (scan zone scene)
+5. **LEGACY** — Empreinte finale archivee (fin evenement)
 
-## Design
-- **Couleur principale:** Bleu FREK `#2cc4f5`
-- **Interface:** Certify = page principale, 1 bouton, minimaliste
-- **Philosophie:** "3% visible, 97% invisible — Comme une luciole"
+3% visible (stage atteint) / 97% prive (detail chiffre)
+Append-only : immuable une fois ecrit
 
-## Architecture v2.0 — 11 Nœuds Complets ✅
+## Principes
+- **FREK SOUVERAIN** — Ne depend PAS de kiltikonet.fr
+- **FREK_ID UNIVERSEL** — UUID v4 permanent, jamais regenere
+- **LEGERETE** — Fingerprint SHA256 uniquement (~2.5KB par empreinte)
+- **MULTI-CLIENT** — X-Client-Id isole les donnees par client
+- **APPEND-ONLY** — Un stage enregistre ne peut jamais etre supprime
+- **FREK_EMAIL_SALT** — CRITIQUE : ne jamais changer apres le premier deploiement
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    FREK v2.0 — 11 NŒUDS                         │
-├─────────────────────────────────────────────────────────────────┤
-│ NODE 01: EXTRACTION     │ Audio → Vecteur 528D (FFT, MFCC...)   │
-│ NODE 02: IDENTITÉ       │ Triple SHA-256 → FREK-ID unique       │
-│ NODE 03: CYCLE          │ 5 stades luciole (Genesis → Legacy)   │
-│ NODE 04: MÉMOIRE        │ pgvector ~2.5KB/œuvre                 │
-│ NODE 05: RÉSONANCE      │ Similarité, cohérence, tendances      │
-├─────────────────────────────────────────────────────────────────┤
-│ NODE 06: RÉSEAU         │ Graphe 5 nœuds, 17 relations          │
-│ NODE 07: TRANSMISSION   │ BLE/NFC/WiFi/Ultrasons/4G             │
-│ NODE 08: SYSTÈME        │ Couche entre DSP et reconnaissance    │
-│ NODE 09: JURIDIQUE      │ Notaire de fait, neutralité totale    │
-│ NODE 10: INSTITUTIONNEL │ CVL BRAIN, observatoire culturel      │
-├─────────────────────────────────────────────────────────────────┤
-│ NODE 11: INVISIBLE      │ 3% visible · 1 bouton · 3 secondes    │
-└─────────────────────────────────────────────────────────────────┘
-```
+## Tech Stack
+- **Frontend:** React 18, Vite, Tailwind CSS, Capacitor (mobile)
+- **Backend:** Python 3, FastAPI, MongoDB (motor)
+- **Email:** frekcore@gmail.com
+- **Domaine:** https://frekcore.com
 
-## Score Tests Expert: 92/110 (84.1%) ✅
+## API v1 — Endpoints (17 total)
+### Auth
+- `POST /api/v1/auth/token` — Client credentials OAuth2
+### Identity
+- `POST /api/v1/identity/emit` — Creer FREK-ID (idempotent par email)
+- `POST /api/v1/identity/batch-emit` — Emission par lot (max 500)
+- `POST /api/v1/identity/{id}/activate` — Activer (1er scan physique)
+- `GET /api/v1/identity/{id}/status` — Stages + progression (PUBLIC)
+- `GET /api/v1/identity/{id}/detail` — Detail complet (auth requise)
+- `POST /api/v1/identity/lookup` — qr_token → frek_id
+- `GET /api/v1/identity/{id}/qr.png` — QR code PNG
+### Stages
+- `POST /api/v1/identity/{id}/stage` — Enregistrer (append-only)
+- `GET /api/v1/identity/{id}/stages` — Historique
+### Stats
+- `GET /api/v1/stats/cc2026` — Stats CC2026 (objectif 40 000)
+- `GET /api/v1/stats/{client_id}` — Stats par client
+### Admin (protege par X-Admin-Key = SECRET_KEY)
+- `GET /api/v1/health` — Sante systeme
+- `GET /api/v1/admin/clients` — Liste clients API
+- `POST /api/v1/admin/clients` — Creer client
+- `DELETE /api/v1/admin/clients/{id}` — Supprimer client
+- `DELETE /api/v1/admin/identity/{id}/gdpr` — RGPD droit a l'oubli
 
-**5 Points Critiques: ✅ TOUS VALIDÉS**
-1. ✅ Vecteur 528D exactement
-2. ✅ Pas d'audio stocké
-3. ✅ Hash chaîné vérifiable  
-4. ✅ EMISSION irréversible
-5. ✅ Neutralité juridique
+## Clients API enregistres
+| client_id | Nom | Permissions |
+|-----------|-----|-------------|
+| kiltikonet-cc2026 | Culture Connect 2026 | emit, stage, stats |
+| cvl-brain | CVL Brain Analytics | stats |
 
-## Frontend Routes
+## Objectifs
+- **CC2026:** 40 000 FREK-IDs (proof of concept)
+- **CC2027:** FREK inter-edition (rollover natif)
+- **KORA:** FREK social (identite sur reseau)
+- **CVL BRAIN:** OAPI analytique (observatoire culturel)
+- **CVLN Holding:** FREK standard d'identite culturelle CVLN
 
-| Route | Description |
-|-------|-------------|
-| `/` | **Certify** — Page principale, 1 bouton |
-| `/verify/:frekId` | Vérification publique |
-| `/generate` | Wizard génération attestation |
-| `/about` | Architecture et documentation |
-| `/legal` | Cadre juridique |
-| `/spec` | Spécifications techniques |
-| `/philosophy` | Philosophie FREK |
+## Collections MongoDB
+- `frek_identities` — frek_id, email_hash, client_id, stages_completed, ...
+- `frek_stages` — frek_id, stage, fingerprint, sequence (append-only)
+- `frek_clients` — client_id, name, secret_hash, permissions
+- `frek_tokens` — token_hash, client_id, expires_at, revoked
 
-## Backend API Endpoints
+## Ce qui est fait
+### 2026-03-13
+- [x] API v1 complete — 17 endpoints
+- [x] Auth client_credentials OAuth2
+- [x] Multi-client isolation
+- [x] Stages append-only (5 stages Luciole)
+- [x] RGPD droit a l'oubli
+- [x] Admin securise par X-Admin-Key
+- [x] Batch emit pour production CC2026
+- [x] QR code PNG generation
+- [x] Clients pre-enregistres (kiltikonet-cc2026, cvl-brain)
+- [x] Indexes MongoDB
+- [x] Tests 100% (24/24 pytest)
 
-### Core (NODE 01-05)
-```
-GET  /api/frek/                           Info FREK v2
-GET  /api/frek/stats                      Statistiques (11 nœuds)
-POST /api/frek/certify                    Certification base64
-POST /api/frek/certify/upload             Certification multipart
-GET  /api/frek/verify/{frek_id}           Vérification
-GET  /api/frek/verify/{frek_id}/qr.png    QR Code PNG
-GET  /api/frek/verify/{frek_id}/certificat.pdf  Certificat PDF
-POST /api/frek/genesis                    Démarrer GENESIS
-POST /api/frek/workshop                   Ajouter WORKSHOP
-GET  /api/frek/resonance/{frek_id}        Recherche résonance
-GET  /api/frek/coherence/{artiste_id}     Cohérence artiste
-```
-
-### Avancés (NODE 06-10)
-```
-/api/frek/advanced/reseau/*           Graphe vivant
-/api/frek/advanced/transmission/*     Multi-protocole
-/api/frek/advanced/systeme/*          Position système
-/api/frek/advanced/juridique/*        Framework légal
-/api/frek/advanced/institutionnel/*   Observatoire
-```
-
-## Implemented Features
-
-### ✅ Backend FREK v2
-- [x] 11 nœuds complets
-- [x] Vecteur exactement 528D
-- [x] QR Code PNG endpoint
-- [x] Certificat PDF endpoint
-- [x] Message juridique neutre
-
-### ✅ Frontend NODE 11
-- [x] Design bleu FREK #2cc4f5
-- [x] Certify = page principale
-- [x] 1 bouton → 17 opérations
-- [x] Page Verify.jsx publique
-- [x] Pages Legal, Spec, Philosophy
-- [x] UI responsive (mobile/tablet/desktop)
-
-## Technical Notes
-- **Vecteur:** 528D = 512 FFT + 1 RMS + 1 ZCR + 12 MFCC + 1 Centroid + 1 Flux
-- **Backend:** FastAPI + MongoDB (fallback) / PostgreSQL + pgvector (prod)
-- **Frontend:** React 18 + Vite + Tailwind CSS
-- **Temps certification:** ~3s
+### Precedent
+- [x] Frontend UI/UX (white 3D theme, glassmorphism)
+- [x] Pages legales (Privacy, Cookies, Terms, etc.)
+- [x] Capacitor (iOS/Android)
+- [x] Legacy API /api/frek/ preservee
+- [x] QR/PDF attestation (ancien systeme)
 
 ## Backlog
-
-### P0 (Urgent)
-- Aucun
-
-### P1 (Important)
-- Augmenter le score de 92/110 à 100/110 (corriger les 5 warnings restants)
-
-### P2 (Nice to have)
-- Tests d'acceptation utilisateur
-- Préparation déploiement production
-
----
-*FREK® — Preuve > Service | Local-First | Anti-Surveillance*
-*© 2025–2026 CVLN Group — frekcore.com*
-
-*Last updated: 2025-03-07*
+- [ ] P1: Frontend dashboard pour CC2026 stats
+- [ ] P1: Page de verification publique /verify/{frek_id} avec nouveau systeme v1
+- [ ] P2: Rate limiting sur endpoints publics
+- [ ] P2: Token revocation endpoint
+- [ ] P2: Webhook notifications pour stage changes
+- [ ] P3: Export CSV/PDF des identites
+- [ ] P3: Tests d'audit 100%
