@@ -229,15 +229,6 @@ export function Certify() {
             <div className="flex items-center gap-2 sm:gap-3">
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  to="/dashboard"
-                  className="px-3 sm:px-4 py-2 font-mono text-[10px] sm:text-xs uppercase tracking-wider text-slate-400 hover:text-[#2cc4f5] bg-slate-50/50 hover:bg-[#2cc4f5]/5 border border-slate-200/50 hover:border-[#2cc4f5]/20 rounded-xl transition-all duration-300"
-                  data-testid="nav-dashboard"
-                >
-                  <i className="fas fa-chart-line mr-1 hidden sm:inline" />Monitor
-                </Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link
                   to="/generate"
                   className="px-3 sm:px-4 py-2 font-mono text-[10px] sm:text-xs uppercase tracking-wider text-[#2cc4f5] hover:text-white bg-[#2cc4f5]/5 hover:bg-[#2cc4f5] border border-[#2cc4f5]/20 hover:border-[#2cc4f5] rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-[#2cc4f5]/25"
                 >
