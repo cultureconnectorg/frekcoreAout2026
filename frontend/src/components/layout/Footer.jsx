@@ -95,7 +95,10 @@ export function Footer() {
             <p className="font-mono text-xs text-dim">
               FREK® v0.4 · frekcore.com · CVLN Group Bruxelles
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <a href="/dashboard" className="px-3 py-1 bg-navy/50 border border-terra/10 font-mono text-xs text-dim rounded-full hover:text-terra hover:border-terra/30 transition-colors">
+                Ops
+              </a>
               {pills.map((pill) => (
                 <span
                   key={pill}

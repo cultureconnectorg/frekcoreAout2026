@@ -765,6 +765,8 @@ export function Certify() {
           <div className="text-center">
             <p className="font-mono text-[10px] text-slate-300 tracking-wider">
               © 2026 CVLN Group · Standard ouvert CC BY 4.0
+              <span className="mx-2">·</span>
+              <a href="/dashboard" className="text-slate-300 hover:text-[#2cc4f5] transition-colors">ops</a>
             </p>
           </div>
         </div>
