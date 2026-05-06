@@ -130,6 +130,27 @@ async def scan_access(
     if badge.get("statut") == "REVOQUE":
         raise HTTPException(status_code=403, detail="Badge revoque")
 
+    # Check FREK-ID revocation/expiration (cycle de vie identite)
+    if badge.get("frek_id"):
+        identity = await db.frek_identities.find_one(
+            {"frek_id": badge["frek_id"]},
+            {"_id": 0, "revoked": 1, "expires_at": 1},
+        )
+        if identity and identity.get("revoked"):
+            raise HTTPException(status_code=403, detail="FREK-ID revoque")
+        if identity and identity.get("expires_at"):
+            try:
+                from datetime import datetime as _dt, timezone as _tz
+                exp_dt = _dt.fromisoformat(identity["expires_at"].replace("Z", "+00:00"))
+                if exp_dt.tzinfo is None:
+                    exp_dt = exp_dt.replace(tzinfo=_tz.utc)
+                if exp_dt < _dt.now(_tz.utc):
+                    raise HTTPException(status_code=403, detail="FREK-ID expire")
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+
     if not check_zone_access(badge["type_badge"], request.zone):
         raise HTTPException(
             status_code=403,

@@ -42,6 +42,7 @@ class EmitRequest(BaseModel):
     source: str = Field("api", description="Source de creation (api, scan, import)")
     event: Optional[str] = Field(None, description="Evenement associe (ex: CC2026)")
     metadata: Optional[dict] = Field(None, description="Metadonnees supplementaires")
+    expires_at: Optional[str] = Field(None, description="Date ISO 8601 d'expiration (optionnel, perpetuel par defaut)")
 
 
 class EmitResponse(BaseModel):
@@ -55,6 +56,15 @@ class ActivateRequest(BaseModel):
     qr_token: Optional[str] = None
 
 
+class RevokeRequest(BaseModel):
+    reason: str = Field(..., min_length=3, description="Raison de la revocation (audit trail)")
+
+
+class RenewRequest(BaseModel):
+    expires_at: Optional[str] = Field(None, description="Nouvelle date d'expiration ISO (None = perpetuel)")
+    reason: Optional[str] = Field(None, description="Justification (audit)")
+
+
 class StatusResponse(BaseModel):
     frek_id: str
     active: bool
@@ -62,6 +72,11 @@ class StatusResponse(BaseModel):
     stages_completed: List[str]
     progression: float
     created_at: str
+    revoked: bool = False
+    revoked_at: Optional[str] = None
+    revoke_reason: Optional[str] = None
+    expires_at: Optional[str] = None
+    expired: bool = False
 
 
 class DetailResponse(BaseModel):

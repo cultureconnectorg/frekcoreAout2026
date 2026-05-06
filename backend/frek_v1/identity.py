@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from .models import (
     EmitRequest, EmitResponse, ActivateRequest,
     StatusResponse, DetailResponse, LookupRequest,
+    RevokeRequest, RenewRequest,
     FrekStage, STAGE_ORDER,
 )
 from .auth import get_current_client, require_permission, db as _auth_db
@@ -71,6 +72,11 @@ async def emit_identity(
         "created_at": now,
         "activated_at": None,
         "metadata": request.metadata or {},
+        "revoked": False,
+        "revoked_at": None,
+        "revoked_by": None,
+        "revoke_reason": None,
+        "expires_at": request.expires_at,
     }
 
     await db.frek_identities.insert_one(identity)
@@ -149,6 +155,18 @@ async def get_status(frek_id: str):
     stages_completed = identity.get("stages_completed", [])
     progression = (len(stages_completed) / 5) * 100
 
+    expires_at = identity.get("expires_at")
+    expired = False
+    if expires_at:
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+            exp_dt = _dt.fromisoformat(expires_at.replace("Z", "+00:00"))
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=_tz.utc)
+            expired = exp_dt < _dt.now(_tz.utc)
+        except Exception:
+            expired = False
+
     return StatusResponse(
         frek_id=frek_id,
         active=identity["active"],
@@ -156,7 +174,113 @@ async def get_status(frek_id: str):
         stages_completed=stages_completed,
         progression=round(progression, 1),
         created_at=identity["created_at"],
+        revoked=bool(identity.get("revoked", False)),
+        revoked_at=identity.get("revoked_at"),
+        revoke_reason=identity.get("revoke_reason"),
+        expires_at=expires_at,
+        expired=expired,
     )
+
+
+@identity_router.post("/{frek_id}/revoke")
+async def revoke_identity(
+    frek_id: str,
+    request: RevokeRequest,
+    client: dict = Depends(require_permission("emit")),
+):
+    """Revocation immutable d'une identite FREK. La preuve historique reste lisible.
+    Block 'revocation' ajoute a la FREK-Chain (CRL-like, pas de delete)."""
+    identity = await db.frek_identities.find_one(
+        {"frek_id": frek_id, "client_id": client["client_id"]},
+        {"_id": 0},
+    )
+    if not identity:
+        raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
+    if identity.get("revoked"):
+        return {
+            "frek_id": frek_id,
+            "revoked": True,
+            "revoked_at": identity.get("revoked_at"),
+            "message": "Deja revoque (idempotent)",
+        }
+
+    now = now_iso()
+    await db.frek_identities.update_one(
+        {"frek_id": frek_id},
+        {"$set": {
+            "revoked": True,
+            "revoked_at": now,
+            "revoked_by": client["client_id"],
+            "revoke_reason": request.reason,
+        }},
+    )
+
+    await notarize_event(
+        payload_type="revocation",
+        payload_id=frek_id,
+        payload_data={
+            "frek_id": frek_id,
+            "revoked_at": now,
+            "revoked_by": client["client_id"],
+            "reason": request.reason,
+        },
+        metadata={"client_id": client["client_id"]},
+    )
+
+    logger.info(f"FREK-ID {frek_id} revoque par {client['client_id']} - raison: {request.reason}")
+    return {
+        "frek_id": frek_id,
+        "revoked": True,
+        "revoked_at": now,
+        "reason": request.reason,
+        "message": "Identite revoquee. Preuve historique conservee sur FREK-Chain.",
+    }
+
+
+@identity_router.post("/{frek_id}/renew")
+async def renew_identity(
+    frek_id: str,
+    request: RenewRequest,
+    client: dict = Depends(require_permission("emit")),
+):
+    """Renouvellement d'une identite FREK. Met a jour expires_at + ancre un block 'renewal'."""
+    identity = await db.frek_identities.find_one(
+        {"frek_id": frek_id, "client_id": client["client_id"]},
+        {"_id": 0},
+    )
+    if not identity:
+        raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
+    if identity.get("revoked"):
+        raise HTTPException(status_code=400, detail="Identite revoquee, renouvellement impossible")
+
+    now = now_iso()
+    previous = identity.get("expires_at")
+    await db.frek_identities.update_one(
+        {"frek_id": frek_id},
+        {"$set": {"expires_at": request.expires_at, "renewed_at": now}},
+    )
+
+    await notarize_event(
+        payload_type="renewal",
+        payload_id=frek_id,
+        payload_data={
+            "frek_id": frek_id,
+            "renewed_at": now,
+            "previous_expires_at": previous,
+            "new_expires_at": request.expires_at,
+            "reason": request.reason,
+        },
+        metadata={"client_id": client["client_id"]},
+    )
+
+    logger.info(f"FREK-ID {frek_id} renouvele par {client['client_id']}")
+    return {
+        "frek_id": frek_id,
+        "renewed_at": now,
+        "expires_at": request.expires_at,
+        "previous_expires_at": previous,
+        "message": "Identite renouvelee.",
+    }
 
 
 @identity_router.get("/{frek_id}/detail", response_model=DetailResponse)

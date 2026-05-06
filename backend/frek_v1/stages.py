@@ -61,7 +61,8 @@ async def record_stage(
     }
 
     if request.metadata:
-        import hashlib, json
+        import hashlib
+        import json
         stage_doc["metadata_hash"] = hashlib.sha256(
             json.dumps(request.metadata, sort_keys=True).encode()
         ).hexdigest()

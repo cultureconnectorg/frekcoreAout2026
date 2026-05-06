@@ -1,0 +1,51 @@
+{
+  "summary": "Phase 1 Governance (A.1 Revocation immutable + A.2 Renouvellement/Expiration + E.4 Audit trail humain) — 24/24 backend tests PASSED, frontend Verify page validated visuellement pour FREK-ID revoque ET non-revoque. Regression suite previous (notary + staff_scan): 33/35 PASSED, 1 flaky (502 anchor upgrade — preview env intermittent, unrelated to Phase 1).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/v1/identity/{id}/renew",
+        "issue": "N'effectue aucune validation que expires_at est dans le futur — un appel renew avec date passee marque l'identite comme expiree (ce qui est utile pour les tests mais possible source d'erreur en production)."
+      },
+      {
+        "endpoint": "GET /api/v1/audit/event/{event}/recent",
+        "issue": "Aucun test verifie qu'un client SANS permission stats (ex: future client) recoit 403. CVL-Brain client a stats donc difficile a tester en isolation."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_governance_phase1.py",
+    "/app/test_reports/pytest/pytest_governance_phase1.xml"
+  ],
+  "action_items": [
+    "Optionnel : ajouter validation backend que expires_at fourni a /renew est dans le futur (sinon retourner 400). Actuellement utile pour tests mais risque cote prod.",
+    "Optionnel : seeded test FREK-ID expired (avec expires_at passe) pour tester visuellement le banner amber sur /verify (actuellement non visualise)."
+  ],
+  "critical_code_review_comments": [
+    "audit/routes.py: la dependance get_current_client n'est PAS injectee sur l'endpoint /audit/{frek_id} (par design, public). Bien isoler les agents et events derriere auth — confirme.",
+    "Audit endpoint protege bien contre fuite email: filtre {'_id':0,'ots_proof':0} sur notary_blocks et payload_data ne contient que email_hash (jamais email brut) — verifie par test_audit_per_frek_does_not_leak_email.",
+    "scan_routes ligne ~140: la verification revoked se fait avant expiration, ordre logique correct (revocation = etat absolu, expiration = etat temporel).",
+    "identity.py revoke: idempotence implementee avec early-return — bien. Pas de double notarization sur appel idempotent — correct.",
+    "models.py RevokeRequest: min_length=3 sur reason force un minimum d'audit utilisable.",
+    "frek_v1/identity.py: parsing expires_at avec replace('Z','+00:00') puis fallback tz.utc — robust.",
+    "Verify.jsx: deux blocs de rendu (frekv1-details + attestation-details) — duplication possible (selectors repetes). Refactor candidat mais non bloquant."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_governance_phase1.py"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24)",
+    "frontend": "100% (verify page revoked + active rendered correctly with all expected testids)"
+  },
+  "test_credentials": "/app/memory/test_credentials.md utilises tels quels: kiltikonet client + SUPERVISEUR-01/9999 staff PIN.",
+  "seed_data_creation": "Le test cree dynamiquement plusieurs identites TEST_*@frek-test.com et badges (type ART) pour tester revocation/renew/expiration/scan blocked. Pas de cleanup explicite (donnees de test prefixees TEST_). Pre-seed agent context FREK-ID 40c297d5... (revoque) et 8ffe44d0... (notarize) confirmees presentes en DB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 1 governance valide bout-en-bout. Backend test file: /app/backend/tests/test_governance_phase1.py couvre revocation (idempotence, 401, 404, chain integrity), renewal (success, blocked on revoked), expiration (past expires_at -> expired:true), scan blocked (revoked + expired -> 403), audit per FREK (public, 404 si inconnu, no email leak, sorted asc, includes revocation), audit per agent (auth required), audit per event (stats perm). Pre-seed FREK-IDs: 40c297d5-79e9-4a8e-a177-efea1b07c204 (REVOKED 'Test audit revocation') et 8ffe44d0-ce5e-4211-8dc0-bfc0ddf1ad0a (notarize, non-revoque). Frontend Verify.jsx duplique deux blocs (frekv1 + attestation) — chaque bloc a ses propres testids identiques.",
+  "rca of the issue": "N/A — aucun bug bloquant. Initialement 2 tests skipped a cause de mauvais nom de champ (qr_token au lieu de code) et type_badge invalide (VISITEUR au lieu de ART) — corriges dans test file. /chain/verify est GET pas POST — corrige."
+}
