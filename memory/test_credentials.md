@@ -2,36 +2,56 @@
 
 ## API Client (FREK v1)
 
-Utilisez ces credentials pour obtenir un access_token via :
-`POST /api/v1/auth/token`
-Body : `{"client_id": "...", "client_secret": "...", "grant_type": "client_credentials"}`
+`POST /api/v1/auth/token` avec `{"client_id":"...","client_secret":"...","grant_type":"client_credentials"}`
 
-Les valeurs sont chargees depuis `/app/backend/.env` :
-
-- **client_id** : `FREK_CLIENT_KILTIKONET_ID` (defaut: `kiltikonet-cc2026`)
+Valeurs depuis `/app/backend/.env` :
+- **client_id (emit/stage/stats)** : `FREK_CLIENT_KILTIKONET_ID` (defaut: `kiltikonet-cc2026`)
 - **client_secret** : `FREK_CLIENT_KILTIKONET_SECRET`
-- Permissions : `emit`, `stage`, `stats`
-
-- **client_id stats-only** : `FREK_CLIENT_CVLBRAIN_ID` (defaut: `cvl-brain`)
+- **client_id (stats only)** : `FREK_CLIENT_CVLBRAIN_ID` (defaut: `cvl-brain`)
 - **client_secret** : `FREK_CLIENT_CVLBRAIN_SECRET`
-- Permissions : `stats`
 
-## Recuperer rapidement (bash)
+## PWA Scanner Staff (auth PIN)
+
+`POST /api/v1/staff/login` avec `{"agent_id":"...","pin":"...."}`
+
+Comptes seedes au demarrage (override possible via env `FREK_STAFF_*_PIN`) :
+
+| agent_id        | PIN  | role             | permissions                                              | zones                  |
+|-----------------|------|------------------|----------------------------------------------------------|------------------------|
+| SUPERVISEUR-01  | 9999 | superviseur      | scan_access, scan_cashless, emit_walkin, view_stats      | toutes                 |
+| EMISSION-01     | 1111 | agent_emission   | scan_access, scan_cashless, emit_walkin                  | ENTREE                 |
+| ACCES-01        | 2222 | agent_acces      | scan_access                                              | ENTREE, SCENE          |
+| CASHLESS-01     | 3333 | agent_cashless   | scan_access, scan_cashless                               | EXPOSANTS              |
+
+## Recuperer un token rapidement (bash)
 
 ```bash
 API_URL=$(grep REACT_APP_BACKEND_URL /app/frontend/.env | cut -d '=' -f2)
+
+# Client kiltikonet
 CID=$(grep FREK_CLIENT_KILTIKONET_ID /app/backend/.env | cut -d '=' -f2)
 CSEC=$(grep FREK_CLIENT_KILTIKONET_SECRET /app/backend/.env | cut -d '=' -f2)
-TOKEN=$(curl -s -X POST "$API_URL/api/v1/auth/token" \
+KTOKEN=$(curl -s -X POST "$API_URL/api/v1/auth/token" \
   -H "Content-Type: application/json" \
   -d "{\"client_id\":\"$CID\",\"client_secret\":\"$CSEC\",\"grant_type\":\"client_credentials\"}" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+# Staff superviseur
+STOKEN=$(curl -s -X POST "$API_URL/api/v1/staff/login" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"SUPERVISEUR-01","pin":"9999"}' \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 ```
 
 ## Dashboard prive
 
 - Route : `/dashboard` (acces via lien discret "ops" dans le footer)
-- Aucune auth UI (deploiement prive)
+- Aucune auth UI
+
+## PWA Scanner Staff
+
+- Route : `/scan` (redirige vers `/scan/login` si pas de token)
+- Manifest : `/scan-manifest.webmanifest` · Service worker : `/scan-sw.js`
 
 ## Stripe
 
@@ -39,6 +59,6 @@ TOKEN=$(curl -s -X POST "$API_URL/api/v1/auth/token" \
 
 ## AWS SES
 
-- Region : eu-west-1 (config `/app/backend/.env`)
+- Region : eu-west-1
 - Sender : `frekcore@gmail.com` (verification SES Sandbox cote utilisateur)
 - Mode fallback (`logged`) tant que sender non verifie

@@ -81,19 +81,6 @@ function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export async function queuePush(kind, payload) {
-  const db = await getDB();
-  const item = {
-    client_uuid: uuid(),
-    kind,
-    payload,
-    queued_at: new Date().toISOString(),
-    attempts: 0,
-  };
-  await db.add(STORE_QUEUE, item);
-  return item;
-}
-
 export async function queueAll() {
   const db = await getDB();
   return db.getAll(STORE_QUEUE);
@@ -138,27 +125,38 @@ export async function logRecent(limit = 50) {
 /**
  * Try online action. If offline / network fails, queue it.
  * Returns { ok, queued, result, error }.
+ * client_uuid est injecte dans le payload pour idempotence backend (replay-safe).
  */
 export async function tryOrQueue(kind, payload, onlineFn) {
+  const client_uuid = uuid();
+  const stamped = { ...payload, client_uuid };
   if (!navigator.onLine) {
-    await queuePush(kind, payload);
-    await logAdd({ kind, status: 'queued_offline', payload });
+    await queuePushItem({ client_uuid, kind, payload: stamped });
+    await logAdd({ kind, status: 'queued_offline', payload: stamped });
     return { ok: false, queued: true };
   }
   try {
-    const result = await onlineFn();
-    await logAdd({ kind, status: 'success', payload, summary: summarize(kind, result) });
+    const result = await onlineFn(stamped);
+    await logAdd({ kind, status: 'success', payload: stamped, summary: summarize(kind, result) });
     return { ok: true, result };
   } catch (e) {
-    // network errors → queue; HTTP errors → propagate
     if (e.status) {
-      await logAdd({ kind, status: 'error', payload, error: String(e.body?.detail || e.message) });
+      await logAdd({ kind, status: 'error', payload: stamped, error: String(e.body?.detail || e.message) });
       return { ok: false, error: e.body?.detail || e.message, status: e.status };
     }
-    await queuePush(kind, payload);
-    await logAdd({ kind, status: 'queued_network', payload });
+    await queuePushItem({ client_uuid, kind, payload: stamped });
+    await logAdd({ kind, status: 'queued_network', payload: stamped });
     return { ok: false, queued: true, error: 'Réseau indisponible — mis en file' };
   }
+}
+
+async function queuePushItem(item) {
+  const db = await getDB();
+  await db.add(STORE_QUEUE, {
+    ...item,
+    queued_at: new Date().toISOString(),
+    attempts: 0,
+  });
 }
 
 function summarize(kind, r) {

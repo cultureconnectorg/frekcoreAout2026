@@ -209,6 +209,8 @@ async def seed_clients():
 
     # FREK Staff PWA — seed comptes terrain + indexes
     await db.staff.create_index("agent_id", unique=True)
+    await db.scans.create_index("client_uuid", sparse=True)
+    await db.transactions.create_index("client_uuid", sparse=True)
     await seed_default_staff()
     logger.info("FREK Staff PWA — comptes seedes")
 

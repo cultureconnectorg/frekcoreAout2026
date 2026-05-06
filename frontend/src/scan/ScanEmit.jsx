@@ -31,7 +31,7 @@ export default function ScanEmit() {
     setBusy(true);
     setResult(null);
     const payload = { ...form, event: 'CC2026' };
-    const res = await tryOrQueue('emit', payload, () => api.emit(payload));
+    const res = await tryOrQueue('emit', payload, (p) => api.emit(p));
     setBusy(false);
     if (res.ok) {
       setResult({ kind: 'success', data: res.result });

@@ -38,7 +38,7 @@ export default function ScanCashless({ online }) {
     setBusy(true);
     setResult(null);
     const payload = { code, marchand_id: marchandId, montant_jetons: m };
-    const res = await tryOrQueue('cashless', payload, () => api.cashless(payload));
+    const res = await tryOrQueue('cashless', payload, (p) => api.cashless(p));
     setBusy(false);
     if (res.ok) {
       setResult({ kind: 'success', data: res.result });

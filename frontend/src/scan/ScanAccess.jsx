@@ -24,7 +24,7 @@ export default function ScanAccess({ staff, online }) {
     setScanning(false);
     setError(null);
     if (!zone) { setError('Choisis une zone'); return; }
-    const res = await tryOrQueue('access', { code, zone }, () => api.access({ code, zone }));
+    const res = await tryOrQueue('access', { code, zone }, (p) => api.access(p));
     if (res.ok) setResult({ kind: 'success', data: res.result });
     else if (res.queued) setResult({ kind: 'queued', message: 'Action mise en file (offline)' });
     else setResult({ kind: 'error', message: res.error || 'Erreur' });

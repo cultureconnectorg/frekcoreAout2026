@@ -46,6 +46,7 @@ async def _notarize(payload_type: str, payload_id: str, payload_data: dict, meta
 class ScanAccessRequest(BaseModel):
     code: str = Field(..., description="badge_id OU qr_token OU frek_id (auto-detect)")
     zone: str = Field(..., description="ENTREE, SCENE, VIP_LOUNGE, BACKSTAGE, EXPOSANTS, PRESSE, ATELIERS")
+    client_uuid: Optional[str] = Field(None, description="UUID idempotence (replay-safe)")
 
 
 class ScanCashlessRequest(BaseModel):
@@ -53,15 +54,17 @@ class ScanCashlessRequest(BaseModel):
     montant_jetons: int = Field(..., gt=0)
     marchand_id: str
     description: Optional[str] = None
+    client_uuid: Optional[str] = Field(None, description="UUID idempotence (replay-safe)")
 
 
 class WalkinEmitRequest(BaseModel):
     email: str
     prenom: str
     nom: str
-    type_badge: str = "PARTICIPANT"
+    type_badge: str = "BNV"
     organisation: Optional[str] = None
     event: str = "CC2026"
+    client_uuid: Optional[str] = Field(None, description="UUID idempotence (replay-safe)")
 
 
 class SyncBatchRequest(BaseModel):
@@ -141,6 +144,27 @@ async def scan_access(
             detail=f"Agent {staff['agent_id']} non autorise zone {request.zone}",
         )
 
+    # Idempotence : si un scan avec ce client_uuid existe deja, retourner le meme
+    if request.client_uuid:
+        existing = await db.scans.find_one(
+            {"client_uuid": request.client_uuid}, {"_id": 0}
+        )
+        if existing:
+            return {
+                "access": "AUTORISE",
+                "scan": existing,
+                "badge": {
+                    "badge_id": badge["badge_id"],
+                    "frek_id": badge.get("frek_id"),
+                    "prenom": badge.get("prenom"),
+                    "nom": badge.get("nom"),
+                    "type_badge": badge.get("type_badge"),
+                    "type_name": badge.get("type_name"),
+                    "jetons_solde": badge.get("jetons_solde", 0),
+                },
+                "idempotent": True,
+            }
+
     now = now_iso()
     scan_id = str(uuid.uuid4())[:12]
     scan_doc = {
@@ -155,6 +179,7 @@ async def scan_access(
         "nfc_enabled": badge.get("nfc_enabled", False),
         "timestamp": now,
         "client_id": _client_id(),
+        "client_uuid": request.client_uuid,
         "via": "pwa_staff",
     }
     await db.scans.insert_one(scan_doc)
@@ -228,6 +253,22 @@ async def scan_cashless(
     if not marchand:
         raise HTTPException(status_code=404, detail=f"Marchand {request.marchand_id} introuvable")
 
+    # Idempotence replay-safe : meme client_uuid -> retourne meme tx
+    if request.client_uuid:
+        existing = await db.transactions.find_one(
+            {"client_uuid": request.client_uuid}, {"_id": 0}
+        )
+        if existing:
+            badge_now = await db.badges.find_one(
+                {"badge_id": existing["badge_id"]}, {"_id": 0, "jetons_solde": 1}
+            )
+            return {
+                "transaction": existing,
+                "new_solde": badge_now.get("jetons_solde", 0) if badge_now else existing.get("solde_apres", 0),
+                "marchand": marchand.get("nom"),
+                "idempotent": True,
+            }
+
     now = now_iso()
     tx_id = str(uuid.uuid4())[:12]
     new_solde = solde - request.montant_jetons
@@ -256,6 +297,7 @@ async def scan_cashless(
         "solde_apres": new_solde,
         "timestamp": now,
         "client_id": _client_id(),
+        "client_uuid": request.client_uuid,
         "via": "pwa_staff",
     }
     await db.transactions.insert_one(tx)
@@ -395,14 +437,16 @@ async def scan_sync(
             if need and need not in perms:
                 results.append({"client_uuid": client_uuid, "ok": False, "error": f"Permission requise: {need}", "status": 403})
                 continue
+            # Inject client_uuid into payload for idempotence (replay-safe)
+            payload_with_uuid = {**payload, "client_uuid": client_uuid}
             if kind == "access":
-                req = ScanAccessRequest(**payload)
+                req = ScanAccessRequest(**payload_with_uuid)
                 res = await scan_access(req, staff=staff)
             elif kind == "cashless":
-                req = ScanCashlessRequest(**payload)
+                req = ScanCashlessRequest(**payload_with_uuid)
                 res = await scan_cashless(req, staff=staff)
             elif kind == "emit":
-                req = WalkinEmitRequest(**payload)
+                req = WalkinEmitRequest(**payload_with_uuid)
                 res = await scan_emit_walkin(req, staff=staff)
             else:
                 results.append({"client_uuid": client_uuid, "ok": False, "error": f"kind inconnu: {kind}"})
