@@ -67,16 +67,20 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - [x] **PWA installable** — manifest + service worker
 
 ## Backlog
-- [ ] **P0** : Frontend page achat jetons publique (Stripe Checkout UI pour 4 packs)
-- [ ] **P0** : Page publique "FREK Certified" (standard reutilisable post-CC2026 par d'autres orgas)
+- [ ] **P0** : Page publique "FREK Certified" — standard reutilisable post-CC2026 par d'autres orgas (l'API publique de notariat + FREK-ID, hors business Kiltikonet)
 - [ ] **P0** : Verifier frekcore@gmail.com dans AWS SES + sortir du sandbox
-- [ ] **P1** : Open API "FREK Certified" (doc + cle publique)
+- [ ] **P1** : Open API "FREK Certified" (doc developpeur + cle publique pour clients tiers)
 - [ ] **P1** : FREK Card NFC bindings (cartes physiques)
 - [ ] **P1** : Bcrypt sur PIN staff (actuellement SHA256+salt — acceptable mais perfectible)
 - [ ] **P2** : FREK-Chain block explorer public
 - [ ] **P2** : Baserow bi-directional sync
 - [ ] **P2** : Export PDF batch Twina (J-15)
 - [ ] **P2** : NFC Web API integration native dans PWA (au-dela du scan QR)
+
+## Frontiere Kiltikonet ↔ FREKCORE (ne pas confondre)
+- **Kiltikonet** = couche business : page publique d'achat jetons en EUR (Stripe), CRM, billetterie, relation client. Site : kiltikonet.com.
+- **FREKCORE** = couche certification + infra terrain : API `/api/jetons/*` consommee par Kiltikonet pour crediter le wallet, PWA Scanner Staff pour debits cashless on-site, notariat Bitcoin de chaque mouvement. Site : frekcore.com.
+- L'achat public de jetons en EUR n'est JAMAIS exposee sur frekcore.com. FREK certifie et gere l'infra ; Kiltikonet vend.
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min
