@@ -33,6 +33,13 @@ async def get_current_client(authorization: Optional[str] = Header(None)):
             raise HTTPException(status_code=401, detail="Client inconnu")
         if client.get("active") is False:
             raise HTTPException(status_code=401, detail="Client desactive")
+        # Verifier revocation token (rotate / logout)
+        token_doc = await db.frek_tokens.find_one(
+            {"token_hash": hash_secret(token)},
+            {"_id": 0, "revoked": 1},
+        )
+        if token_doc and token_doc.get("revoked"):
+            raise HTTPException(status_code=401, detail="Token revoque")
         return client
     except HTTPException:
         raise

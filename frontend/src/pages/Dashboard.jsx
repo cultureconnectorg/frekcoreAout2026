@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [live, setLive] = useState(null);
   const [notary, setNotary] = useState(null);
+  const [events, setEvents] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -124,13 +125,23 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      const resp = await fetch(`${API_URL}/api/v1/notary/chain/events`);
+      if (!resp.ok) return;
+      const d = await resp.json();
+      setEvents(d.events || []);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchDashboard();
     fetchLive();
     fetchNotary();
-    const i = setInterval(() => { fetchLive(); fetchNotary(); }, 5000);
+    fetchEvents();
+    const i = setInterval(() => { fetchLive(); fetchNotary(); fetchEvents(); }, 5000);
     return () => clearInterval(i);
-  }, [fetchDashboard, fetchLive, fetchNotary]);
+  }, [fetchDashboard, fetchLive, fetchNotary, fetchEvents]);
 
   const metrics = data?.metrics || {};
   const total = live?.total ?? metrics.total_identities ?? 0;
@@ -453,13 +464,55 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100">
             <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider mb-1">
-              Last block-hash
+              Last block-hash · spec {notary?.spec_version || '1.0.0'}
             </div>
             <div className="font-mono text-[10px] text-slate-500 break-all">
               {notary?.last_block_hash || '0'.repeat(64)}
             </div>
           </div>
         </GlassCard>
+
+        {/* Multi-event widget — Phase 2 */}
+        {events && events.length > 0 && (
+          <GlassCard className="p-6" delay={0.32} data-testid="widget-events">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div>
+                <p className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
+                  Events Multi-tenant
+                </p>
+                <p className="text-sm font-medium text-slate-700">
+                  Empreintes scopees par event_id
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                {events.length} {events.length > 1 ? 'events' : 'event'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {events.map((e) => (
+                <div
+                  key={e.event_id}
+                  data-testid={`event-row-${e.event_id}`}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/50 border border-slate-100"
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#2cc4f5]/10 text-[#2cc4f5] border border-[#2cc4f5]/20 font-mono text-xs font-bold">
+                    {e.event_id?.slice(0, 3)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm text-slate-700">{e.event_id}</div>
+                    <div className="font-mono text-[10px] text-slate-400">
+                      {e.payload_types?.join(' · ')}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-base font-semibold text-slate-700">{e.blocks}</div>
+                    <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider">blocks · {e.btc_anchored} BTC</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Footer */}
         <div className="text-center pt-4 pb-2">

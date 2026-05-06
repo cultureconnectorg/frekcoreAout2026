@@ -36,6 +36,9 @@ from staff.scan_routes import scan_router, set_db as scan_set_db
 # Import FREK Audit (timeline humaine consolidee)
 from audit.routes import audit_router, set_db as audit_set_db
 
+# Import FREK Spec (documentation standard publique)
+from spec.routes import spec_router
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -141,6 +144,9 @@ app.include_router(scan_router, prefix="/api/v1")
 # FREK Audit (timeline humaine consolidee)
 app.include_router(audit_router, prefix="/api/v1")
 
+# FREK Spec (standard publique, sans auth)
+app.include_router(spec_router, prefix="/api/v1")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -225,6 +231,9 @@ async def seed_clients():
     await db.scans.create_index("agent_id", sparse=True)
     await db.transactions.create_index("agent_id", sparse=True)
     await db.badges.create_index("agent_id", sparse=True)
+    await db.frek_tokens.create_index("token_hash", sparse=True)
+    await db.frek_clients.create_index("active", sparse=True)
+    await db.frek_clients.create_index("event", sparse=True)
     await seed_default_staff()
     logger.info("FREK Staff PWA — comptes seedes")
 

@@ -3,6 +3,7 @@ FREK v1 — Endpoints Admin (protege par X-Admin-Key)
 """
 import secrets
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Header
 
@@ -20,10 +21,10 @@ def set_db(database):
     db = database
 
 
-async def verify_admin_key(x_admin_key: str = Header(..., description="Cle admin (env SECRET_KEY)")):
+async def verify_admin_key(x_admin_key: Optional[str] = Header(None, description="Cle admin (env SECRET_KEY)")):
     """Verifie que la cle admin correspond a SECRET_KEY"""
-    if x_admin_key != get_env("SECRET_KEY"):
-        raise HTTPException(status_code=403, detail="Cle admin invalide")
+    if not x_admin_key or x_admin_key != get_env("SECRET_KEY"):
+        raise HTTPException(status_code=403, detail="Cle admin invalide ou manquante")
     return True
 
 

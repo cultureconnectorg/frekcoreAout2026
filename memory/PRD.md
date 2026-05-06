@@ -69,28 +69,30 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - [x] **A.2 Cycle de vie** — `expires_at` + endpoint `/renew` (validation date future), bloque scan terrain si expire
 - [x] **E.4 Audit trail humain** — `/api/v1/audit/{frek_id}` (public, lisible francais), `/audit/agent/{id}` (auth), `/audit/event/{event}` (perm stats)
 
-## Backlog (Phase 2+)
-- [ ] **P0** : **Phase 2 Couche B** — Multi-tenant strict (event_id dans blocks, queries scopees, self-service `/admin/clients`) + Spec versionnee (`spec_version` dans chaque block, doc /spec/v1.0.0 figee)
+## Backlog (Phase 3+)
+- [ ] **P0** : **Phase 3 Couche C** — Portabilite passport.json signe Ed25519 + Confidentialite selective (claims partiels)
 - [ ] **P0** : Verifier frekcore@gmail.com dans AWS SES + sortir du sandbox
-- [ ] **P1** : **Phase 3 Couche C** — Portabilite passeport (export passport.json signe Ed25519) + Confidentialite selective (claims partiels)
 - [ ] **P1** : **Phase 4 Couche D** — W3C DID + Verifiable Credentials export (`did:frek:{frek_id}`)
 - [ ] **P1** : Bcrypt sur PIN staff
 - [ ] **P1** : FREK Card NFC bindings (cartes physiques)
 - [ ] **P2** : **Phase 5 Couche A.8** — Heritage / transmission (block transfer + beneficiary)
 - [ ] **P2** : **Phase 5 Couche F.10** — Monetisation standard (rate limit + tier paid)
-- [ ] **P2** : FREK-Chain block explorer public
-- [ ] **P2** : Baserow bi-directional sync
-- [ ] **P2** : Export PDF batch Twina (J-15)
+- [ ] **P2** : FREK-Chain block explorer public · Embeddable seal (script externalisable)
+- [ ] **P2** : Baserow bi-directional sync · Export PDF batch Twina (J-15)
 
 ## Frontiere Kiltikonet ↔ FREKCORE (ne pas confondre)
 - **Kiltikonet** = couche business : page publique d'achat jetons en EUR (Stripe), CRM, billetterie, relation client. Site : kiltikonet.com.
 - **FREKCORE** = couche certification + infra terrain : API `/api/jetons/*` consommee par Kiltikonet pour crediter le wallet, PWA Scanner Staff pour debits cashless on-site, notariat Bitcoin de chaque mouvement. Site : frekcore.com (autorite silencieuse).
 - L'achat public de jetons en EUR n'est JAMAIS exposee sur frekcore.com.
 
-## Phase 1 Governance — Livree (iteration_14, 24/24 backend, frontend OK)
-- **A.1 Revocation immutable** : `POST /identity/{id}/revoke` → block `revocation` ancre Bitcoin, identite marquee mais preuve historique conservee, idempotent
-- **A.2 Cycle de vie** : `expires_at` dans emit/renew, validation date future, scan PWA bloque revoque/expire (403)
-- **E.4 Audit trail humain** : timeline lisible francais agregee depuis stages/scans/transactions/notary blocks, public sur /verify, auth pour agent et event
+## Phase 2 Governance — Livree (iteration_15, 26/26 backend, 83/83 regression complete)
+- **B.3 Multi-tenant strict** : `event_id` + `spec_version` sur chaque block FREK-Chain (compute_block_hash inclut, sparse-indexed). Backwards-compat sur les ~99 blocs legacy (fallback hash sans event_id).
+- **B.3 Filtrage** : `GET /notary/blocks?event_id=&payload_type=` · `GET /notary/chain/events` (resume agrege par event)
+- **B.5 Spec versionnee** : module `spec/` expose publiquement (sans auth) `GET /spec/`, `/spec/v1.0.0`, `/spec/changelog` — contrat protocolaire fige pour reimplementation independante
+- **B.3 Self-service `/admin/clients`** : POST create + POST `/{id}/rotate` (revoque tokens en cours via token_hash lookup) + PATCH (name/permissions/active/event) + DELETE soft (active=false, tokens revoques)
+- **Auth durcie** : `get_current_client` rejette client `active=false` (401 'Client desactive') ET token revoque (401 'Token revoque')
+- **Index** : token_hash, frek_clients.active, frek_clients.event
+- **Frontend** : Dashboard widget Multi-event affiche events agreges + spec_version sur Notary panel
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min
