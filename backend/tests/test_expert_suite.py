@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional, List
 
-API_URL = "https://frek-certification.preview.emergentagent.com"
+API_URL = "https://culture-chain.preview.emergentagent.com"
 
 # Stockage des résultats
 results = []

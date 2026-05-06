@@ -191,7 +191,7 @@ async def get_identity_qr(frek_id: str):
         raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
 
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
-    qr.add_data(f"https://frekcore.com/verify/{frek_id}")
+    qr.add_data(f"{os.environ.get('APP_URL', 'https://frekcore.com')}/verify/{frek_id}")
     qr.make(fit=True)
     img = qr.make_image(fill_color="#0a0a0a", back_color="white")
 

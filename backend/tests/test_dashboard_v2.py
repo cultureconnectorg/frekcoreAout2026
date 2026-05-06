@@ -9,7 +9,7 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://frek-certification.preview.emergentagent.com"
+    BASE_URL = "https://culture-chain.preview.emergentagent.com"
 
 # Admin key from .env - must be passed as X-Admin-Key header
 ADMIN_KEY = "36100d549163aff036e0eb50c114161ae2da7a4dffcf816c40e99935b9d04c88"

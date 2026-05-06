@@ -10,7 +10,7 @@ from datetime import datetime
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
-    BASE_URL = "https://frek-certification.preview.emergentagent.com"
+    BASE_URL = "https://culture-chain.preview.emergentagent.com"
 
 # Client credentials from .env
 KILTIKONET_CLIENT_ID = "kiltikonet-cc2026"
