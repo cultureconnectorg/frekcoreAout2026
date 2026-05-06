@@ -23,7 +23,35 @@ FREK_SPEC = {
         "Silence : FREKCORE est une autorite silencieuse, pas une marque grand public",
         "Portabilite : le porteur peut exporter et reimporter son passeport culturel",
         "Versioning explicite : chaque block contient spec_version pour evolution sans rupture",
+        "Sectoral-agnostic : la chaine ne distingue pas la nature de l'acte. Culture, sante, education, telecom, justice — meme garantie cryptographique.",
     ],
+    "domains": {
+        "_principle": "FREK est ne dans la culture mais le standard est sectoriellement neutre. Tout acte numerique ayant valeur de preuve peut etre ancre sans modification du protocole.",
+        "supported": {
+            "culture": "Acts artistiques, evenements culturels (genese de FREK, CC2026)",
+            "education": "Diplomes, certifications, parcours universitaires",
+            "health": "Acts medicaux, dossier patient, consentement eclaire",
+            "justice": "Actes notariaux, contrats, pieces a conviction numeriques",
+            "finance": "Preuves de detention, attestations, audit reglementaire",
+            "telecom": "Identite numerique, eSIM, attestation de connexion",
+            "media": "Provenance de contenu, integrite editoriale, anti-deepfake",
+            "phygital": "Pont monde physique / numerique (NFC, biens d'art, certificats produit)",
+            "tech": "Identite developpeur, signature de release, supply chain",
+            "identity": "Identite nationale ou supra-nationale (CARICOM, etc.)",
+        },
+        "extension_model": (
+            "Pour adopter FREK dans un nouveau secteur : utiliser le champ event_id pour scoper, "
+            "metadata.domain pour categoriser, et eventuellement publier un payload_type custom (ex: 'medical_consent', 'diploma_issuance'). "
+            "La spec v1.0.0 reste invariable ; les nouveaux types sont retrocompatibles tant qu'ils respectent la signature SHA-256."
+        ),
+        "sector_examples": {
+            "hospital_caribbean": "Hopital ancre les consentements eclaires patient via payload_type='medical_consent' + event_id='HOSP-MQ-001'",
+            "university_diploma": "Universite delivre diplome via payload_type='diploma_issuance' + event_id='UNI-XYZ-2026'",
+            "telecom_esim": "Operateur certifie activation eSIM via payload_type='esim_activation' + event_id='OP-TLC-001'",
+            "notary_act": "Notaire ancre acte authentique via payload_type='notarial_deed' + event_id='ETUDE-FR-097'",
+            "media_provenance": "Redaction signe article via payload_type='editorial_act' + event_id='MEDIA-FR-001'",
+        },
+    },
     "frek_id": {
         "format": "UUID v4 (RFC 4122)",
         "size_bytes": 36,
@@ -85,6 +113,37 @@ FREK_SPEC = {
         "Bitcoin proof : preuve hors-ligne verifiable via fichier .ots standard",
         "Backwards compat : verifier les blocs anciens via fallback hash sans event_id/spec_version",
     ],
+    "security_policies": {
+        "rate_limiting": {
+            "model": "Sliding window MongoDB par (scope, action). 429 silencieux, sans Retry-After, sans header explicatif.",
+            "defaults": {
+                "identity_emit": "100/heure/client_id",
+                "stage_transition": "500/heure/client_id",
+                "scan_access": "5000/heure/client_id",
+                "staff_login_fail": "5/15min => lockout automatique",
+            },
+            "configurable_via_env": ["FREK_RATE_EMIT_PER_HOUR", "FREK_RATE_STAGE_PER_HOUR", "FREK_RATE_SCAN_PER_HOUR"],
+        },
+        "brute_force_lockout": {
+            "trigger": "5 tentatives PIN echouees en 15 minutes",
+            "duration_minutes": 15,
+            "unlock": "Automatique apres expiration OU manuel via /admin/security/staff/{agent_id}/unlock",
+        },
+        "anomaly_trail": {
+            "storage": "MongoDB collection security_events (admin-only)",
+            "endpoints": [
+                "/api/v1/admin/security/events (admin)",
+                "/api/v1/admin/security/lockouts (admin)",
+                "/api/v1/admin/security/staff/{agent_id}/unlock (admin)",
+            ],
+            "principle": "L'autorite ne se defend pas en public. Elle enregistre et agit en silence.",
+            "optional_webhook": "FREK_SECURITY_WEBHOOK_URL — notifie warning/critical en POST JSON",
+        },
+        "secret_rotation": {
+            "endpoint": "POST /api/v1/admin/clients/{client_id}/rotate",
+            "guarantee": "Sans downtime. Tous les tokens en cours sont revoques via lookup token_hash. Le standard continue de tourner.",
+        },
+    },
     "governance": {
         "current_version": "1.0.0",
         "changelog_url": "/api/v1/spec/changelog",

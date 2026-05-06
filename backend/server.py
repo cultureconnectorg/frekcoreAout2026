@@ -39,6 +39,10 @@ from audit.routes import audit_router, set_db as audit_set_db
 # Import FREK Spec (documentation standard publique)
 from spec.routes import spec_router
 
+# Import FREK Security (rate limiting silencieux + audit trail)
+from security.policies import set_db as security_set_db, ensure_indexes as security_ensure_indexes
+from security.routes import security_router, set_db as security_routes_set_db
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -69,6 +73,10 @@ scan_set_db(db)
 
 # Initialize FREK Audit
 audit_set_db(db)
+
+# Initialize FREK Security
+security_set_db(db)
+security_routes_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -146,6 +154,9 @@ app.include_router(audit_router, prefix="/api/v1")
 
 # FREK Spec (standard publique, sans auth)
 app.include_router(spec_router, prefix="/api/v1")
+
+# FREK Security audit (admin only)
+app.include_router(security_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -234,6 +245,11 @@ async def seed_clients():
     await db.frek_tokens.create_index("token_hash", sparse=True)
     await db.frek_clients.create_index("active", sparse=True)
     await db.frek_clients.create_index("event", sparse=True)
+
+    # Security indexes (rate-limit + anomaly trail)
+    await security_ensure_indexes()
+    await db.staff.create_index("locked_until", sparse=True)
+    await db.staff.create_index("failed_attempts", sparse=True)
     await seed_default_staff()
     logger.info("FREK Staff PWA — comptes seedes")
 

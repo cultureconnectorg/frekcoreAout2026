@@ -128,20 +128,31 @@ class StaffCreateRequest(BaseModel):
 # --- Routes ---
 @staff_router.post("/login", response_model=StaffLoginResponse)
 async def staff_login(request: StaffLoginRequest):
+    try:
+        from security.policies import is_staff_locked, register_staff_login_attempt
+    except Exception:
+        async def is_staff_locked(_): return False
+        async def register_staff_login_attempt(*args, **kwargs): return None
+
+    # Generic 401 si compte locked (pas d'info attaquant)
+    if await is_staff_locked(request.agent_id):
+        raise HTTPException(status_code=401, detail="Agent ou PIN invalide")
+
     staff = await db.staff.find_one(
         {"agent_id": request.agent_id, "active": True}, {"_id": 0}
     )
     if not staff:
+        await register_staff_login_attempt(request.agent_id, success=False)
         raise HTTPException(status_code=401, detail="Agent ou PIN invalide")
     if staff.get("pin_hash") != _hash_pin(request.pin):
+        await register_staff_login_attempt(request.agent_id, success=False)
         raise HTTPException(status_code=401, detail="Agent ou PIN invalide")
+
+    # Success
+    await register_staff_login_attempt(request.agent_id, success=True)
 
     role = staff["role"]
     token = _create_staff_token(staff["agent_id"], role)
-    await db.staff.update_one(
-        {"agent_id": staff["agent_id"]},
-        {"$set": {"last_login": now_iso()}},
-    )
     return StaffLoginResponse(
         access_token=token,
         agent_id=staff["agent_id"],

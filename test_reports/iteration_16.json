@@ -1,0 +1,51 @@
+{
+  "summary": "Phase 2.5 Security Hardening backend testing complete. Created /app/backend/tests/test_security_hardening.py with 16 tests covering: rate-limit silencieux (429 sans Retry-After, message generic 'Trop de requetes'), idempotence emit ne consomme pas le quota, anomaly trail (security_events kind=rate_limit_hit/staff_lockout severity=warning), brute-force PIN lockout (5 fails/15min sur EMISSION-01), admin endpoints /admin/security/{events,lockouts,staff/{id}/unlock} avec 403 sur X-Admin-Key manquant/invalide, manual unlock, token revocation reelle apres POST /admin/clients/{id}/rotate (le token emis avant rotate retourne 401 'Token revoque' sur stats), spec ouverture sectorielle (10 secteurs supported + extension_model + sector_examples + security_policies). Result: 16/16 PASSED. Regression: 160 passed / 7 failed. Failures sont des tests STALES non liés à Phase 2.5 (3 dashboard_v2 attendent 422 sur missing X-Admin-Key — comportement expressement modifié à 403 dans cette phase ; 2 frek_v1_api admin tests pré-existants iteration_15 ; 2 email tests indépendants).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "Tests stales (a mettre a jour)",
+        "issue": "tests/test_dashboard_v2.py::TestAdminEndpointsXAdminKey::test_*_returns_422 (x3) attendent code 422 quand X-Admin-Key est absent ; Phase 2.5 a corrige ce comportement a 403 'Cle admin invalide ou manquante' (verify_admin_key utilise Header(None) + check explicite). Ces 3 tests doivent etre mis a jour pour attendre 403."
+      },
+      {
+        "endpoint": "tests/test_frek_v1_api.py::TestAdminEndpoints",
+        "issue": "test_create_client / test_create_duplicate_client_returns_409 echouent avec 403 'Cle admin invalide ou manquante' — n'envoient pas le header X-Admin-Key. Pre-existant (deja flagged en iteration_15)."
+      },
+      {
+        "endpoint": "tests/test_cc2026_ecosystem.py::TestEmailAPI",
+        "issue": "test_list_email_templates_campaign_types et test_email_statistics echouent (independant Phase 2.5, hors scope)."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_security_hardening.py",
+    "/app/test_reports/pytest/pytest_security_hardening.xml"
+  ],
+  "action_items": [
+    "Mettre a jour tests/test_dashboard_v2.py::TestAdminEndpointsXAdminKey::test_*_returns_422 (x3) → renommer en test_*_returns_403 et changer assert 422 → assert 403 + check detail='Cle admin invalide ou manquante'. C'est intentionnel : Phase 2.5 a corrige le 422 vers 403.",
+    "Optionnel : mettre a jour tests/test_frek_v1_api.py::TestAdminEndpoints pour ajouter le header X-Admin-Key dans les calls /admin/clients (deja flagged iteration_15).",
+    "Aucune action requise sur le code applicatif — le hardening fonctionne comme spécifié."
+  ],
+  "critical_code_review_comments": [
+    "security/policies.py check_rate_limit: implementation propre avec sliding window MongoDB ; record_anomaly avant insert (au moment de la limite atteinte). Bien : pas de Retry-After, message generique. Compte est calcule sur fenetre glissante stricte (>= window_start.isoformat()).",
+    "security/policies.py register_staff_login_attempt: bug critique corrige par main agent ('if not s' → 'if s is None' commit avant test). Lockout fonctionne maintenant : 5 fails atomiques en 15min mettent locked_until = +15min, increment failed_attempts.",
+    "is_staff_locked: parse robuste de l'iso (Z → +00:00, defaut tzinfo utc). Locked check fait AVANT la verif PIN dans staff_login → empeche le bypass via reset password.",
+    "auth.py get_current_client: la verification token_hash dans frek_tokens (revoked=true) est faite APRES la verif client.active → ordre coherent. Rotate revoque effectivement les tokens en cours (verifie : token issued before rotate → 401 'Token revoque').",
+    "spec/routes.py: section 'domains' couvre les 10 secteurs (culture/education/health/justice/finance/telecom/media/phygital/tech/identity) + extension_model + sector_examples. Section 'security_policies' documente rate_limiting/brute_force_lockout/anomaly_trail/secret_rotation. Spec reste figee a v1.0.0 (ajout retrocompatible).",
+    "security/routes.py: les 3 endpoints admin (events/lockouts/unlock) sont strictement proteges par verify_admin_key. /events supporte query params severity/kind/scope/limit ; /lockouts liste les staff avec locked_until > now ; /unlock met failed_attempts=0 + locked_until=null.",
+    "Aucune fuite des security_events vers les endpoints publics (verifie : /api/v1/spec/* ne contient ni rate_limit_hit ni staff_lockout). Le silence de l'autorite est respecte.",
+    "DEFAULT_LIMITS configurables via env (FREK_RATE_EMIT_PER_HOUR etc) — bien."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_security_hardening.py (NEW — 16 tests, 5 classes)",
+    "/app/test_reports/pytest/pytest_security_hardening.xml (NEW)"
+  ],
+  "success_rate": {"backend": "100% Phase 2.5 (16/16) ; 95% global regression (160/167 hors expert_suite/frek_api)", "frontend": "N/A (backend only)"},
+  "test_credentials": "X-Admin-Key=SECRET_KEY (lu depuis /app/backend/.env), EMISSION-01/1111 (PIN lock+unlock pendant les tests, reset post-test), creation clients TEST_sec_*/TEST_idem_*/TEST_rot_* via /admin/clients (auto-cleanup en teardown).",
+  "seed_data_creation": "Cree 3 clients temporaires TEST_sec_*/TEST_idem_*/TEST_rot_* (tous soft-deleted apres test). Insere ~200 entries rate_limits sur scopes TEST_* (purgees). Insere des security_events kind=rate_limit_hit + staff_lockout (gardes pour audit, scope TEST_* ou EMISSION-01).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 2.5 Security Hardening (rate-limit + brute-force lockout + anomaly trail + secret rotation + spec ouverture sectorielle) entierement validee. Test file /app/backend/tests/test_security_hardening.py est la regression suite — exiger qu'il passe a 100% sur chaque change backend. Note importante : 3 tests dans test_dashboard_v2.py attendent encore 422 sur missing X-Admin-Key — c'est obsolete depuis Phase 2.5 (le main agent a explicitement migre vers 403 'Cle admin invalide ou manquante' comme demande par la spec). Ces 3 tests doivent etre mis a jour. La FREK-Chain est inchangee (toujours 1.0.0 spec, hauteur >110 blocs). Aucun frontend n'a ete modifie ni teste dans ce run.",
+  "rca of the issue": "Pas de bug applicatif. Les 7 failures de regression sont toutes des tests stales qui contredisent le nouveau comportement spec-conforme :\n  - 3x test_dashboard_v2 (test_*_returns_422) : attendaient 422 quand X-Admin-Key absent. Phase 2.5 a explicitement corrige a 403 (Header(None) + raise HTTPException 403 dans verify_admin_key). C'etait demande dans la spec : 'Anomaly admin endpoints sans X-Admin-Key: 403 (PAS 422)'.\n  - 2x test_frek_v1_api admin tests : pre-existant iteration_15 (n'envoient pas X-Admin-Key).\n  - 2x test_cc2026 email API : independant, hors scope.\n  Aucun rollback ou patch code requis. Mettre a jour les tests stales."
+}

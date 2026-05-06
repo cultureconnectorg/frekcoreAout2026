@@ -24,6 +24,14 @@ except Exception:
     async def notarize_event(*args, **kwargs):
         return None
 
+try:
+    from security.policies import check_rate_limit, record_anomaly
+except Exception:
+    async def check_rate_limit(*args, **kwargs):
+        return True
+    async def record_anomaly(*args, **kwargs):
+        return None
+
 identity_router = APIRouter(prefix="/identity", tags=["FREK v1 Identity"])
 logger = logging.getLogger("frek.identity")
 
@@ -48,12 +56,18 @@ async def emit_identity(
     )
 
     if existing:
+        # Idempotent : ne consomme pas le quota rate-limit
         return EmitResponse(
             frek_id=existing["frek_id"],
             created=False,
             stage=existing.get("current_stage", "GENESIS"),
             message="Identite FREK existante retournee (idempotent)",
         )
+
+    # Rate limit silencieux sur emission reelle uniquement
+    ok = await check_rate_limit(scope=client["client_id"], action="identity_emit")
+    if not ok:
+        raise HTTPException(status_code=429, detail="Trop de requetes")
 
     frek_id = generate_frek_id()
     qr_token = generate_qr_token(frek_id)
