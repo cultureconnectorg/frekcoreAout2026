@@ -10,6 +10,7 @@ const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 export function Verify() {
   const { frekId } = useParams();
   const [attestation, setAttestation] = useState(null);
+  const [notary, setNotary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -22,13 +23,30 @@ export function Verify() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/api/frek/verify/${frekId}`);
-        if (!response.ok) {
-          setError(response.status === 404 ? 'FREK-ID introuvable' : `Erreur ${response.status}`);
-          setLoading(false);
-          return;
+        const [attRes, notaryRes] = await Promise.allSettled([
+          fetch(`${API_URL}/api/frek/verify/${frekId}`),
+          fetch(`${API_URL}/api/v1/notary/proof/${frekId}`),
+        ]);
+
+        if (attRes.status === 'fulfilled' && attRes.value.ok) {
+          setAttestation(await attRes.value.json());
+        } else if (attRes.status === 'fulfilled') {
+          // Legacy not found — but notary proof might still exist
+          const r = attRes.value;
+          if (r.status !== 404) setError(`Erreur ${r.status}`);
         }
-        setAttestation(await response.json());
+
+        if (notaryRes.status === 'fulfilled' && notaryRes.value.ok) {
+          setNotary(await notaryRes.value.json());
+        }
+
+        // Fallback: if neither exists, show error
+        if (
+          (attRes.status !== 'fulfilled' || !attRes.value.ok) &&
+          (notaryRes.status !== 'fulfilled' || !notaryRes.value.ok)
+        ) {
+          setError('FREK-ID introuvable');
+        }
       } catch (err) {
         setError('Erreur de connexion');
       } finally {
@@ -156,6 +174,99 @@ export function Verify() {
                 {attestation.sha256_signal}
               </div>
             </div>
+
+            {/* FREK Notary — Notarisation Bitcoin */}
+            {notary && (
+              <div
+                data-testid="notary-panel"
+                className="bg-gradient-to-br from-[#f7931a]/10 to-[#0a1520]/80 rounded-xl p-4 sm:p-5 border border-[#f7931a]/30"
+              >
+                <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#f7931a]/20 border border-[#f7931a]/40 flex items-center justify-center">
+                    <span className="text-[#f7931a] text-sm sm:text-base font-bold">₿</span>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[10px] sm:text-xs text-[#f7931a] uppercase tracking-wider">
+                      Notaire Culturel Tech
+                    </div>
+                    <div className="font-mono text-[9px] sm:text-[10px] text-[#f7931a]/60">
+                      FREK-Chain · OpenTimestamps · Bitcoin
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
+                  <div>
+                    <div className="font-mono text-[9px] text-[#f7931a]/50 uppercase tracking-wider mb-1">
+                      Block
+                    </div>
+                    <div
+                      data-testid="notary-block-height"
+                      className="font-mono text-xs sm:text-sm text-[#f7931a]"
+                    >
+                      #{notary.block.height}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[9px] text-[#f7931a]/50 uppercase tracking-wider mb-1">
+                      Statut
+                    </div>
+                    <div
+                      data-testid="notary-status"
+                      className="font-mono text-xs sm:text-sm text-[#f7931a]"
+                    >
+                      {notary.btc_anchored ? 'Confirmé Bitcoin' : 'Ancré (en attente BTC)'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-2">
+                  <div className="font-mono text-[9px] text-[#f7931a]/50 uppercase tracking-wider mb-1">
+                    Block-hash
+                  </div>
+                  <div className="font-mono text-[10px] sm:text-[11px] text-[#f7931a]/80 break-all">
+                    {notary.block.block_hash}
+                  </div>
+                </div>
+
+                {notary.btc_anchored && notary.btc_attestation?.btc_block_height && (
+                  <div className="mb-2">
+                    <div className="font-mono text-[9px] text-[#f7931a]/50 uppercase tracking-wider mb-1">
+                      Bitcoin block height
+                    </div>
+                    <a
+                      href={`https://mempool.space/block-height/${notary.btc_attestation.btc_block_height}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid="notary-btc-link"
+                      className="font-mono text-[11px] sm:text-xs text-[#f7931a] hover:text-[#ffa83d] underline"
+                    >
+                      #{notary.btc_attestation.btc_block_height} ↗ mempool.space
+                    </a>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#f7931a]/20">
+                  <a
+                    href={`${API_URL}/api/v1/notary/proof/${frekId}/ots`}
+                    download={`frek-${frekId}.ots`}
+                    data-testid="notary-download-ots"
+                    className="px-3 py-1.5 bg-[#f7931a]/10 border border-[#f7931a]/40 text-[#f7931a] font-mono text-[10px] uppercase tracking-wider rounded hover:bg-[#f7931a]/20 transition-all"
+                  >
+                    Télécharger preuve .ots
+                  </a>
+                  <a
+                    href={`${API_URL}/api/v1/notary/block/${notary.block.height}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="notary-view-block"
+                    className="px-3 py-1.5 border border-[#f7931a]/30 text-[#f7931a]/80 font-mono text-[10px] uppercase tracking-wider rounded hover:border-[#f7931a]/60 hover:text-[#f7931a] transition-all"
+                  >
+                    Voir block JSON
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 justify-center pt-4">

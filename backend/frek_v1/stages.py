@@ -7,6 +7,12 @@ from .models import StageRequest, StageResponse, FrekStage, STAGE_ORDER
 from .auth import require_permission, db as _auth_db
 from .utils import now_iso
 
+try:
+    from notary.service import notarize_event
+except Exception:
+    async def notarize_event(*args, **kwargs):
+        return None
+
 stages_router = APIRouter(tags=["FREK v1 Stages"])
 
 db = None
@@ -79,6 +85,21 @@ async def record_stage(
             "current_stage": current_stage,
             "stages_completed": stages_completed,
         }}
+    )
+
+    # Notarize stage transition on FREK-Chain (auto BTC anchor)
+    await notarize_event(
+        payload_type="stage_transition",
+        payload_id=frek_id,
+        payload_data={
+            "frek_id": frek_id,
+            "stage": request.stage.value,
+            "fingerprint": request.fingerprint,
+            "sequence": next_seq,
+            "timestamp": now,
+            "source": request.source,
+        },
+        metadata={"client_id": client["client_id"]},
     )
 
     return StageResponse(

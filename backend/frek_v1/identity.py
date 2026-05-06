@@ -2,6 +2,7 @@
 FREK v1 — Endpoints Identite
 """
 import io
+import os
 import qrcode
 import logging
 
@@ -15,6 +16,12 @@ from .models import (
 )
 from .auth import get_current_client, require_permission, db as _auth_db
 from .utils import hash_email, generate_frek_id, generate_qr_token, now_iso
+
+try:
+    from notary.service import notarize_event
+except Exception:
+    async def notarize_event(*args, **kwargs):
+        return None
 
 identity_router = APIRouter(prefix="/identity", tags=["FREK v1 Identity"])
 logger = logging.getLogger("frek.identity")
@@ -79,6 +86,21 @@ async def emit_identity(
         "sequence": 1,
         "client_id": client["client_id"],
     })
+
+    # Notarize on FREK-Chain (auto-anchor to Bitcoin via OTS)
+    await notarize_event(
+        payload_type="identity_emit",
+        payload_id=frek_id,
+        payload_data={
+            "frek_id": frek_id,
+            "email_hash": email_hash,
+            "stage": FrekStage.GENESIS.value,
+            "source": request.source,
+            "event": request.event,
+            "created_at": now,
+        },
+        metadata={"client_id": client["client_id"]},
+    )
 
     return EmitResponse(
         frek_id=frek_id,

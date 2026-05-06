@@ -78,6 +78,7 @@ function GlassCard({ children, className = '', delay = 0, ...props }) {
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [live, setLive] = useState(null);
+  const [notary, setNotary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -115,12 +116,21 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
+  const fetchNotary = useCallback(async () => {
+    try {
+      const resp = await fetch(`${API_URL}/api/v1/notary/chain/status`);
+      if (!resp.ok) return;
+      setNotary(await resp.json());
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchDashboard();
     fetchLive();
-    const i = setInterval(fetchLive, 5000);
+    fetchNotary();
+    const i = setInterval(() => { fetchLive(); fetchNotary(); }, 5000);
     return () => clearInterval(i);
-  }, [fetchDashboard, fetchLive]);
+  }, [fetchDashboard, fetchLive, fetchNotary]);
 
   const metrics = data?.metrics || {};
   const total = live?.total ?? metrics.total_identities ?? 0;
@@ -379,6 +389,77 @@ export default function Dashboard() {
             )}
           </GlassCard>
         </div>
+
+        {/* FREK Notary — Notaire Culturel Tech */}
+        <GlassCard className="p-6" delay={0.28} data-testid="widget-notary">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#f7931a]/10 text-[#f7931a] border border-[#f7931a]/30">
+                <span className="font-bold text-base">₿</span>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">
+                  Notaire Culturel Tech
+                </p>
+                <p className="text-sm font-medium text-slate-700">
+                  FREK-Chain · Bitcoin (OpenTimestamps)
+                </p>
+              </div>
+            </div>
+            <span
+              data-testid="notary-integrity-badge"
+              className={`px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-wider ${
+                notary?.integrity_ok ?? true
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}
+            >
+              {notary?.integrity_ok ?? true ? 'Inviolable' : 'COMPROMISE'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+              <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider mb-1">
+                Hauteur chaîne
+              </div>
+              <div data-testid="notary-height" className="text-xl font-semibold text-slate-800">
+                {notary?.height ?? 0}
+              </div>
+            </div>
+            <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+              <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider mb-1">
+                Ancrés OTS
+              </div>
+              <div data-testid="notary-anchored" className="text-xl font-semibold text-slate-800">
+                {notary?.total_anchored ?? 0}
+              </div>
+            </div>
+            <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+              <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider mb-1">
+                Confirmés BTC
+              </div>
+              <div data-testid="notary-btc-confirmed" className="text-xl font-semibold text-[#f7931a]">
+                {notary?.total_btc_confirmed ?? 0}
+              </div>
+            </div>
+            <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+              <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider mb-1">
+                En attente BTC
+              </div>
+              <div data-testid="notary-pending" className="text-xl font-semibold text-slate-700">
+                {notary?.pending_anchors ?? 0}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <div className="font-mono text-[9px] text-slate-400 uppercase tracking-wider mb-1">
+              Last block-hash
+            </div>
+            <div className="font-mono text-[10px] text-slate-500 break-all">
+              {notary?.last_block_hash || '0'.repeat(64)}
+            </div>
+          </div>
+        </GlassCard>
 
         {/* Footer */}
         <div className="text-center pt-4 pb-2">

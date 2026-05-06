@@ -1,0 +1,40 @@
+{
+  "summary": "FREK Notary (Notaire Culturel Tech) backend + frontend tested. 15/16 backend tests passed (1 skipped — non-existent /api/v1/dashboard/summary endpoint, not part of this scope). Found and fixed one routing bug: /anchor/sweep and /anchor/upgrade were declared AFTER /anchor/{height} in routes.py, causing FastAPI to match 'sweep'/'upgrade' as the {height} path param and return 422. Reordered routes — both endpoints now respond 200. Frontend Dashboard /dashboard widget-notary renders correctly with all required testids: notary-height=10, notary-anchored=11, notary-btc-confirmed=0, notary-pending=10, integrity badge='Inviolable'. OTS proof generation works (verified via /proof/{frek_id}/ots returning binary application/vnd.opentimestamps.ots after ~3-9s).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/v1/notary/anchor/sweep & /anchor/upgrade", "issue": "FIXED — route ordering bug: declared after /anchor/{height} which captured 'sweep'/'upgrade' as int height path param. Reordered routes in /app/backend/notary/routes.py."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_notary.py",
+    "/app/test_reports/pytest/pytest_notary_results.xml"
+  ],
+  "action_items": [
+    "Verify the routing fix in /app/backend/notary/routes.py (already applied) — moved /anchor/sweep and /anchor/upgrade declarations BEFORE /anchor/{height}.",
+    "Optional: Verify page /verify/{frek_id} notary panel was not visually tested because the panel only renders when legacy /api/frek/verify/{id} returns 200, and emit via /api/v1/identity/emit does not produce a legacy v2 attestation. Backend proof endpoints all work — UI gating is by design per the request brief."
+  ],
+  "critical_code_review_comments": [
+    "Route ordering: Always declare specific path routes (sweep, upgrade) BEFORE parametrized routes ({height}) in FastAPI. Fixed.",
+    "notary/routes.py /blocks endpoint sort + skip + limit pattern is correct, but to_list(limit) parameter is the absolute count, not page size — works because it equals limit param.",
+    "service.py notarize_event swallows all exceptions silently (logger.exception only). Acceptable for non-blocking notarization but should surface in /chain/status if accumulated failures occur.",
+    "models.py BlockResponse does not expose payload_data — good (sensitive data stays internal). chain_proof returned dict could be a typed model for stronger contract.",
+    "anchor.py background_loop polls every 30s — fine. Make sure it is started exactly once on app startup (not per-request) — already wired in server.py per request brief."
+  ],
+  "updated_files": [
+    "/app/backend/notary/routes.py (reordered /anchor/sweep, /anchor/upgrade above /anchor/{height})",
+    "/app/backend/tests/test_notary.py (created)"
+  ],
+  "success_rate": {"backend": "100% (15/15 executed; 1 skipped non-scope)", "frontend": "100% (Dashboard widget)"},
+  "test_credentials": "FREK_CLIENT_KILTIKONET_ID=kiltikonet-cc2026 / FREK_CLIENT_KILTIKONET_SECRET from /app/backend/.env. /app/memory/test_credentials.md does NOT exist — flagging.",
+  "seed_data_creation": "Tests created TEST_-prefixed FREK identities (TEST_notary_*, TEST_stage_*, TEST_ots_*) which appended ~6 blocks to the chain. Chain height grew from 2 to ~10 during testing. No teardown for these test identities (FREK module has no delete API).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Notary module is healthy. All 5 OpenTimestamps calendars (alice.btc, bob.btc, finney.btc, catallaxy.com, eternitywall) reachable. BTC confirmation total_btc_confirmed=0 is expected (BTC takes 1-6h). Routing fix applied. Test file at /app/backend/tests/test_notary.py is reusable as regression suite. /api/v1/notary/anchor/{height}, /anchor/sweep, /anchor/upgrade all require Bearer token with 'emit' permission.",
+  "rca_of_the_issue": "Routing 422 on /api/v1/notary/anchor/sweep & /anchor/upgrade. RCA: In FastAPI, routes are matched in declaration order; the parametrized /anchor/{height} (height: int) was declared first and matched the literal strings 'sweep'/'upgrade' attempting int parsing → 422 'Input should be a valid integer'. Mitigation: declare specific literal routes before parametrized catch-all. Already fixed in /app/backend/notary/routes.py."
+}

@@ -25,6 +25,10 @@ from event.routes import event_router, set_db as event_set_db
 from services.stripe_pay import stripe_router, set_db as stripe_set_db
 from services.webhook import webhook_router, set_db as webhook_set_db
 
+# Import FREK Notary (Bitcoin anchoring via OpenTimestamps)
+from notary.routes import notary_router, set_db as notary_set_db, get_chain as notary_get_chain, get_anchor as notary_get_anchor
+from notary.service import init_service as notary_init_service
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -44,6 +48,10 @@ email_set_db(db)
 event_set_db(db)
 stripe_set_db(db)
 webhook_set_db(db)
+
+# Initialize FREK Notary (Bitcoin anchoring)
+notary_set_db(db)
+notary_init_service(notary_get_chain(), notary_get_anchor())
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -108,6 +116,9 @@ app.include_router(email_router, prefix="/api")
 app.include_router(event_router, prefix="/api")
 app.include_router(stripe_router, prefix="/api")
 app.include_router(webhook_router, prefix="/api")
+
+# FREK Notary — Notaire Culturel Tech (Bitcoin)
+app.include_router(notary_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -179,7 +190,13 @@ async def seed_clients():
     await db.email_campaigns.create_index("timestamp")
     logger.info("CC2026 indexes crees")
 
+    # FREK Notary indexes + start background anchor loop
+    await notary_get_chain().ensure_indexes()
+    notary_get_anchor().start()
+    logger.info("FREK Notary (Bitcoin anchoring) demarre")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    notary_get_anchor().stop()
     client.close()
