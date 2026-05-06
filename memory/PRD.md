@@ -59,28 +59,38 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - [x] Email templates (8 campagnes)
 - [x] Event J-0 (7 zones, scan, NFC, live stats)
 - [x] FREK Notary — Bitcoin anchoring (FREK-Chain + OpenTimestamps)
-- [x] Auto-notarisation sur identity_emit + stage_transition + access_scan + jeton_tx + walkin_emit
-- [x] Page Verify — preuve Bitcoin + telechargement .ots
+- [x] Auto-notarisation sur identity_emit + stage_transition + access_scan + jeton_tx + walkin_emit + revocation + renewal
+- [x] Page Verify — preuve Bitcoin + telechargement .ots + statut + timeline humaine
 - [x] Dashboard widget Notary
-- [x] **PWA Scanner Staff** — route `/scan/*` (login PIN, 3 modes : Acces / Cashless / Emission, queue offline IndexedDB, sync replay-safe)
-- [x] **Idempotence end-to-end** via client_uuid (replay-safe scan + cashless)
-- [x] **PWA installable** — manifest + service worker
+- [x] PWA Scanner Staff — `/scan/*` (login PIN, 3 modes, queue offline IndexedDB, sync replay-safe)
+- [x] Idempotence end-to-end via client_uuid (replay-safe)
+- [x] PWA installable — manifest + service worker
+- [x] **A.1 Revocation immutable** — block CRL-like sur FREK-Chain, idempotent, bloque scan PWA terrain
+- [x] **A.2 Cycle de vie** — `expires_at` + endpoint `/renew` (validation date future), bloque scan terrain si expire
+- [x] **E.4 Audit trail humain** — `/api/v1/audit/{frek_id}` (public, lisible francais), `/audit/agent/{id}` (auth), `/audit/event/{event}` (perm stats)
 
-## Backlog
-- [ ] **P0** : Page publique "FREK Certified" — standard reutilisable post-CC2026 par d'autres orgas (l'API publique de notariat + FREK-ID, hors business Kiltikonet)
+## Backlog (Phase 2+)
+- [ ] **P0** : **Phase 2 Couche B** — Multi-tenant strict (event_id dans blocks, queries scopees, self-service `/admin/clients`) + Spec versionnee (`spec_version` dans chaque block, doc /spec/v1.0.0 figee)
 - [ ] **P0** : Verifier frekcore@gmail.com dans AWS SES + sortir du sandbox
-- [ ] **P1** : Open API "FREK Certified" (doc developpeur + cle publique pour clients tiers)
+- [ ] **P1** : **Phase 3 Couche C** — Portabilite passeport (export passport.json signe Ed25519) + Confidentialite selective (claims partiels)
+- [ ] **P1** : **Phase 4 Couche D** — W3C DID + Verifiable Credentials export (`did:frek:{frek_id}`)
+- [ ] **P1** : Bcrypt sur PIN staff
 - [ ] **P1** : FREK Card NFC bindings (cartes physiques)
-- [ ] **P1** : Bcrypt sur PIN staff (actuellement SHA256+salt — acceptable mais perfectible)
+- [ ] **P2** : **Phase 5 Couche A.8** — Heritage / transmission (block transfer + beneficiary)
+- [ ] **P2** : **Phase 5 Couche F.10** — Monetisation standard (rate limit + tier paid)
 - [ ] **P2** : FREK-Chain block explorer public
 - [ ] **P2** : Baserow bi-directional sync
 - [ ] **P2** : Export PDF batch Twina (J-15)
-- [ ] **P2** : NFC Web API integration native dans PWA (au-dela du scan QR)
 
 ## Frontiere Kiltikonet ↔ FREKCORE (ne pas confondre)
 - **Kiltikonet** = couche business : page publique d'achat jetons en EUR (Stripe), CRM, billetterie, relation client. Site : kiltikonet.com.
-- **FREKCORE** = couche certification + infra terrain : API `/api/jetons/*` consommee par Kiltikonet pour crediter le wallet, PWA Scanner Staff pour debits cashless on-site, notariat Bitcoin de chaque mouvement. Site : frekcore.com.
-- L'achat public de jetons en EUR n'est JAMAIS exposee sur frekcore.com. FREK certifie et gere l'infra ; Kiltikonet vend.
+- **FREKCORE** = couche certification + infra terrain : API `/api/jetons/*` consommee par Kiltikonet pour crediter le wallet, PWA Scanner Staff pour debits cashless on-site, notariat Bitcoin de chaque mouvement. Site : frekcore.com (autorite silencieuse).
+- L'achat public de jetons en EUR n'est JAMAIS exposee sur frekcore.com.
+
+## Phase 1 Governance — Livree (iteration_14, 24/24 backend, frontend OK)
+- **A.1 Revocation immutable** : `POST /identity/{id}/revoke` → block `revocation` ancre Bitcoin, identite marquee mais preuve historique conservee, idempotent
+- **A.2 Cycle de vie** : `expires_at` dans emit/renew, validation date future, scan PWA bloque revoque/expire (403)
+- **E.4 Audit trail humain** : timeline lisible francais agregee depuis stages/scans/transactions/notary blocks, public sur /verify, auth pour agent et event
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min

@@ -253,6 +253,23 @@ async def renew_identity(
     if identity.get("revoked"):
         raise HTTPException(status_code=400, detail="Identite revoquee, renouvellement impossible")
 
+    # Validation : expires_at doit etre dans le futur (si fourni)
+    if request.expires_at:
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+            new_exp = _dt.fromisoformat(request.expires_at.replace("Z", "+00:00"))
+            if new_exp.tzinfo is None:
+                new_exp = new_exp.replace(tzinfo=_tz.utc)
+            if new_exp <= _dt.now(_tz.utc):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"expires_at doit etre dans le futur (recu: {request.expires_at})",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"expires_at invalide (ISO 8601 attendu): {request.expires_at}")
+
     now = now_iso()
     previous = identity.get("expires_at")
     await db.frek_identities.update_one(
