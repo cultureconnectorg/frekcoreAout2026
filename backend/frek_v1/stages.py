@@ -101,6 +101,7 @@ async def record_stage(
             "source": request.source,
         },
         metadata={"client_id": client["client_id"]},
+        event_id=identity.get("event"),
     )
 
     return StageResponse(

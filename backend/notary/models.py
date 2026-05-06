@@ -19,6 +19,8 @@ class BlockResponse(BaseModel):
     block_hash: str
     timestamp: str
     metadata: dict
+    event_id: Optional[str] = None
+    spec_version: str = "1.0.0"
     btc_anchored: bool = False
     btc_block_height: Optional[int] = None
     btc_attestation_time: Optional[str] = None
@@ -36,6 +38,7 @@ class ProofResponse(BaseModel):
 
 class ChainStatusResponse(BaseModel):
     height: int
+    spec_version: str = "1.0.0"
     genesis_at: Optional[str]
     last_block_at: Optional[str]
     last_block_hash: str
@@ -45,6 +48,7 @@ class ChainStatusResponse(BaseModel):
     last_anchor_at: Optional[str]
     integrity_ok: bool
     calendars: List[str]
+    events: Optional[List[str]] = Field(default_factory=list, description="Liste des event_id uniques")
 
 
 class VerifyResponse(BaseModel):

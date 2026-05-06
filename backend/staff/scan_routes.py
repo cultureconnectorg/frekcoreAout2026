@@ -34,10 +34,10 @@ def _client_id() -> str:
 
 
 # Lazy import notarize_event (avoid circular)
-async def _notarize(payload_type: str, payload_id: str, payload_data: dict, metadata: dict):
+async def _notarize(payload_type: str, payload_id: str, payload_data: dict, metadata: dict, event_id: Optional[str] = None):
     try:
         from notary.service import notarize_event
-        await notarize_event(payload_type, payload_id, payload_data, metadata)
+        await notarize_event(payload_type, payload_id, payload_data, metadata, event_id=event_id)
     except Exception as e:
         logger.warning(f"Notarize failed: {e}")
 
@@ -217,6 +217,7 @@ async def scan_access(
             "timestamp": now,
         },
         {"agent_id": staff["agent_id"], "client_id": _client_id()},
+        event_id=badge.get("event"),
     )
 
     # Trigger EMISSION stage if scene/vip/backstage
@@ -336,6 +337,7 @@ async def scan_cashless(
             "timestamp": now,
         },
         {"agent_id": staff["agent_id"], "client_id": _client_id()},
+        event_id=badge.get("event"),
     )
 
     return {"transaction": tx, "new_solde": new_solde, "marchand": marchand.get("nom")}
@@ -434,6 +436,7 @@ async def scan_emit_walkin(
             "timestamp": now,
         },
         {"agent_id": staff["agent_id"], "client_id": _client_id()},
+        event_id=request.event,
     )
 
     badge_doc.pop("_id", None)

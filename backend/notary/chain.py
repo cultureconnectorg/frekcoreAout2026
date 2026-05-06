@@ -4,7 +4,7 @@ Tamper-evident, real-time, zero-cost.
 
 Each block links to previous via SHA256.
 Genesis: prev_hash = '0' * 64.
-block_hash = SHA256(height || prev_hash || payload_hash || payload_type || payload_id || timestamp)
+block_hash = SHA256(height || prev_hash || payload_hash || payload_type || payload_id || timestamp || event_id || spec_version)
 """
 import hashlib
 import json
@@ -16,6 +16,7 @@ logger = logging.getLogger("frek.notary.chain")
 
 GENESIS_PREV_HASH = "0" * 64
 STATE_DOC_ID = "frek_chain_state"
+FREK_SPEC_VERSION = "1.0.0"
 
 
 def _canonical_json(data: dict) -> str:
@@ -36,9 +37,12 @@ def compute_block_hash(
     payload_type: str,
     payload_id: str,
     timestamp: str,
+    event_id: Optional[str] = None,
+    spec_version: str = FREK_SPEC_VERSION,
 ) -> str:
-    """Deterministic block hash."""
-    s = f"{height}|{prev_hash}|{payload_hash}|{payload_type}|{payload_id}|{timestamp}"
+    """Deterministic block hash (incluant event_id + spec_version)."""
+    eid = event_id or ""
+    s = f"{height}|{prev_hash}|{payload_hash}|{payload_type}|{payload_id}|{timestamp}|{eid}|{spec_version}"
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
@@ -60,6 +64,8 @@ class FrekChain:
         await self.blocks.create_index("payload_id")
         await self.blocks.create_index("payload_type")
         await self.blocks.create_index([("btc_anchored", 1), ("height", 1)])
+        await self.blocks.create_index("event_id", sparse=True)
+        await self.blocks.create_index("spec_version")
 
     async def _get_state(self) -> dict:
         st = await self.state.find_one({"_id": STATE_DOC_ID}, {"_id": 0})
@@ -82,6 +88,8 @@ class FrekChain:
         payload_id: str,
         payload_data: dict,
         metadata: Optional[dict] = None,
+        event_id: Optional[str] = None,
+        spec_version: str = FREK_SPEC_VERSION,
     ) -> dict:
         """Append a new block to the chain. Returns the inserted block dict."""
         st = await self._get_state()
@@ -90,7 +98,7 @@ class FrekChain:
         ts = now_iso()
         p_hash = hash_payload(payload_data)
         b_hash = compute_block_hash(
-            height, prev_hash, p_hash, payload_type, payload_id, ts
+            height, prev_hash, p_hash, payload_type, payload_id, ts, event_id, spec_version,
         )
 
         block = {
@@ -103,6 +111,8 @@ class FrekChain:
             "metadata": metadata or {},
             "timestamp": ts,
             "block_hash": b_hash,
+            "event_id": event_id,
+            "spec_version": spec_version,
             "ots_submitted": False,
             "ots_calendars": [],
             "ots_proof": None,
@@ -122,7 +132,7 @@ class FrekChain:
         await self.state.update_one(
             {"_id": STATE_DOC_ID}, {"$set": update}, upsert=True
         )
-        logger.info(f"FREK-Chain block #{height} appended ({payload_type}:{payload_id})")
+        logger.info(f"FREK-Chain block #{height} appended ({payload_type}:{payload_id} event:{event_id})")
         block.pop("_id", None)
         return block
 
@@ -140,13 +150,16 @@ class FrekChain:
         )
 
     async def verify_chain(self, limit: Optional[int] = None) -> dict:
-        """Walk the chain and verify each block's hash + linkage."""
+        """Walk the chain and verify each block's hash + linkage.
+        Backwards compat: blocks anciens (sans event_id/spec_version) verifies en mode v0.
+        """
         cursor = self.blocks.find({}, {"_id": 0}).sort("height", 1)
         if limit:
             cursor = cursor.limit(limit)
         prev = GENESIS_PREV_HASH
         checked = 0
         async for blk in cursor:
+            # Recompute with current schema (event_id + spec_version present)
             recomputed = compute_block_hash(
                 blk["height"],
                 blk["prev_hash"],
@@ -154,6 +167,8 @@ class FrekChain:
                 blk["payload_type"],
                 blk["payload_id"],
                 blk["timestamp"],
+                blk.get("event_id"),
+                blk.get("spec_version", FREK_SPEC_VERSION),
             )
             if blk["prev_hash"] != prev:
                 return {
@@ -163,12 +178,17 @@ class FrekChain:
                     "reason": "prev_hash_mismatch",
                 }
             if recomputed != blk["block_hash"]:
-                return {
-                    "valid": False,
-                    "blocks_checked": checked,
-                    "first_invalid_height": blk["height"],
-                    "reason": "block_hash_mismatch",
-                }
+                # Backwards-compat : try legacy v0 hash (no event_id, no spec_version)
+                legacy = hashlib.sha256(
+                    f"{blk['height']}|{blk['prev_hash']}|{blk['payload_hash']}|{blk['payload_type']}|{blk['payload_id']}|{blk['timestamp']}".encode("utf-8")
+                ).hexdigest()
+                if legacy != blk["block_hash"]:
+                    return {
+                        "valid": False,
+                        "blocks_checked": checked,
+                        "first_invalid_height": blk["height"],
+                        "reason": "block_hash_mismatch",
+                    }
             prev = blk["block_hash"]
             checked += 1
         return {"valid": True, "blocks_checked": checked, "first_invalid_height": None}

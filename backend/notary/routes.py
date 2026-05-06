@@ -53,6 +53,8 @@ def _to_block_response(blk: dict) -> BlockResponse:
         block_hash=blk["block_hash"],
         timestamp=blk["timestamp"],
         metadata=blk.get("metadata") or {},
+        event_id=blk.get("event_id"),
+        spec_version=blk.get("spec_version", "1.0.0"),
         btc_anchored=blk.get("btc_anchored", False),
         btc_block_height=blk.get("btc_block_height"),
         btc_attestation_time=blk.get("btc_attestation_time"),
@@ -90,10 +92,17 @@ async def get_block_by_height(height: int):
 async def list_blocks(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    event_id: Optional[str] = Query(None, description="Filtre sur event_id"),
+    payload_type: Optional[str] = Query(None, description="Filtre sur payload_type"),
 ):
     chain = get_chain()
+    query = {}
+    if event_id:
+        query["event_id"] = event_id
+    if payload_type:
+        query["payload_type"] = payload_type
     cursor = (
-        chain.blocks.find({}, {"_id": 0, "ots_proof": 0, "payload_data": 0})
+        chain.blocks.find(query, {"_id": 0, "ots_proof": 0, "payload_data": 0})
         .sort("height", -1)
         .skip(offset)
         .limit(limit)
@@ -198,8 +207,12 @@ async def chain_status():
         {"ots_submitted": True, "btc_anchored": False}
     )
     integrity = await chain.verify_chain(limit=200)
+    events = await chain.blocks.distinct("event_id")
+    events = [e for e in events if e]
+    from .chain import FREK_SPEC_VERSION
     return ChainStatusResponse(
         height=state.get("height", 0),
+        spec_version=FREK_SPEC_VERSION,
         genesis_at=state.get("genesis_at"),
         last_block_at=state.get("last_block_at"),
         last_block_hash=state.get("last_block_hash", "0" * 64),
@@ -209,7 +222,40 @@ async def chain_status():
         last_anchor_at=state.get("last_anchor_at"),
         integrity_ok=bool(integrity.get("valid")),
         calendars=get_anchor().calendars,
+        events=sorted(events),
     )
+
+
+@notary_router.get("/chain/events")
+async def chain_events_summary():
+    """Resume par event_id : nombre de blocs, types, derniers blocks."""
+    chain = get_chain()
+    pipeline = [
+        {"$match": {"event_id": {"$ne": None}}},
+        {"$group": {
+            "_id": "$event_id",
+            "blocks": {"$sum": 1},
+            "btc_anchored": {"$sum": {"$cond": ["$btc_anchored", 1, 0]}},
+            "first_block_at": {"$min": "$timestamp"},
+            "last_block_at": {"$max": "$timestamp"},
+            "payload_types": {"$addToSet": "$payload_type"},
+        }},
+        {"$sort": {"last_block_at": -1}},
+    ]
+    rows = await chain.blocks.aggregate(pipeline).to_list(500)
+    return {
+        "events": [
+            {
+                "event_id": r["_id"],
+                "blocks": r["blocks"],
+                "btc_anchored": r["btc_anchored"],
+                "first_block_at": r["first_block_at"],
+                "last_block_at": r["last_block_at"],
+                "payload_types": sorted(r["payload_types"]),
+            }
+            for r in rows
+        ],
+    }
 
 
 @notary_router.get("/chain/verify", response_model=VerifyResponse)

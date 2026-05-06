@@ -106,6 +106,7 @@ async def emit_identity(
             "created_at": now,
         },
         metadata={"client_id": client["client_id"]},
+        event_id=request.event,
     )
 
     return EmitResponse(
@@ -225,6 +226,7 @@ async def revoke_identity(
             "reason": request.reason,
         },
         metadata={"client_id": client["client_id"]},
+        event_id=identity.get("event"),
     )
 
     logger.info(f"FREK-ID {frek_id} revoque par {client['client_id']} - raison: {request.reason}")
@@ -288,6 +290,7 @@ async def renew_identity(
             "reason": request.reason,
         },
         metadata={"client_id": client["client_id"]},
+        event_id=identity.get("event"),
     )
 
     logger.info(f"FREK-ID {frek_id} renouvele par {client['client_id']}")

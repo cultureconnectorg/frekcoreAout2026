@@ -25,6 +25,7 @@ async def notarize_event(
     payload_data: dict,
     metadata: Optional[dict] = None,
     submit_now: bool = True,
+    event_id: Optional[str] = None,
 ) -> Optional[dict]:
     """Append a block to FREK-Chain. Submit to OTS in background. Never raises."""
     if _chain is None:
@@ -36,6 +37,7 @@ async def notarize_event(
             payload_id=payload_id,
             payload_data=payload_data,
             metadata=metadata or {},
+            event_id=event_id,
         )
         if submit_now and _anchor is not None:
             asyncio.create_task(_anchor.submit_block(blk["height"]))

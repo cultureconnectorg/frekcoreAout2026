@@ -31,6 +31,8 @@ async def get_current_client(authorization: Optional[str] = Header(None)):
         )
         if not client:
             raise HTTPException(status_code=401, detail="Client inconnu")
+        if client.get("active") is False:
+            raise HTTPException(status_code=401, detail="Client desactive")
         return client
     except HTTPException:
         raise
@@ -59,6 +61,8 @@ async def get_token(request: TokenRequest):
     )
     if not client:
         raise HTTPException(status_code=401, detail="Client inconnu")
+    if client.get("active") is False:
+        raise HTTPException(status_code=401, detail="Client desactive")
 
     if client["secret_hash"] != hash_secret(request.client_secret):
         raise HTTPException(status_code=401, detail="Secret invalide")

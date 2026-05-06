@@ -127,6 +127,14 @@ class CreateClientRequest(BaseModel):
     client_id: str
     name: str
     permissions: List[str] = Field(..., description="ex: ['emit', 'stage', 'stats']")
+    event: Optional[str] = Field(None, description="Event_id principal du client (ex: CC2026)")
+
+
+class UpdateClientRequest(BaseModel):
+    name: Optional[str] = None
+    permissions: Optional[List[str]] = None
+    active: Optional[bool] = None
+    event: Optional[str] = None
 
 
 class ClientInfoResponse(BaseModel):
@@ -134,3 +142,7 @@ class ClientInfoResponse(BaseModel):
     name: str
     permissions: List[str]
     created_at: str
+    active: bool = True
+    event: Optional[str] = None
+    last_used_at: Optional[str] = None
+    rotated_at: Optional[str] = None
