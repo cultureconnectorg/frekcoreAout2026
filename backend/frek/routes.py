@@ -7,6 +7,7 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, Form
 from pydantic import BaseModel, Field
 from typing import Optional, List
 import base64
+import os
 
 from .pipeline import pipeline
 from .routes_advanced import advanced_router
@@ -176,8 +177,9 @@ async def get_qr_code(frek_id: str):
         raise HTTPException(status_code=404, detail=f"FREK-ID {frek_id} introuvable")
     
     # Générer le QR code
+    app_url = os.environ.get('APP_URL', 'https://frekcore.com')
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
-    qr.add_data(f"https://frekcore.com/verify/{frek_id}")
+    qr.add_data(f"{app_url}/verify/{frek_id}")
     qr.make(fit=True)
     
     img = qr.make_image(fill_color="black", back_color="white")

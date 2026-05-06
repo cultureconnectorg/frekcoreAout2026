@@ -235,8 +235,8 @@ async def seed_clients():
 
     # FREK Staff PWA — seed comptes terrain + indexes
     await db.staff.create_index("agent_id", unique=True)
-    await db.scans.create_index("client_uuid", sparse=True)
-    await db.transactions.create_index("client_uuid", sparse=True)
+    await db.scans.create_index("client_uuid", unique=True, sparse=True)
+    await db.transactions.create_index("client_uuid", unique=True, sparse=True)
     await db.frek_identities.create_index("revoked", sparse=True)
     await db.frek_identities.create_index("expires_at", sparse=True)
     await db.scans.create_index("agent_id", sparse=True)
@@ -250,6 +250,10 @@ async def seed_clients():
     await security_ensure_indexes()
     await db.staff.create_index("locked_until", sparse=True)
     await db.staff.create_index("failed_attempts", sparse=True)
+    # Compound index event+timestamp pour requetes audit/event scopees
+    await db.scans.create_index([("event", 1), ("timestamp", -1)])
+    await db.transactions.create_index([("event", 1), ("timestamp", -1)])
+    await db.frek_stages.create_index([("event", 1), ("timestamp", -1)], sparse=True)
     await seed_default_staff()
     logger.info("FREK Staff PWA — comptes seedes")
 

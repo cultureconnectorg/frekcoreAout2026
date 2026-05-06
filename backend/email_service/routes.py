@@ -23,6 +23,7 @@ db = None
 # SES config
 AWS_REGION = os.environ.get("AWS_SES_REGION", "eu-west-1")
 SES_SENDER = "Culture Connect 2026 <frekcore@gmail.com>"
+APP_URL = os.environ.get("APP_URL", "https://frekcore.com")
 
 CAMPAIGN_TYPES = {
     "bienvenue": {"subject": "Bienvenue Culture Connect 2026", "trigger": "inscription"},
@@ -225,7 +226,7 @@ async def send_email(
         "badge_id": badge["badge_id"],
         "frek_id": badge.get("frek_id", ""),
         "type_badge": badge.get("type_name", badge.get("type_badge", "")),
-        "qr_url": f"https://frekcore.com/activate/{badge.get('qr_token', '')}",
+        "qr_url": f"{APP_URL}/activate/{badge.get('qr_token', '')}",
         "jetons_solde": badge.get("jetons_solde", 0),
         "event_date": "22 Mai 2026",
     }
@@ -276,7 +277,7 @@ async def launch_campaign(
             "badge_id": badge["badge_id"],
             "frek_id": badge.get("frek_id", ""),
             "type_badge": badge.get("type_name", ""),
-            "qr_url": f"https://frekcore.com/activate/{badge.get('qr_token', '')}",
+            "qr_url": f"{APP_URL}/activate/{badge.get('qr_token', '')}",
             "jetons_solde": badge.get("jetons_solde", 0),
         }
         html = _render_template(request.campaign_type, variables)
