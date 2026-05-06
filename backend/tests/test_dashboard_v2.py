@@ -161,8 +161,8 @@ class TestAdminEndpointsXAdminKey:
         
         print(f"✓ GET /api/v1/admin/clients - {len(data['clients'])} clients (public endpoint)")
     
-    def test_create_client_without_admin_key_returns_422(self):
-        """POST /api/v1/admin/clients without X-Admin-Key returns 422 (validation error)"""
+    def test_create_client_without_admin_key_returns_403(self):
+        """POST /api/v1/admin/clients without X-Admin-Key returns 403 (intentional silence)"""
         response = requests.post(
             f"{BASE_URL}/api/v1/admin/clients",
             json={
@@ -171,9 +171,9 @@ class TestAdminEndpointsXAdminKey:
                 "permissions": ["stats"]
             }
         )
-        # Without X-Admin-Key header, FastAPI returns 422 (missing required header)
-        assert response.status_code == 422, f"Expected 422 without X-Admin-Key, got {response.status_code}"
-        print("✓ POST /api/v1/admin/clients without X-Admin-Key returns 422")
+        # Without X-Admin-Key header, Phase 2.5 returns 403 (silence de l'autorite)
+        assert response.status_code == 403, f"Expected 403 without X-Admin-Key, got {response.status_code}"
+        print("✓ POST /api/v1/admin/clients without X-Admin-Key returns 403")
     
     def test_create_client_with_invalid_admin_key_returns_403(self):
         """POST /api/v1/admin/clients with invalid X-Admin-Key returns 403"""
@@ -209,11 +209,11 @@ class TestAdminEndpointsXAdminKey:
         assert "client_secret" in data
         print(f"✓ POST /api/v1/admin/clients with valid X-Admin-Key - created {new_client_id}")
     
-    def test_delete_client_without_admin_key_returns_422(self):
-        """DELETE /api/v1/admin/clients/{id} without X-Admin-Key returns 422"""
+    def test_delete_client_without_admin_key_returns_403(self):
+        """DELETE /api/v1/admin/clients/{id} without X-Admin-Key returns 403 (Phase 2.5 silence)"""
         response = requests.delete(f"{BASE_URL}/api/v1/admin/clients/nonexistent-client")
-        assert response.status_code == 422, f"Expected 422 without X-Admin-Key, got {response.status_code}"
-        print("✓ DELETE /api/v1/admin/clients/{id} without X-Admin-Key returns 422")
+        assert response.status_code == 403, f"Expected 403 without X-Admin-Key, got {response.status_code}"
+        print("✓ DELETE /api/v1/admin/clients/{id} without X-Admin-Key returns 403")
     
     def test_delete_client_with_invalid_admin_key_returns_403(self):
         """DELETE /api/v1/admin/clients/{id} with invalid X-Admin-Key returns 403"""
@@ -247,11 +247,11 @@ class TestRGPDDeletionEndpoint:
         })
         return response.json()["access_token"]
     
-    def test_rgpd_delete_without_admin_key_returns_422(self):
-        """DELETE /api/v1/admin/identity/{id}/gdpr without X-Admin-Key returns 422"""
+    def test_rgpd_delete_without_admin_key_returns_403(self):
+        """DELETE /api/v1/admin/identity/{id}/gdpr without X-Admin-Key returns 403 (Phase 2.5 silence)"""
         response = requests.delete(f"{BASE_URL}/api/v1/admin/identity/fake-frek-id/gdpr")
-        assert response.status_code == 422, f"Expected 422 without X-Admin-Key, got {response.status_code}"
-        print("✓ RGPD delete without X-Admin-Key returns 422")
+        assert response.status_code == 403, f"Expected 403 without X-Admin-Key, got {response.status_code}"
+        print("✓ RGPD delete without X-Admin-Key returns 403")
     
     def test_rgpd_delete_with_invalid_admin_key_returns_403(self):
         """DELETE /api/v1/admin/identity/{id}/gdpr with invalid X-Admin-Key returns 403"""

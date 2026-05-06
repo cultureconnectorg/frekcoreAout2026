@@ -94,6 +94,14 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Index** : token_hash, frek_clients.active, frek_clients.event
 - **Frontend** : Dashboard widget Multi-event affiche events agreges + spec_version sur Notary panel
 
+## Phase 2.5 Security Hardening — Livree (iteration_16, 16/16 + regression 57/57 OK)
+- **Rate limit silencieux** : sliding window MongoDB (scope, action). Defaut 100/h emit, 500/h stage, 5000/h scan. **HTTP 429 sans Retry-After, sans detail explicatif**. Anomaly enregistre `kind=rate_limit_hit` severity=warning. Configurable via env FREK_RATE_*_PER_HOUR.
+- **Brute-force PIN lockout** : 5 echecs en 15min => locked_until=+15min. 401 generique 'Agent ou PIN invalide' (pas de differentiation attaquant). Anomaly `kind=staff_lockout`. Unlock auto OU manuel.
+- **Anomaly trail interne** : collection `security_events` + endpoints `/admin/security/{events,lockouts,staff/{id}/unlock}` (X-Admin-Key only). Aucune fuite vers public. Webhook optionnel `FREK_SECURITY_WEBHOOK_URL`.
+- **Secret rotation sans downtime** : `POST /admin/clients/{id}/rotate` (deja Phase 2) revoque vraiment les tokens en cours via `token_hash` lookup. 401 immediate sur ancien JWT.
+- **Spec ouverture sectorielle** (sans changer la nature de FREK) : 10 secteurs documentes (culture, education, health, justice, finance, telecom, media, phygital, tech, identity) + extension_model + sector_examples + section security_policies. Spec reste figee a v1.0.0 (ajout retrocompatible).
+- **Migration tests stales** : 3 tests dashboard_v2 mis a jour (422 -> 403 conforme Phase 2.5)
+
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min
 - BTC confirmation : 1-6h apres soumission (gratuit)
