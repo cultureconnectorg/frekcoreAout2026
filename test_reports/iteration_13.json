@@ -1,0 +1,42 @@
+{
+  "summary": "PWA Scanner Staff (FREK CC2026) tested end-to-end. Backend: 19/19 pytest passed (login matrix, /me, zones, marchands permission, badge lookup, walk-in emit + idempotency, access scan + chain notarize, cashless payment with real recharge, sync replay permission matrix, PWA assets, notary regression). Frontend: 100% pass — all data-testids present, redirect /scan -> /scan/login works, ACCES-01/2222 sees only mode-access enabled, SUPERVISEUR-01/9999 sees all 3 modes enabled, CASHLESS-01 cashless page renders all controls (marchand-select, montant-input, quick-1/2/5/10, pay-btn) and quick-5 correctly fills montant=5, EMISSION-01 emit form renders all fields, /scan/queue empty state renders with disabled flush-btn. PWA manifest + service worker served HTTP 200. One latent backend bug found (non-blocking via UI).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/v1/staff/scan/emit", "issue": "WalkinEmitRequest.type_badge has Pydantic default 'PARTICIPANT' which is NOT in badges.nomenclature.BADGE_TYPES (valid types: ART/INT/STF/BNV/PRS/VIP/OFF/SPO/EXP-*). Calling /scan/emit without type_badge -> 400. Frontend always sends a valid value via emit-type <select> (default BNV) so this never surfaces in UI flow, but the API contract default is broken. Fix: change default to 'BNV' (or any valid key) in /app/backend/staff/scan_routes.py:WalkinEmitRequest."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/scan/emit", "issues": ["Native browser <select> used for emit-type (TYPE BADGE). Acceptable for mobile PWA (better mobile UX than custom dropdown), but inconsistent with shadcn UI used elsewhere in app."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_staff_scan.py",
+    "/app/test_reports/pytest/pytest_staff_scan_results.xml"
+  ],
+  "action_items": [
+    "Optional: in /app/backend/staff/scan_routes.py change WalkinEmitRequest.type_badge default from 'PARTICIPANT' to a valid key (e.g. 'BNV'). Low priority — UI never relies on the default."
+  ],
+  "critical_code_review_comments": [
+    "scan_routes.py: WalkinEmitRequest default 'PARTICIPANT' is not a valid BADGE_TYPES key — see minor issue above.",
+    "scan_routes.py: _notarize swallows all exceptions silently (warning log only). Acceptable for fire-and-forget but accumulating notarize failures will not surface anywhere actionable.",
+    "scan_routes.py: scan/access does not idempotency-check on (badge_id, zone, agent_id, day) — a double-tap will create 2 scan rows + 2 EMISSION stages for SCENE/VIP/BACKSTAGE. Sync replay can amplify this. Consider client_uuid dedupe on db.scans.",
+    "scan_routes.py: /scan/sync trusts client_uuid only as a label; there's no dedupe by client_uuid against past inserts -> a flaky network can replay the same action and double-debit jetons or double-create badges (walk-in is email_hash idempotent so emit is OK, but access + cashless are NOT). Recommend: store client_uuid on scans/transactions and reject duplicates inside _resolve+sync.",
+    "routes.py: PIN hashing uses SHA-256 with a salt from env. For 4-digit PINs this is vulnerable to rainbow table even with salt — consider bcrypt or argon2 for the staff_pin_hash field. Low risk because auth surface is small + tokens rotate every 8h.",
+    "Frontend ScanLogin: PIN field accepts up to 6/8 digits but no UI cap shown — visually OK as buttons disable after 6.",
+    "PWA: scan-sw.js is served and manifest is reachable. Did not test offline cache strategy (out of headless test scope)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_staff_scan.py (new)"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% (18/18 assertions across 2 scripts)"},
+  "test_credentials": "Staff PINs: SUPERVISEUR-01/9999, EMISSION-01/1111, ACCES-01/2222, CASHLESS-01/3333. Kiltikonet client: kiltikonet-cc2026 / pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k.",
+  "seed_data_creation": "Created 1 walk-in TEST_walkin_*@example.com badge with 10 jetons recharged then 3 jetons paid to first marchand (Ti Punch Lokal). Inserted 1 access scan to ENTREE for ACCES-01. No cleanup (FREK has no delete API).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All staff PWA endpoints are healthy. The /api/v1/staff/scan/sync replay endpoint correctly enforces per-action permission gating (agent_acces blocked from cashless/emit). Notary chain currently at height ~14, integrity_ok=true. Reusable regression: /app/backend/tests/test_staff_scan.py + existing /app/backend/tests/test_notary.py. Minor backend bug to fix is the WalkinEmitRequest default type_badge='PARTICIPANT' (not a valid key).",
+  "rca_of_the_issue": "WalkinEmitRequest.type_badge='PARTICIPANT' default in /app/backend/staff/scan_routes.py predates badges/nomenclature.py BADGE_TYPES which only defines ART/INT/STF/BNV/PRS/VIP/OFF/SPO/EXP-B/EXP-S/EXP-G/EXP-P/EXP-D/EXP-VIP. Calls without type_badge return 400. Mitigation: replace default with a valid key like 'BNV'."
+}

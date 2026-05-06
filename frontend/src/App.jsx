@@ -12,6 +12,7 @@ import { Disclosure } from './pages/Disclosure';
 import { Imprint } from './pages/Imprint';
 import { Help } from './pages/Help';
 import Dashboard from './pages/Dashboard';
+import ScanApp from './scan/ScanApp';
 
 // Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
@@ -65,6 +66,9 @@ function App() {
         <Route path="/imprint" element={<Imprint />} />
         <Route path="/help" element={<Help />} />
         <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* PWA Scanner Staff terrain */}
+        <Route path="/scan/*" element={<ScanApp />} />
         
         {/* Redirections anciennes URLs */}
         <Route path="/certify" element={<Navigate to="/" replace />} />

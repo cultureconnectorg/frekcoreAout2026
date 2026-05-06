@@ -29,6 +29,10 @@ from services.webhook import webhook_router, set_db as webhook_set_db
 from notary.routes import notary_router, set_db as notary_set_db, get_chain as notary_get_chain, get_anchor as notary_get_anchor
 from notary.service import init_service as notary_init_service
 
+# Import FREK Staff PWA (Scanner terrain)
+from staff.routes import staff_router, set_db as staff_set_db, seed_default_staff
+from staff.scan_routes import scan_router, set_db as scan_set_db
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -52,6 +56,10 @@ webhook_set_db(db)
 # Initialize FREK Notary (Bitcoin anchoring)
 notary_set_db(db)
 notary_init_service(notary_get_chain(), notary_get_anchor())
+
+# Initialize FREK Staff PWA
+staff_set_db(db)
+scan_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -119,6 +127,10 @@ app.include_router(webhook_router, prefix="/api")
 
 # FREK Notary — Notaire Culturel Tech (Bitcoin)
 app.include_router(notary_router, prefix="/api/v1")
+
+# FREK Staff PWA (Scanner terrain : auth PIN + scan QR/NFC)
+app.include_router(staff_router, prefix="/api/v1")
+app.include_router(scan_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -194,6 +206,11 @@ async def seed_clients():
     await notary_get_chain().ensure_indexes()
     notary_get_anchor().start()
     logger.info("FREK Notary (Bitcoin anchoring) demarre")
+
+    # FREK Staff PWA — seed comptes terrain + indexes
+    await db.staff.create_index("agent_id", unique=True)
+    await seed_default_staff()
+    logger.info("FREK Staff PWA — comptes seedes")
 
 
 @app.on_event("shutdown")

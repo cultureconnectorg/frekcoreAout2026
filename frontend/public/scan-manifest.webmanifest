@@ -1,0 +1,21 @@
+{
+  "name": "FREK Scanner CC2026",
+  "short_name": "FREK Scan",
+  "description": "PWA terrain CC2026 — Scan QR/NFC, contrôle d'accès, paiement cashless, émission walk-in",
+  "start_url": "/scan",
+  "scope": "/scan",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#f7931a",
+  "icons": [
+    {
+      "src": "/frek-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "fr"
+}
