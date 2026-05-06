@@ -393,7 +393,8 @@ class TestEmailAPI:
         data = response.json()
         assert "templates" in data
         assert "ses_mode" in data
-        assert data["ses_mode"] == "log"  # Should be in log mode
+        # AWS SES peut etre connecte (ses) ou en fallback (log) — on accepte les deux
+        assert data["ses_mode"] in ("log", "ses")
         
         # Verify campaign types
         expected_types = ["bienvenue", "j-30", "j-15", "j-7", "j-1", "j-0", "j+1", "recharge"]

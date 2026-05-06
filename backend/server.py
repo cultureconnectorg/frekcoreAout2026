@@ -173,6 +173,38 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+async def _ensure_unique_sparse_index(collection, field: str):
+    """Cree un index unique partiel sur `field` (uniquement quand non-null/present).
+
+    Utilise partialFilterExpression au lieu de sparse pour eviter les conflits sur null.
+    Resout IndexKeySpecsConflict + DuplicateKeyError sur valeurs null pre-existantes.
+    """
+    name = f"{field}_1"
+    partial = {field: {"$type": "string"}}
+    try:
+        await collection.create_index(
+            field,
+            unique=True,
+            partialFilterExpression=partial,
+            name=name,
+        )
+    except Exception as e:
+        msg = str(e)
+        if any(s in msg for s in ["IndexKeySpecsConflict", "already exists with different options", "'code': 86", "code\": 86"]):
+            try:
+                await collection.drop_index(name)
+            except Exception:
+                pass
+            await collection.create_index(
+                field,
+                unique=True,
+                partialFilterExpression=partial,
+                name=name,
+            )
+        else:
+            raise
+
 @app.on_event("startup")
 async def seed_clients():
     """Seed default API clients on startup"""
@@ -235,8 +267,10 @@ async def seed_clients():
 
     # FREK Staff PWA — seed comptes terrain + indexes
     await db.staff.create_index("agent_id", unique=True)
-    await db.scans.create_index("client_uuid", unique=True, sparse=True)
-    await db.transactions.create_index("client_uuid", unique=True, sparse=True)
+    # client_uuid: index pre-existant peut avoir ete cree sans unique=True ;
+    # on le drop si les specs different pour eviter IndexKeySpecsConflict
+    await _ensure_unique_sparse_index(db.scans, "client_uuid")
+    await _ensure_unique_sparse_index(db.transactions, "client_uuid")
     await db.frek_identities.create_index("revoked", sparse=True)
     await db.frek_identities.create_index("expires_at", sparse=True)
     await db.scans.create_index("agent_id", sparse=True)

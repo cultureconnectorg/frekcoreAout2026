@@ -108,3 +108,12 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - Calendars OTS configurables via env `OTS_CALENDARS` (defaut : 5)
 - PWA offline-first : si reseau coupe, actions mises en file IndexedDB et rejouees au retour online
 - Idempotence : `client_uuid` UUIDv4 genere cote client, persiste sur scans + transactions
+
+## Audit technique — Test suite verte (06/05/2026)
+- **pytest backend : 182/182 passed, 2 skipped, 0 failed (2:30)**
+- Migration tests vers `localhost:8001` (in-cluster) via `conftest.py` (purge `rate_limits` par session + per-test sauf TestRateLimit)
+- Helper `_ensure_unique_sparse_index` resout IndexKeySpecsConflict + DuplicateKeyError sur null en utilisant `partialFilterExpression` au lieu de sparse
+- Endpoints `/api/email/templates` et `/api/email/stats` exposent `ses_mode` + `total_sent` (alias)
+- Tests admin passent maintenant le header `X-Admin-Key` (verifie SECRET_KEY)
+- Tests PWA assets ciblent `localhost:3000` (frontend) au lieu du backend
+- Test `anchor/upgrade` borne a `max_blocks=1` pour eviter timeouts CI

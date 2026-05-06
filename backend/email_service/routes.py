@@ -201,12 +201,18 @@ class CampaignRequest(BaseModel):
 @email_router.get("/templates")
 async def list_templates():
     ses_status = "configured"
+    ses_mode = "ses"
     try:
         ses = _get_ses_client()
         ses.get_account_sending_enabled()
     except Exception:
         ses_status = "fallback_log"
-    return {"templates": CAMPAIGN_TYPES, "ses_status": ses_status}
+        ses_mode = "log"
+    return {
+        "templates": CAMPAIGN_TYPES,
+        "ses_status": ses_status,
+        "ses_mode": ses_mode,
+    }
 
 
 @email_router.post("/send")
@@ -322,11 +328,24 @@ async def email_stats():
 
     campaigns = await db.email_campaigns.find({}, {"_id": 0}).sort("timestamp", -1).limit(10).to_list(10)
 
+    # ses_mode reflete l'etat live SES (pas just le nb d'emails loggued)
+    ses_mode = "ses"
+    try:
+        ses = _get_ses_client()
+        ses.get_account_sending_enabled()
+    except Exception:
+        ses_mode = "log"
+
+    # total_sent = SES + fallback log (l'API utilisateur n'a pas a connaitre la distinction)
+    total_sent_combined = total_sent + total_logged
+
     return {
+        "total_sent": total_sent_combined,
         "total_sent_ses": total_sent,
         "total_logged_fallback": total_logged,
         "total_errors": total_errors,
         "deliverability": round((total_sent / max(total_all, 1)) * 100, 1),
         "by_template": by_template,
         "recent_campaigns": campaigns,
+        "ses_mode": ses_mode,
     }

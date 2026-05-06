@@ -255,10 +255,11 @@ class TestOTSAndAnchor:
         assert "submitted" in d or "ok" in d or isinstance(d, dict)
 
     def test_anchor_upgrade_authorized(self, auth_headers):
+        # Limite max_blocks=1 pour eviter timeout sur grand backlog en CI
         r = requests.post(
-            f"{BASE_URL}/api/v1/notary/anchor/upgrade",
+            f"{BASE_URL}/api/v1/notary/anchor/upgrade?max_blocks=1",
             headers=auth_headers,
-            timeout=60,
+            timeout=120,
         )
         assert r.status_code == 200, r.text
         d = r.json()

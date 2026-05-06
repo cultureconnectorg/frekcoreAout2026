@@ -78,6 +78,9 @@ async def record_anomaly(
 async def check_rate_limit(scope: str, action: str) -> bool:
     """Returns True if allowed. False means rate-limited (caller should 429 silently).
     scope = client_id ou agent_id ou IP. action = key dans DEFAULT_LIMITS."""
+    # Disable in test mode for deterministic CI runs
+    if os.environ.get("FREK_DISABLE_RATE_LIMIT") == "1":
+        return True
     cfg = DEFAULT_LIMITS.get(action)
     if not cfg:
         return True

@@ -281,13 +281,16 @@ class TestSync:
 # ---------- PWA assets ----------
 class TestPWAAssets:
     def test_manifest_served(self):
-        r = requests.get(f"{BASE_URL}/scan-manifest.webmanifest", timeout=15)
+        # PWA assets servis par le frontend (port 3000) — pas le backend
+        frontend_url = os.environ.get("FREK_FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        r = requests.get(f"{frontend_url}/scan-manifest.webmanifest", timeout=15)
         assert r.status_code == 200
         j = r.json()
         assert j["start_url"] == "/scan"
 
     def test_sw_served(self):
-        r = requests.get(f"{BASE_URL}/scan-sw.js", timeout=15)
+        frontend_url = os.environ.get("FREK_FRONTEND_URL", "http://localhost:3000").rstrip("/")
+        r = requests.get(f"{frontend_url}/scan-sw.js", timeout=15)
         assert r.status_code == 200
         assert "self" in r.text or "service" in r.text.lower()
 

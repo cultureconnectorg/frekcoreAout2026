@@ -477,13 +477,18 @@ class TestAdminEndpoints:
     
     def test_create_client(self):
         """POST /api/v1/admin/clients - create new client"""
+        admin_key = os.environ.get("SECRET_KEY", "")
         new_client_id = f"TEST_client_{uuid.uuid4().hex[:6]}"
         
-        response = requests.post(f"{BASE_URL}/api/v1/admin/clients", json={
-            "client_id": new_client_id,
-            "name": "Test Client",
-            "permissions": ["stats"]
-        })
+        response = requests.post(
+            f"{BASE_URL}/api/v1/admin/clients",
+            json={
+                "client_id": new_client_id,
+                "name": "Test Client",
+                "permissions": ["stats"]
+            },
+            headers={"X-Admin-Key": admin_key},
+        )
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
         data = response.json()
@@ -495,11 +500,16 @@ class TestAdminEndpoints:
     
     def test_create_duplicate_client_returns_409(self):
         """POST /api/v1/admin/clients - duplicate client_id returns 409"""
-        response = requests.post(f"{BASE_URL}/api/v1/admin/clients", json={
-            "client_id": KILTIKONET_CLIENT_ID,  # Already exists
-            "name": "Duplicate Client",
-            "permissions": ["stats"]
-        })
+        admin_key = os.environ.get("SECRET_KEY", "")
+        response = requests.post(
+            f"{BASE_URL}/api/v1/admin/clients",
+            json={
+                "client_id": KILTIKONET_CLIENT_ID,  # Already exists
+                "name": "Duplicate Client",
+                "permissions": ["stats"]
+            },
+            headers={"X-Admin-Key": admin_key},
+        )
         assert response.status_code == 409, f"Expected 409 for duplicate, got {response.status_code}"
         print("✓ Duplicate client correctly returns 409")
 
