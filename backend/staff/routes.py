@@ -41,9 +41,40 @@ def set_db(database):
     db = database
 
 
-def _hash_pin(pin: str) -> str:
+def _legacy_hash_pin(pin: str) -> str:
+    """SHA256 salted (legacy). Conserve pour migration transparente.
+    Toute connexion reussie en legacy declenche le re-hashage en bcrypt."""
     salt = os.environ.get("FREK_STAFF_PIN_SALT", "frek-staff-default-salt")
     return hashlib.sha256(f"{salt}:{pin}".encode()).hexdigest()
+
+
+def _hash_pin(pin: str) -> str:
+    """Bcrypt hash (cost 12). Format `$2b$12$...`, autoporteur (sel inclus)."""
+    import bcrypt
+    rounds = int(os.environ.get("FREK_STAFF_BCRYPT_ROUNDS", "12"))
+    return bcrypt.hashpw(pin.encode("utf-8"), bcrypt.gensalt(rounds=rounds)).decode("ascii")
+
+
+def _verify_pin(pin: str, stored_hash: str) -> tuple[bool, bool]:
+    """Verifie un PIN contre un hash stocke. Detecte le legacy SHA256 et indique
+    s'il faut re-hasher en bcrypt apres login reussi.
+
+    Retourne (is_valid, needs_rehash).
+    """
+    import bcrypt
+    if not stored_hash:
+        return (False, False)
+    # Bcrypt format
+    if stored_hash.startswith("$2"):
+        try:
+            ok = bcrypt.checkpw(pin.encode("utf-8"), stored_hash.encode("ascii"))
+            return (ok, False)
+        except Exception:
+            return (False, False)
+    # Legacy SHA256 (64 chars hex) : on accepte mais on re-hashera en bcrypt apres
+    if _legacy_hash_pin(pin) == stored_hash:
+        return (True, True)
+    return (False, False)
 
 
 def _create_staff_token(agent_id: str, role: str) -> str:
@@ -144,9 +175,20 @@ async def staff_login(request: StaffLoginRequest):
     if not staff:
         await register_staff_login_attempt(request.agent_id, success=False)
         raise HTTPException(status_code=401, detail="Agent ou PIN invalide")
-    if staff.get("pin_hash") != _hash_pin(request.pin):
+    is_valid, needs_rehash = _verify_pin(request.pin, staff.get("pin_hash", ""))
+    if not is_valid:
         await register_staff_login_attempt(request.agent_id, success=False)
         raise HTTPException(status_code=401, detail="Agent ou PIN invalide")
+
+    # Migration silencieuse : legacy SHA256 -> bcrypt apres login reussi
+    if needs_rehash:
+        try:
+            await db.staff.update_one(
+                {"agent_id": request.agent_id},
+                {"$set": {"pin_hash": _hash_pin(request.pin), "pin_migrated_at": now_iso()}},
+            )
+        except Exception as e:
+            logger.warning(f"PIN bcrypt migration failed for {request.agent_id}: {e}")
 
     # Success
     await register_staff_login_attempt(request.agent_id, success=True)

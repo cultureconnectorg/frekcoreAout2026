@@ -207,6 +207,19 @@ CHANGELOG = [
             "Aucun changement sur la FREK-Chain ni sur les blocks existants",
         ],
     },
+    {
+        "version": "1.0.0+did-vc",
+        "date": "2026-05-07",
+        "changes": [
+            "Phase 4 — Interop W3C (additif, retrocompatible) :",
+            "Methode DID 'did:frek:{frek_id}' deterministe, conforme W3C DID Core 1.0",
+            "DID Document JSON-LD avec Multikey + 3 services (verify, passport, vc)",
+            "Verifiable Credential W3C VC Data Model 2.0 + DataIntegrityProof / eddsa-jcs-2022",
+            "Compatible eIDAS 2.0 et EUDI Wallet (importable comme issuer)",
+            "Racine de confiance partagee : meme cle Ed25519 que les passeports souverains",
+            "Endpoints : GET /api/v1/did/{frek_id}, GET /api/v1/vc/{frek_id}, POST /api/v1/vc/verify",
+        ],
+    },
 ]
 
 

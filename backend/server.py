@@ -46,6 +46,9 @@ from security.routes import security_router, set_db as security_routes_set_db
 # Import FREK Passport (Phase 3 — souverainete du porteur, Ed25519 + Merkle disclosure)
 from passport.routes import passport_router, set_db as passport_set_db
 
+# Import FREK DID + VC (Phase 4 — W3C DID Core 1.0 + VC Data Model 2.0, eIDAS 2.0 / EUDI Wallet)
+from did.routes import did_router, vc_router, set_db as did_set_db
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -86,6 +89,9 @@ security_routes_set_db(db)
 
 # Initialize FREK Passport
 passport_set_db(db)
+
+# Initialize FREK DID + VC
+did_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -169,6 +175,10 @@ app.include_router(security_router, prefix="/api/v1")
 
 # FREK Passport (Phase 3 — souverainete porteur, public)
 app.include_router(passport_router, prefix="/api/v1")
+
+# FREK DID + VC (Phase 4 — W3C interop, eIDAS 2.0 / EUDI Wallet)
+app.include_router(did_router, prefix="/api/v1")
+app.include_router(vc_router, prefix="/api/v1")
 
 # FREK Certified Seal — sert /api/v1/seal.js et /api/v1/seal/demo
 # (les partenaires embeddent <script src="https://frekcore.com/api/v1/seal.js">)

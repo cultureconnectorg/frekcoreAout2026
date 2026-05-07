@@ -72,10 +72,10 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 
 ## Backlog (Phase 3+)
 - [x] **P0** : **Phase 3 Couche C** — Portabilite passport.json signe Ed25519 + Confidentialite selective (claims partiels) — LIVRE 07/05/2026
+- [x] **P1** : **Phase 4 Couche D** — W3C DID + Verifiable Credentials export (`did:frek:{frek_id}`) — LIVRE 07/05/2026
+- [x] **P1** : Bcrypt sur PIN staff — LIVRE 07/05/2026 (migration legacy SHA256 transparente)
 - [ ] **P0** : Verifier frekcore@gmail.com dans AWS SES + sortir du sandbox
-- [ ] **P1** : **Phase 4 Couche D** — W3C DID + Verifiable Credentials export (`did:frek:{frek_id}`)
-- [ ] **P1** : Bcrypt sur PIN staff
-- [ ] **P1** : Embeddable "FREK Certified" Seal (script externe pour partenaires)
+- [ ] **P1** : Embeddable "FREK Certified" Seal (script externe pour partenaires) — LIVRE 07/05/2026
 - [ ] **P1** : FREK Card NFC bindings (cartes physiques)
 - [ ] **P2** : **Phase 5 Couche A.8** — Heritage / transmission (block transfer + beneficiary)
 - [ ] **P2** : **Phase 5 Couche F.10** — Monetisation standard (rate limit + tier paid)
@@ -133,6 +133,24 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **FREK Certified Seal** : module `seal/` qui sert `GET /api/v1/seal.js` (script standalone, cle publique injectee a la livraison, cache 5 min, CORS *) + `GET /api/v1/seal/demo` (page de test). Le sceau utilise Shadow DOM pour isoler le CSS, est cliquable vers `/verify/{frek_id}` et affiche un SVG vert si valide / rouge si invalide, attributs configurables `data-size`, `data-theme`, `data-link`.
 - **Indicateur Dashboard** : badge **"Nœud BTC" (vert)** ou **"Fallback OTS" (orange)** dans le widget Notary, polled toutes les 5s via `/api/v1/notary/source/health`. Visible uniquement sur le Dashboard prive (ops).
 - **Tests seal** (4) : sert le JS, injecte la cle publique correctement, contient les helpers crypto + SVG, sert la page demo.
+
+## Phase 4 W3C DID + VC — Livree (07/05/2026, 11/11 + regression 236/236 OK)
+- **Module `did/`** : encoding multibase/multikey, document W3C DID Core 1.0, VC W3C Data Model 2.0.
+- **Methode `did:frek:{frek_id}`** : deterministe, ne necessite aucun registre (resolution = lookup direct sur FREKCORE).
+- **DID Document** : verificationMethod **Multikey** (ed25519-pub multicodec 0xed01 + base58btc) + 3 services (FrekVerificationService, FrekPassportService, VerifiableCredentialService). Marqueur `deactivated=true` si le FREK-ID est revoque.
+- **Verifiable Credential** : `@context` v2 + `type` ['VerifiableCredential', 'FrekCulturalIdentityCredential'], `credentialSubject` avec frek_id/stage/event/chain anchor, `proof` **DataIntegrityProof / eddsa-jcs-2022**.
+- **Cryptosuite eddsa-jcs-2022** : RFC 8785 JCS canonicalization (lightweight, pas de pyld JSON-LD), SHA-256 + Ed25519, proofValue multibase z<base58btc>.
+- **Trust root partage** : la cle Ed25519 du passeport est utilisee pour signer DID + VC. Une seule rotation centrale = renouvellement de toutes les couches.
+- **Endpoints** : `GET /api/v1/did/{frek_id}`, `GET /api/v1/did/method/spec`, `GET /api/v1/vc/{frek_id}`, `POST /api/v1/vc/verify`.
+- **Compatibilite** : W3C DID Core 1.0, W3C VC Data Model 2.0, **eIDAS 2.0 / EUDI Wallet** (importable comme issuer institutionnel).
+- **Tests Phase 4** (11) : DID Document W3C-conforme, VC issued + verifie, tampering subject/proof/missing/unknown, racine de confiance partagee avec passeport.
+
+## Bcrypt PIN staff — Livre (07/05/2026, 8/8 + regression 19/19 staff OK)
+- **`_hash_pin`** retourne maintenant un hash bcrypt cost 12 (configurable via `FREK_STAFF_BCRYPT_ROUNDS`). Format autoporteur `$2b$12$...`, sel inclus dans le hash.
+- **`_verify_pin(pin, stored)`** detecte automatiquement le format (bcrypt vs SHA256 legacy) et retourne `(is_valid, needs_rehash)`.
+- **Migration silencieuse** : a la premiere connexion reussie d'un compte legacy (SHA256), le PIN est re-hashe en bcrypt et `pin_migrated_at` est enregistre. Aucun downtime, aucun reset force.
+- **Logs** : la migration est silencieuse (info uniquement en cas d'echec), pas de bruit operationnel.
+- **Tests bcrypt** (8) : hash format, verify ok/ko, legacy ok declenche rehash, legacy ko ne touche rien, migration end-to-end via API.
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min
