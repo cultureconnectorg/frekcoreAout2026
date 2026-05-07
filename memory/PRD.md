@@ -113,6 +113,13 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Tampering blinde** : modifier l'envelope invalide la signature ; modifier un claim full invalide la racine Merkle ; modifier un claim partial invalide son chemin. Tests couvrent les 4 vecteurs.
 - **Spec mise a jour** : section `passport` + entree changelog `1.0.0+passport`. La spec v1.0.0 reste figee, l'ajout est retrocompatible.
 
+## Verifier offline standalone — Livree (07/05/2026, 10/10 + regression 205/205 OK)
+- **Python CLI** (`/app/verifier/python/verify_passport.py`) — single file, dependance unique `cryptography`. Execute en subprocess, exit 0 si valide, 1 sinon. Test pytest reel via `subprocess.run`.
+- **JS module** (`/app/verifier/js/verify_passport.js`) — single ES module, zero deps, utilise Web Crypto API native (Node 20+, Chrome 113+, Firefox 130+, Safari 17+). Smoke test Node valide 4 vecteurs (full valid, full tamper, partial valid, partial tamper).
+- **Demo HTML navigateur** (`/app/verifier/js/demo.html`) — page autonome qui charge le module ES, accepte cle publique + passport en input texte, retourne le verdict offline. Aucun appel reseau.
+- **Endpoints download** : `GET /api/v1/passport/verifier/{python,js,js-demo,readme}` permettent aux partenaires de telecharger les verifiers via curl/wget.
+- **README** documente les 3 garanties cles : signature Ed25519, integrite Merkle SHA-256, souverainete (le verifier continue de tourner meme si frekcore.com disparait).
+
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min
 - BTC confirmation : 1-6h apres soumission (gratuit)

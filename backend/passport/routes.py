@@ -10,9 +10,11 @@ Endpoints :
     POST /api/v1/passport/verify             Verification utilitaire serveur
 """
 import logging
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse, FileResponse
 from pydantic import BaseModel, Field
 
 from . import keys, service
@@ -78,3 +80,30 @@ class VerifyRequest(BaseModel):
 async def verify_passport(request: VerifyRequest):
     """Verification utilitaire serveur. La meme logique tourne offline avec la cle publique."""
     return service.verify(request.document)
+
+
+VERIFIER_DIR = Path(__file__).resolve().parent.parent.parent / "verifier"
+
+
+@passport_router.get("/verifier/{lang}")
+async def download_verifier(lang: str):
+    """Telechargement du verifier offline standalone (Python ou JS).
+
+    `lang` : python | js | js-demo | readme
+    Le verifier ne necessite aucune dependance reseau a FREKCORE pour fonctionner.
+    """
+    targets = {
+        "python": (VERIFIER_DIR / "python" / "verify_passport.py", "text/x-python"),
+        "js": (VERIFIER_DIR / "js" / "verify_passport.js", "application/javascript"),
+        "js-demo": (VERIFIER_DIR / "js" / "demo.html", "text/html"),
+        "readme": (VERIFIER_DIR / "README.md", "text/markdown"),
+    }
+    if lang not in targets:
+        raise HTTPException(
+            status_code=404,
+            detail=f"lang inconnue. Choix : {sorted(targets.keys())}",
+        )
+    path, mime = targets[lang]
+    if not path.exists():
+        raise HTTPException(status_code=500, detail=f"verifier file introuvable : {path}")
+    return FileResponse(str(path), media_type=mime, filename=path.name)

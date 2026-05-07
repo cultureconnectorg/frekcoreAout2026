@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>FREK Passport — Verifier offline (demo)</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  .sub { color: #666; margin-bottom: 1.5rem; font-size: .9rem; }
+  textarea, input[type=text] { width: 100%; font-family: ui-monospace, monospace; font-size: .82rem; box-sizing: border-box; }
+  textarea { min-height: 180px; padding: .5rem; border: 1px solid #ccc; border-radius: 6px; }
+  input[type=text] { padding: .5rem; border: 1px solid #ccc; border-radius: 6px; margin-bottom: .5rem; }
+  label { display: block; margin: 1rem 0 .25rem; font-weight: 600; }
+  button { padding: .65rem 1rem; background: #111; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600; }
+  button:hover { background: #333; }
+  pre.result { padding: 1rem; border-radius: 6px; margin-top: 1rem; font-size: .82rem; overflow-x: auto; }
+  pre.ok { background: #e6f7ec; color: #094f1c; border: 1px solid #b6e3c4; }
+  pre.ko { background: #fdecec; color: #7a1212; border: 1px solid #f3b8b8; }
+  .muted { color: #888; font-size: .8rem; }
+</style>
+</head>
+<body>
+<h1>FREK Passport — Verifier offline</h1>
+<p class="sub">Aucun appel reseau a FREKCORE. Tout se fait localement avec Web Crypto + la cle publique fournie.</p>
+
+<label for="pub">Cle publique Ed25519 (raw 32-bytes en base64)</label>
+<input id="pub" type="text" placeholder="ex : Crgwxp..." />
+
+<label for="doc">Passeport JSON (full ou disclosure partial)</label>
+<textarea id="doc" placeholder='{"envelope": {...}, "signature": "...", "claims": [...], "disclosure": "full"}'></textarea>
+
+<p style="margin: 1rem 0;">
+  <button id="verify">Verifier</button>
+  <span class="muted" style="margin-left:1rem;">Tout reste en local. Aucune donnee ne quitte ce navigateur.</span>
+</p>
+
+<pre id="result" class="result" style="display:none;"></pre>
+
+<script type="module">
+import { verifyPassport } from "./verify_passport.js";
+
+const $ = id => document.getElementById(id);
+
+$("verify").addEventListener("click", async () => {
+  const result = $("result");
+  result.style.display = "block";
+  try {
+    const pub = $("pub").value.trim();
+    const doc = JSON.parse($("doc").value);
+    if (!pub) throw new Error("Cle publique manquante");
+    const r = await verifyPassport(doc, pub);
+    result.className = "result " + (r.valid ? "ok" : "ko");
+    result.textContent = JSON.stringify(r, null, 2);
+  } catch (e) {
+    result.className = "result ko";
+    result.textContent = "Erreur : " + e.message;
+  }
+});
+</script>
+</body>
+</html>
