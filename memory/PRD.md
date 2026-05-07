@@ -118,7 +118,21 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **JS module** (`/app/verifier/js/verify_passport.js`) — single ES module, zero deps, utilise Web Crypto API native (Node 20+, Chrome 113+, Firefox 130+, Safari 17+). Smoke test Node valide 4 vecteurs (full valid, full tamper, partial valid, partial tamper).
 - **Demo HTML navigateur** (`/app/verifier/js/demo.html`) — page autonome qui charge le module ES, accepte cle publique + passport en input texte, retourne le verdict offline. Aucun appel reseau.
 - **Endpoints download** : `GET /api/v1/passport/verifier/{python,js,js-demo,readme}` permettent aux partenaires de telecharger les verifiers via curl/wget.
-- **README** documente les 3 garanties cles : signature Ed25519, integrite Merkle SHA-256, souverainete (le verifier continue de tourner meme si frekcore.com disparait).
+- **README** documente les 3 garanties cles : signature Ed25519, integrite Merkle SHA-256, souverainete (le verifier continue de tourner meme si frecore.com disparait).
+
+## Architecture Bitcoin Souveraine Dual-Source — Livree (07/05/2026, 8/8 + regression 213/213 OK)
+- **Module `notary/btc_node.py`** : `BitcoinNodeClient` JSON-RPC (httpx), capture chain tip (height + hash + time + merkleroot) sans wallet ni UTXO. Configurable via `BITCOIN_RPC_URL`, `BITCOIN_RPC_USER`, `BITCOIN_RPC_PASSWORD` (Cloudflare Tunnel ready).
+- **Module `notary/source.py`** : `DualSourceManager` avec health cache TTL (defaut 30s), bascule **silencieuse** sur OpenTimestamps si nœud injoignable. Log `info` uniquement sur premiere transition (pas de warning bruyant).
+- **`anchor.submit_block`** integre les deux sources : tente le nœud (silencieux si KO) ET soumet a OTS. Champs ajoutes dans MongoDB : `anchor_source` (`node`|`ots`), `btc_node_height`, `btc_node_block_hash`, `btc_node_time`. Zero breaking change sur les blocks existants.
+- **Endpoint `GET /api/v1/notary/source/health`** : public, retourne `{configured, source, connected, tip_height?, tip_hash?, reason?}`. Aucun secret expose.
+- **Tests dual-source** (8) : node connecte, node KO silencieux, non configure, cache TTL, invariants client, endpoint public — couvre les 2 modes via `unittest.mock.AsyncMock`.
+
+## Verify enrichi + FREK Certified Seal — Livree (07/05/2026, 4 seal + UI live)
+- **`/verify/{frek_id}` enrichi** : nouveau composant `PassportPanel.jsx` qui fetche passeport + cle publique, verifie en live cote navigateur (Web Crypto API), affiche signature Ed25519 + racine Merkle + 12 claims certifies (avec checkmarks par claim) + QR de telechargement passport.json + lien direct verifier offline Python. Aucune donnee envoyee a FREKCORE pour la verification.
+- **Lib frontend** `/app/frontend/src/lib/passportVerify.js` : mirror exact du verifier offline JS, importe par `PassportPanel`.
+- **FREK Certified Seal** : module `seal/` qui sert `GET /api/v1/seal.js` (script standalone, cle publique injectee a la livraison, cache 5 min, CORS *) + `GET /api/v1/seal/demo` (page de test). Le sceau utilise Shadow DOM pour isoler le CSS, est cliquable vers `/verify/{frek_id}` et affiche un SVG vert si valide / rouge si invalide, attributs configurables `data-size`, `data-theme`, `data-link`.
+- **Indicateur Dashboard** : badge **"Nœud BTC" (vert)** ou **"Fallback OTS" (orange)** dans le widget Notary, polled toutes les 5s via `/api/v1/notary/source/health`. Visible uniquement sur le Dashboard prive (ops).
+- **Tests seal** (4) : sert le JS, injecte la cle publique correctement, contient les helpers crypto + SVG, sert la page demo.
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min

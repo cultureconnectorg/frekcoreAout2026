@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import PassportPanel from '../components/PassportPanel';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -181,6 +182,9 @@ export function Verify() {
                 </div>
               )}
             </div>
+
+            {/* Passeport souverain Ed25519 — verification offline live */}
+            <PassportPanel frekId={frekId} />
 
             {/* Notary panel */}
             {notary && (
@@ -362,6 +366,9 @@ export function Verify() {
                 {attestation.sha256_signal}
               </div>
             </div>
+
+            {/* Passeport souverain Ed25519 — verification offline live */}
+            <PassportPanel frekId={attestation.frek_id} />
 
             {/* FREK Notary — Notarisation Bitcoin */}
             {notary && (

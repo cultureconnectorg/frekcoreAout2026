@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>FREK Certified Seal — demo partenaire</title>
+<style>
+  body { font-family: ui-sans-serif, system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+  .sub { color: #666; margin-bottom: 1.5rem; font-size: .9rem; }
+  input { width: 100%; padding: .6rem; border: 1px solid #ccc; border-radius: 6px; font-family: ui-monospace, monospace; font-size: .85rem; box-sizing: border-box; }
+  button { padding: .55rem 1rem; background: #111; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: .5rem; }
+  .demo { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; border: 1px solid #ddd; border-radius: 10px; margin: 1.5rem 0; background: #fafafa; min-height: 140px; }
+  pre.snippet { background: #0a1520; color: #d6e6f5; padding: 1rem; border-radius: 6px; font-family: ui-monospace, monospace; font-size: .8rem; overflow-x: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>FREK Certified Seal</h1>
+<p class="sub">Snippet a coller sur n'importe quel site partenaire pour afficher le sceau de certification FREK, verifie cryptographiquement cote navigateur.</p>
+
+<label>FREK-ID a tester</label>
+<input id="fid" type="text" placeholder="ex : 518c17ab-e3c5-4849-..." />
+<button id="go">Charger le sceau</button>
+
+<div class="demo" id="demo">
+  <p style="color:#999;">Le sceau apparaitra ici.</p>
+</div>
+
+<h3>Snippet HTML</h3>
+<pre class="snippet" id="snippet"></pre>
+
+<script>
+  (function () {
+    var seal_url = window.location.origin + "/api/v1/seal.js";
+    function snippetHtml(fid) {
+      return '<' + 'script src="' + seal_url + '" data-frek-id="' + fid + '" async><' + '/script>';
+    }
+    document.getElementById("snippet").textContent = snippetHtml("VOTRE-FREK-ID");
+
+    document.getElementById("go").addEventListener("click", function () {
+      var fid = document.getElementById("fid").value.trim();
+      if (!fid) return;
+      document.getElementById("snippet").textContent = snippetHtml(fid);
+      var demo = document.getElementById("demo");
+      demo.innerHTML = '<p style="color:#666;font-size:.85rem;margin:0 0 .5rem">Sceau pour FREK-ID <code>' + fid + '</code> :</p>';
+      var s = document.createElement("script");
+      s.src = seal_url + "?ts=" + Date.now();
+      s.async = true;
+      s.setAttribute("data-frek-id", fid);
+      s.setAttribute("data-size", "120");
+      demo.appendChild(s);
+    });
+  })();
+</script>
+</body>
+</html>

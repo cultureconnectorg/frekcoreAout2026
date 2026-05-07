@@ -109,7 +109,12 @@ class OTSAnchor:
         self._stop = False
 
     async def submit_block(self, height: int) -> dict:
-        """Submit a block's hash to all configured OTS calendars."""
+        """Submit a block's hash to all configured OTS calendars.
+
+        En plus de OTS, on tente de capturer la chain tip Bitcoin via notre nœud
+        (BITCOIN_RPC_*). Si le nœud est dispo, le block est marque
+        anchor_source='node'+OTS ; sinon, fallback silencieux 'ots'.
+        """
         blk = await self.chain.get_block(height)
         if not blk:
             return {"ok": False, "error": "block_not_found"}
@@ -119,6 +124,11 @@ class OTSAnchor:
         success_cals = []
         errors = []
 
+        # 1. Source primaire : capture chain tip via Bitcoin Core RPC (silencieux si KO)
+        from .source import get_manager
+        node_anchor = await get_manager().capture_node_anchor()
+
+        # 2. Source OTS (toujours, pour la preuve Bitcoin verifiable hors-ligne)
         for url in self.calendars:
             try:
                 ts = await asyncio.to_thread(_submit_to_calendar, url, digest)
@@ -128,21 +138,23 @@ class OTSAnchor:
                 errors.append({"calendar": url, "error": str(e)})
                 logger.warning(f"OTS submit failed on {url}: {e}")
 
-        if not success_cals:
+        if not success_cals and not node_anchor:
             return {"ok": False, "errors": errors}
 
-        ots_bytes = serialize_timestamp(merged_ts)
-        await self.blocks.update_one(
-            {"height": height},
-            {
-                "$set": {
-                    "ots_submitted": True,
-                    "ots_calendars": success_cals,
-                    "ots_proof": ots_bytes,
-                    "ots_submitted_at": datetime.now(timezone.utc).isoformat(),
-                }
-            },
-        )
+        update_set = {
+            "ots_submitted": bool(success_cals),
+            "ots_calendars": success_cals,
+            "ots_submitted_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if success_cals:
+            update_set["ots_proof"] = serialize_timestamp(merged_ts)
+        if node_anchor:
+            update_set.update(node_anchor)
+        else:
+            # Pas de node : on marque explicitement la source primaire fallback
+            update_set["anchor_source"] = "ots"
+
+        await self.blocks.update_one({"height": height}, {"$set": update_set})
         await self.state.update_one(
             {"_id": "frek_chain_state"},
             {
@@ -156,7 +168,9 @@ class OTSAnchor:
             "height": height,
             "calendars": success_cals,
             "errors": errors,
-            "ots_size": len(ots_bytes),
+            "ots_size": len(serialize_timestamp(merged_ts)) if success_cals else 0,
+            "anchor_source": update_set.get("anchor_source"),
+            "btc_node_height": (node_anchor or {}).get("btc_node_height"),
         }
 
     async def submit_pending_blocks(self, max_blocks: int = 50) -> dict:

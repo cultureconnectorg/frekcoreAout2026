@@ -46,6 +46,9 @@ from security.routes import security_router, set_db as security_routes_set_db
 # Import FREK Passport (Phase 3 — souverainete du porteur, Ed25519 + Merkle disclosure)
 from passport.routes import passport_router, set_db as passport_set_db
 
+# Import FREK Certified Seal (script JS embeddable pour partenaires)
+from seal import seal_router
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -166,6 +169,10 @@ app.include_router(security_router, prefix="/api/v1")
 
 # FREK Passport (Phase 3 — souverainete porteur, public)
 app.include_router(passport_router, prefix="/api/v1")
+
+# FREK Certified Seal — sert /api/v1/seal.js et /api/v1/seal/demo
+# (les partenaires embeddent <script src="https://frekcore.com/api/v1/seal.js">)
+app.include_router(seal_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

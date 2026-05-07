@@ -80,6 +80,7 @@ export default function Dashboard() {
   const [live, setLive] = useState(null);
   const [notary, setNotary] = useState(null);
   const [events, setEvents] = useState(null);
+  const [source, setSource] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -134,14 +135,23 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
+  const fetchSource = useCallback(async () => {
+    try {
+      const resp = await fetch(`${API_URL}/api/v1/notary/source/health`);
+      if (!resp.ok) return;
+      setSource(await resp.json());
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchDashboard();
     fetchLive();
     fetchNotary();
     fetchEvents();
-    const i = setInterval(() => { fetchLive(); fetchNotary(); fetchEvents(); }, 5000);
+    fetchSource();
+    const i = setInterval(() => { fetchLive(); fetchNotary(); fetchEvents(); fetchSource(); }, 5000);
     return () => clearInterval(i);
-  }, [fetchDashboard, fetchLive, fetchNotary, fetchEvents]);
+  }, [fetchDashboard, fetchLive, fetchNotary, fetchEvents, fetchSource]);
 
   const metrics = data?.metrics || {};
   const total = live?.total ?? metrics.total_identities ?? 0;
@@ -426,6 +436,25 @@ export default function Dashboard() {
               }`}
             >
               {notary?.integrity_ok ?? true ? 'Inviolable' : 'COMPROMISE'}
+            </span>
+            {/* Source dual : nœud Bitcoin (vert) ou OTS fallback (orange) — indicateur interne uniquement */}
+            <span
+              data-testid="notary-source-indicator"
+              title={
+                source?.source === 'node'
+                  ? `Nœud Bitcoin connecté · tip ${source?.tip_height ?? '?'}`
+                  : `Fallback OTS · ${source?.reason ?? 'node indisponible'}`
+              }
+              className={`px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 ${
+                source?.source === 'node'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}
+            >
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                source?.source === 'node' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`} />
+              {source?.source === 'node' ? 'Nœud BTC' : 'Fallback OTS'}
             </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -9,6 +9,7 @@ from frek_v1.auth import get_current_client, require_permission
 
 from .chain import FrekChain
 from .anchor import OTSAnchor
+from .source import get_manager as get_source_manager
 from .models import (
     NotarizeRequest,
     BlockResponse,
@@ -86,6 +87,20 @@ async def get_block_by_height(height: int):
     if not blk:
         raise HTTPException(status_code=404, detail=f"Block {height} introuvable")
     return _to_block_response(blk)
+
+
+@notary_router.get("/source/health")
+async def source_health():
+    """Etat de la source d'ancrage primaire (nœud Bitcoin Core) avec fallback OTS.
+
+    Public — destine au dashboard interne. Aucun secret n'est expose.
+    Reponse :
+        - source : "node" (nœud connecte) | "ots" (fallback)
+        - configured : booleen, indique si BITCOIN_RPC_* est defini
+        - tip_height / tip_hash / tip_time : si node connecte
+        - reason : message court si non connecte
+    """
+    return await get_source_manager().get_health()
 
 
 @notary_router.get("/blocks", response_model=list[BlockResponse])
