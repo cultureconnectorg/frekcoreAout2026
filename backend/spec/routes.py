@@ -99,6 +99,34 @@ FREK_SPEC = {
         "public_blocks_by_event": "GET /api/v1/notary/blocks?event_id={event}",
         "ots_proof_download": "GET /api/v1/notary/proof/{frek_id}/ots",
     },
+    "passport": {
+        "principle": "Souverainete du porteur. Le passeport est un fichier JSON signe Ed25519 que le porteur peut emporter, archiver et presenter sans dependance reseau a FREKCORE.",
+        "signature_algorithm": "Ed25519 (RFC 8032)",
+        "selective_disclosure": "Merkle tree binaire SHA-256 sur les claims. Le porteur revele un sous-ensemble en fournissant le merkle_path par claim. Les claims caches restent representes uniquement par leur empreinte.",
+        "leaf_hash_input": "canonical_json({\"key\", \"nonce\", \"value\"}) hashe en SHA-256",
+        "envelope_signed_fields": [
+            "spec_version", "passport_version", "key_id", "frek_id",
+            "issued_at", "claims_count", "merkle_root",
+        ],
+        "default_claim_keys": [
+            "frek_id", "issued_at", "spec_version",
+            "current_stage", "stages_completed", "event_id", "source",
+            "expires_at", "revoked",
+            "chain_height", "chain_block_hash", "btc_anchored",
+        ],
+        "endpoints": {
+            "public_key": "GET /api/v1/passport/key",
+            "export_full": "GET /api/v1/passport/{frek_id}",
+            "selective_disclosure": "POST /api/v1/passport/disclose",
+            "verify_utility": "POST /api/v1/passport/verify",
+        },
+        "offline_verification": (
+            "Un verificateur tiers a besoin uniquement de la cle publique (PEM ou raw 32 bytes b64) "
+            "et d'une lib Ed25519 standard. La verification se fait sans appel reseau a FREKCORE : "
+            "(1) recompute SHA-256 des leaves a partir des claims reveles, (2) folding via merkle_path, "
+            "(3) Ed25519 verify sur canonical_json(envelope)."
+        ),
+    },
     "client_authentication": {
         "type": "OAuth2 client_credentials",
         "token_endpoint": "POST /api/v1/auth/token",
@@ -165,6 +193,18 @@ CHANGELOG = [
             "Multi-tenant : event_id sparse-indexed sur chaque block, queries scopees",
             "Idempotence : client_uuid sur scans + transactions",
             "Backwards-compat : verifier blocs legacy via fallback hash sans event_id",
+        ],
+    },
+    {
+        "version": "1.0.0+passport",
+        "date": "2026-05-07",
+        "changes": [
+            "Phase 3 — Souverainete porteur (additif, retrocompatible) :",
+            "Passeport JSON signe Ed25519 (key_id 'frek-passport-v1', cle publique exposee)",
+            "Disclosure selective via Merkle tree SHA-256 binaire (le porteur choisit les claims reveles)",
+            "Verification 100% offline avec la cle publique (aucune dependance reseau a FREKCORE)",
+            "12 claims par defaut : frek_id, issued_at, spec_version, current_stage, stages_completed, event_id, source, expires_at, revoked, chain_height, chain_block_hash, btc_anchored",
+            "Aucun changement sur la FREK-Chain ni sur les blocks existants",
         ],
     },
 ]

@@ -36,6 +36,7 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - FREK v1 : 19 (auth, identity, stages, stats, dashboard, admin, RGPD)
 - FREK Notary : 11 (notarize, proof, ots-download, anchor, blocks, chain status/verify, health)
 - **FREK Staff PWA : 11** (login, me, admin, zones, marchands, badge lookup, access, cashless, emit, sync)
+- **FREK Passport : 4** (key, export, disclose, verify) — Phase 3
 - Badges : 11 (14 types, lifecycle, batch)
 - Jetons : 9 (packs, wallet, paiement, marchands)
 - Email : 4 (send SES, campaigns, stats)
@@ -70,14 +71,15 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - [x] **E.4 Audit trail humain** — `/api/v1/audit/{frek_id}` (public, lisible francais), `/audit/agent/{id}` (auth), `/audit/event/{event}` (perm stats)
 
 ## Backlog (Phase 3+)
-- [ ] **P0** : **Phase 3 Couche C** — Portabilite passport.json signe Ed25519 + Confidentialite selective (claims partiels)
+- [x] **P0** : **Phase 3 Couche C** — Portabilite passport.json signe Ed25519 + Confidentialite selective (claims partiels) — LIVRE 07/05/2026
 - [ ] **P0** : Verifier frekcore@gmail.com dans AWS SES + sortir du sandbox
 - [ ] **P1** : **Phase 4 Couche D** — W3C DID + Verifiable Credentials export (`did:frek:{frek_id}`)
 - [ ] **P1** : Bcrypt sur PIN staff
+- [ ] **P1** : Embeddable "FREK Certified" Seal (script externe pour partenaires)
 - [ ] **P1** : FREK Card NFC bindings (cartes physiques)
 - [ ] **P2** : **Phase 5 Couche A.8** — Heritage / transmission (block transfer + beneficiary)
 - [ ] **P2** : **Phase 5 Couche F.10** — Monetisation standard (rate limit + tier paid)
-- [ ] **P2** : FREK-Chain block explorer public · Embeddable seal (script externalisable)
+- [ ] **P2** : FREK-Chain block explorer public
 - [ ] **P2** : Baserow bi-directional sync · Export PDF batch Twina (J-15)
 
 ## Frontiere Kiltikonet ↔ FREKCORE (ne pas confondre)
@@ -101,6 +103,15 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Secret rotation sans downtime** : `POST /admin/clients/{id}/rotate` (deja Phase 2) revoque vraiment les tokens en cours via `token_hash` lookup. 401 immediate sur ancien JWT.
 - **Spec ouverture sectorielle** (sans changer la nature de FREK) : 10 secteurs documentes (culture, education, health, justice, finance, telecom, media, phygital, tech, identity) + extension_model + sector_examples + section security_policies. Spec reste figee a v1.0.0 (ajout retrocompatible).
 - **Migration tests stales** : 3 tests dashboard_v2 mis a jour (422 -> 403 conforme Phase 2.5)
+
+## Phase 3 Souverainete porteur — Livree (07/05/2026, 13/13 + regression 195/195 OK)
+- **Module `passport/`** isole, additif, zero breaking change.
+- **Cle Ed25519 serveur** persistee dans `/app/backend/.passport_key.pem` (auto-generee, 0600). `key_id=frek-passport-v1` figee, exposee publiquement (PEM + raw 32 bytes b64).
+- **Passeport complet signe** (`GET /api/v1/passport/{frek_id}`) : 12 claims, chacun avec un nonce de 16 bytes frais, racine Merkle SHA-256 binaire, signature Ed25519 sur `canonical_json(envelope)`.
+- **Disclosure selective** (`POST /api/v1/passport/disclose`) : le porteur choisit les claims reveles. Les claims caches restent representes uniquement par leur empreinte ; le verificateur valide les chemins Merkle sans connaitre les valeurs cachees.
+- **Verification offline** : un tiers a besoin uniquement de la cle publique + lib Ed25519 standard. Aucune dependance reseau a FREKCORE. Recompute des leaves SHA-256, folding via merkle_path, verification de signature.
+- **Tampering blinde** : modifier l'envelope invalide la signature ; modifier un claim full invalide la racine Merkle ; modifier un claim partial invalide son chemin. Tests couvrent les 4 vecteurs.
+- **Spec mise a jour** : section `passport` + entree changelog `1.0.0+passport`. La spec v1.0.0 reste figee, l'ajout est retrocompatible.
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min

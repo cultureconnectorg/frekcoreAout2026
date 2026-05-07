@@ -43,6 +43,9 @@ from spec.routes import spec_router
 from security.policies import set_db as security_set_db, ensure_indexes as security_ensure_indexes
 from security.routes import security_router, set_db as security_routes_set_db
 
+# Import FREK Passport (Phase 3 — souverainete du porteur, Ed25519 + Merkle disclosure)
+from passport.routes import passport_router, set_db as passport_set_db
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -77,6 +80,9 @@ audit_set_db(db)
 # Initialize FREK Security
 security_set_db(db)
 security_routes_set_db(db)
+
+# Initialize FREK Passport
+passport_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -157,6 +163,9 @@ app.include_router(spec_router, prefix="/api/v1")
 
 # FREK Security audit (admin only)
 app.include_router(security_router, prefix="/api/v1")
+
+# FREK Passport (Phase 3 — souverainete porteur, public)
+app.include_router(passport_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
