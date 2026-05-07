@@ -49,6 +49,13 @@ from passport.routes import passport_router, set_db as passport_set_db
 # Import FREK DID + VC (Phase 4 — W3C DID Core 1.0 + VC Data Model 2.0, eIDAS 2.0 / EUDI Wallet)
 from did.routes import did_router, vc_router, set_db as did_set_db
 
+# Import FREK EUDI Wallet plugin (Phase 4.5 — OID4VCI manifest + flow)
+from eudi.routes import eudi_router, wellknown_router as eudi_wellknown_router, set_db as eudi_set_db
+from eudi.service import ensure_indexes as eudi_ensure_indexes
+
+# Import FREK Standards (manifest universel + JWKS + DID Configuration)
+from standards.routes import standards_router, standards_wellknown_router
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -92,6 +99,9 @@ passport_set_db(db)
 
 # Initialize FREK DID + VC
 did_set_db(db)
+
+# Initialize FREK EUDI plugin (OID4VCI)
+eudi_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -179,6 +189,16 @@ app.include_router(passport_router, prefix="/api/v1")
 # FREK DID + VC (Phase 4 — W3C interop, eIDAS 2.0 / EUDI Wallet)
 app.include_router(did_router, prefix="/api/v1")
 app.include_router(vc_router, prefix="/api/v1")
+
+# FREK EUDI plugin — OID4VCI flow (Phase 4.5)
+app.include_router(eudi_router, prefix="/api/v1")
+# Well-known endpoints accessibles via /api/.well-known/* (relais ingress documente)
+# Note prod : configurer le CDN/edge pour proxifier `.well-known/*` -> `/api/.well-known/*`
+app.include_router(eudi_wellknown_router, prefix="/api")
+
+# FREK Standards — manifest universel + JWKS + DID Configuration (W3C / ID4Africa / ITU)
+app.include_router(standards_router, prefix="/api/v1")
+app.include_router(standards_wellknown_router, prefix="/api")
 
 # FREK Certified Seal — sert /api/v1/seal.js et /api/v1/seal/demo
 # (les partenaires embeddent <script src="https://frekcore.com/api/v1/seal.js">)
@@ -308,6 +328,7 @@ async def seed_clients():
 
     # Security indexes (rate-limit + anomaly trail)
     await security_ensure_indexes()
+    await eudi_ensure_indexes()
     await db.staff.create_index("locked_until", sparse=True)
     await db.staff.create_index("failed_attempts", sparse=True)
     # Compound index event+timestamp pour requetes audit/event scopees

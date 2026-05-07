@@ -152,6 +152,37 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Logs** : la migration est silencieuse (info uniquement en cas d'echec), pas de bruit operationnel.
 - **Tests bcrypt** (8) : hash format, verify ok/ko, legacy ok declenche rehash, legacy ko ne touche rien, migration end-to-end via API.
 
+## Phase 4.5 EUDI Wallet + Standards Manifest — Livree (07/05/2026, 20/20 + regression 256/256 OK)
+
+### Plugin EUDI Wallet (OID4VCI)
+- **Module `eudi/`** : metadata + service (pre-auth code state) + routes.
+- **`/.well-known/openid-credential-issuer`** : OID4VCI Draft 13+, declare FREKCORE comme issuer compatible EUDI.
+- **`/.well-known/oauth-authorization-server`** : RFC 8414 minimal, pre-authorized_code grant uniquement.
+- **Flow complet** : POST `/api/v1/eudi/credential-offer/{frek_id}` -> QR `openid-credential-offer://...` -> POST `/token` (single-use code, TTL 5 min) -> POST `/credential` (Bearer token, TTL 5 min) -> recoit le VC W3C signe.
+- **Format `ldp_vc`** : reuse complet du module `did/vc.py` existant, racine de confiance partagee.
+- **Index TTL Mongo** : `eudi_offers` + `eudi_tokens` auto-effaces a expiration (pas de purge cron necessaire).
+- **Tests EUDI** (10) : metadata, offer, flow E2E, single-use, grant invalide, token invalide, format invalide, VC issu validable sur `/api/v1/vc/verify`.
+
+### Standards Manifest universel
+- **Module `standards/`** : JWK Set + DID Configuration + manifest declaratif global.
+- **`/.well-known/jwks.json`** : RFC 7517, kty=OKP / crv=Ed25519 / kid stable derive du hash de la cle. Universellement consommable (OIDC, OAuth2, mobile money, ITU).
+- **`/.well-known/did-configuration.json`** : DIF Well-Known DID Configuration v1, signe en eddsa-jcs-2022 — prouve cryptographiquement que `frekcore.com` controle `did:frek:frekcore`.
+- **`/api/v1/standards/manifest`** : declare la conformite avec W3C DID 1.0, W3C VC 2.0, EUDI/OID4VCI, ID4Africa (verification offline cruciale Afrique, AfCFTA), ITU-T X.1252/X.509, ISO mDL (preparation US), CARICOM Single ICT Space.
+- **`/api/v1/standards/{ecosystem}`** : mapping detaille par ecosysteme (interop facile pour tiers).
+- **Roadmap geographique** explicitement publiee : CC2026 -> CARICOM -> ID4Africa -> EUDI -> USA mDL -> IPO 2028.
+- **Tests standards** (10) : JWK match passport, DID Config signature verifiable, ecosystemes listes, well-known URLs, racine de confiance unique pour passport/did/jwks/eudi.
+
+### ~145 Endpoints API
+- FREK v1 : 19 (auth, identity, stages, stats, dashboard, admin, RGPD)
+- FREK Notary : 12 (notarize, proof, ots-download, anchor, blocks, chain status/verify, source/health, health)
+- **FREK Staff PWA** : 11 (login, me, admin, zones, marchands, badge lookup, access, cashless, emit, sync)
+- **FREK Passport** : 4 (key, export, disclose, verify) + 4 download verifier (python, js, demo, readme)
+- **FREK DID + VC** : 4 (did/{id}, did/method/spec, vc/{id}, vc/verify)
+- **FREK EUDI** : 5 (well-known issuer/oauth, credential-offer, token, credential)
+- **FREK Standards** : 4 (well-known jwks/did-config, standards/manifest, standards/{eco})
+- **FREK Seal** : 2 (seal.js, seal/demo)
+- Badges : 11 (14 types, lifecycle, batch)
+
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min
 - BTC confirmation : 1-6h apres soumission (gratuit)

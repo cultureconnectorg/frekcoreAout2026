@@ -220,6 +220,20 @@ CHANGELOG = [
             "Endpoints : GET /api/v1/did/{frek_id}, GET /api/v1/vc/{frek_id}, POST /api/v1/vc/verify",
         ],
     },
+    {
+        "version": "1.0.0+eudi-standards",
+        "date": "2026-05-07",
+        "changes": [
+            "Phase 4.5 — Plugin EUDI Wallet + Manifest universel (additif, retrocompatible) :",
+            "Endpoints OID4VCI Draft 13 : /.well-known/openid-credential-issuer + /.well-known/oauth-authorization-server",
+            "Pre-authorized code flow : POST /api/v1/eudi/credential-offer/{frek_id} -> /token -> /credential",
+            "QR deep-link `openid-credential-offer://...` scannable par tout wallet EUDI compatible",
+            "JWK Set RFC 7517 universel : /.well-known/jwks.json (kty=OKP, crv=Ed25519)",
+            "DIF DID Configuration : /.well-known/did-configuration.json (preuve domaine -> did:frek:frekcore signee)",
+            "Manifest universel : GET /api/v1/standards/manifest declare la compatibilite W3C / EUDI / ID4Africa / ITU / ISO mDL / CARICOM",
+            "Roadmap geographique annoncee : CC2026 -> CARICOM -> ID4Africa -> EUDI -> USA mDL -> IPO 2028",
+        ],
+    },
 ]
 
 
