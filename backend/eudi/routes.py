@@ -14,6 +14,7 @@ from .metadata import (
     CREDENTIAL_CONFIG_ID,
     PUBLIC_BASE_URL,
 )
+from .sdjwt import issue_sd_jwt_vc
 from . import service
 
 logger = logging.getLogger("frek.eudi.routes")
@@ -133,7 +134,7 @@ async def credential_endpoint(
     if not frek_id:
         raise HTTPException(status_code=401, detail={"error": "invalid_token"})
 
-    if req.format != "ldp_vc":
+    if req.format not in ("ldp_vc", "vc+sd-jwt"):
         raise HTTPException(status_code=400, detail={"error": "unsupported_credential_format"})
 
     identity = await db.frek_identities.find_one({"frek_id": frek_id}, {"_id": 0})
@@ -146,5 +147,20 @@ async def credential_endpoint(
         sort=[("height", -1)],
     )
 
+    if req.format == "vc+sd-jwt":
+        return issue_sd_jwt_vc(identity, chain_anchor=chain_anchor)
+
     vc = build_credential(identity, chain_anchor=chain_anchor)
     return {"format": "ldp_vc", "credential": vc}
+
+
+class SDJWTVerifyRequest(BaseModel):
+    credential: str = Field(..., description="SD-JWT VC string <jwt>~<disc>~...")
+
+
+@eudi_router.post("/credential/verify-sdjwt")
+async def verify_sdjwt_endpoint(req: SDJWTVerifyRequest):
+    """Utilitaire serveur pour verifier un SD-JWT VC. Verification offline aussi possible
+    avec la cle publique exposee via /api/v1/passport/key et /.well-known/jwks.json."""
+    from .sdjwt import verify_sd_jwt_vc
+    return verify_sd_jwt_vc(req.credential)

@@ -174,10 +174,10 @@ class TestFullFlow:
             },
             timeout=5,
         ).json()["access_token"]
-        # Format invalide
+        # Format invalide (vc+sd-jwt + ldp_vc sont supportes — on choisit un format inexistant)
         r = requests.post(
             f"{API}/eudi/credential",
-            json={"format": "vc+sd-jwt"},
+            json={"format": "mdoc-mDL"},
             headers={"Authorization": f"Bearer {token}"},
             timeout=5,
         )

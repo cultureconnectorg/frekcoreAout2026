@@ -178,10 +178,30 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **FREK Staff PWA** : 11 (login, me, admin, zones, marchands, badge lookup, access, cashless, emit, sync)
 - **FREK Passport** : 4 (key, export, disclose, verify) + 4 download verifier (python, js, demo, readme)
 - **FREK DID + VC** : 4 (did/{id}, did/method/spec, vc/{id}, vc/verify)
-- **FREK EUDI** : 5 (well-known issuer/oauth, credential-offer, token, credential)
+- **FREK EUDI** : 6 (well-known issuer/oauth, credential-offer, token, credential, credential/verify-sdjwt)
 - **FREK Standards** : 4 (well-known jwks/did-config, standards/manifest, standards/{eco})
+- **FREK Core** : 5 (ingest, frek/{id}, event/{id}/stats, ecosystem/pulse, admin/reload-rules) — phase d'amorcage CC2026
 - **FREK Seal** : 2 (seal.js, seal/demo)
 - Badges : 11 (14 types, lifecycle, batch)
+
+## Phase amorcage CC2026 — Systeme nerveux souverain CVLN (12/05/2026, 18/18 + regression 274/274 OK)
+- **Audit chirurgical prealable** : aucune collection ou route conflictuelle, clé Ed25519 verifiee inchangee post-livraison.
+- **Module `core/`** isole, additif, namespace `/api/core/*` separe de `/api/v1/*`.
+- **3 nouvelles collections** : `frek_subjects` (un doc/FREK-ID vivant), `frek_events` (timeline horodatable, idempotency_key unique), `frek_scoring_rules` (16 regles seedees a l'init, editables a chaud).
+- **`POST /api/core/ingest`** : receveur souverain idempotent (sha256 frek_id|event_id|action|timestamp). Bearer token resout la source (kiltikonet/fms/kora) en temps constant via hmac.compare_digest. Defense-in-depth : body.source doit matcher le bearer. Badge inconnu = 422.
+- **Cultural Impact Score** = `base_score(action, context=event_id)` + `bonus_score(badge_type)` — TOUJOURS lu depuis Mongo, **jamais hardcode**. Cache 60s + endpoint admin `/admin/reload-rules` (X-Admin-Key) pour rafraichissement immediat.
+- **Squelette enrichment** : 5 champs (frek_subject_did, nominatif, jeton_cc_linked, nfc_badge_written, eudi_vc_issued) poses en `null` des la naissance — aucune migration future necessaire.
+- **Idempotence forte** : Race condition Mongo geree (unique index + compensation atomique si double insert).
+- **Endpoints lecture** : `GET /frek/{frek_id}` (profile + 100 derniers events, _id et idempotency_key filtres), `GET /event/{event_id}/stats` (agregations by_badge_type/by_source/avg_score/first&last_activation), `GET /ecosystem/pulse` (status ALIVE/DORMANT, sources actives 24h).
+- **Tests Core** (12 directive + 6 supplementaires) : creation subject, idempotence, sources rejetees, bearer invalide, score from rules not hardcoded (verifie en modifiant une regle en live), score base+bonus, profile, 404, stats by_badge, pulse structure, badge inconnu 422, no regression ldp_vc, SD-JWT issuance/verify/partial/tamper, metadata declare 2 formats, Ed25519 inchangee.
+
+## Phase 4.6 SD-JWT VC — Livre (12/05/2026)
+- **Module `eudi/sdjwt.py`** : format `vc+sd-jwt` (IETF draft-ietf-oauth-sd-jwt-vc-08+), **complement** de `ldp_vc` (jamais en remplacement).
+- **Structure** : `<JWT>~<disclosure>~<disclosure>~...~`. JWT signe Ed25519 (alg=EdDSA, typ=vc+sd-jwt, kid=did:frek:frekcore#frek-passport-v1).
+- **Disclosure selective native** : 6+ claims (currentStage, eventId, source, expiresAt, revoked, chainAnchor) chacun avec son nonce 16-bytes. Holder envoie un sous-ensemble — la signature reste valide, mode=`partial`.
+- **Issuer metadata** declare les 2 configurations : `FrekCulturalIdentityCredential_jsonld` (ldp_vc) et `FrekCulturalIdentityCredential_sdjwt` (vc+sd-jwt) — wallets EUDI/Microsoft Authenticator decouvrent automatiquement.
+- **POST /api/v1/eudi/credential/verify-sdjwt** : utilitaire serveur (la verif tourne aussi 100% offline avec la cle publique exposee dans /.well-known/jwks.json).
+- **Cle Ed25519 reutilisee** : INVARIANT respecte, aucune regeneration, test dedie `test_ed25519_key_unchanged` qui compare le bytes du fichier `.passport_key.pem` avant/apres operations.
 
 ## Notes operationnelles
 - Background loop ancrage OTS : submit toutes les 30s, upgrade BTC toutes les 30 min

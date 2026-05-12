@@ -56,6 +56,11 @@ from eudi.service import ensure_indexes as eudi_ensure_indexes
 # Import FREK Standards (manifest universel + JWKS + DID Configuration)
 from standards.routes import standards_router, standards_wellknown_router
 
+# Import FREK Core — couche evenementielle souveraine CC2026 (greffe additive)
+from core.routes import core_router, set_db as core_set_db
+from core.service import ensure_indexes as core_ensure_indexes
+from core.scoring import seed_default_rules_if_empty as core_seed_rules
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -102,6 +107,9 @@ did_set_db(db)
 
 # Initialize FREK EUDI plugin (OID4VCI)
 eudi_set_db(db)
+
+# Initialize FREK Core (couche evenementielle CC2026)
+core_set_db(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
@@ -199,6 +207,9 @@ app.include_router(eudi_wellknown_router, prefix="/api")
 # FREK Standards — manifest universel + JWKS + DID Configuration (W3C / ID4Africa / ITU)
 app.include_router(standards_router, prefix="/api/v1")
 app.include_router(standards_wellknown_router, prefix="/api")
+
+# FREK Core — couche evenementielle souveraine CC2026 (additif, namespace /api/core/*)
+app.include_router(core_router, prefix="/api")
 
 # FREK Certified Seal — sert /api/v1/seal.js et /api/v1/seal/demo
 # (les partenaires embeddent <script src="https://frekcore.com/api/v1/seal.js">)
@@ -329,6 +340,9 @@ async def seed_clients():
     # Security indexes (rate-limit + anomaly trail)
     await security_ensure_indexes()
     await eudi_ensure_indexes()
+    # FREK Core — indexes + seed regles defaut (idempotent)
+    await core_ensure_indexes()
+    await core_seed_rules()
     await db.staff.create_index("locked_until", sparse=True)
     await db.staff.create_index("failed_attempts", sparse=True)
     # Compound index event+timestamp pour requetes audit/event scopees

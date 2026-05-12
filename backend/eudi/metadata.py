@@ -78,7 +78,30 @@ def issuer_metadata() -> dict:
                         "description": "Sovereign cultural passport notarized on Bitcoin",
                     },
                 ],
-            }
+            },
+            "FrekCulturalIdentityCredential_sdjwt": {
+                "format": "vc+sd-jwt",
+                "scope": "FrekCulturalIdentityCredential",
+                "vct": "FrekCulturalIdentityCredential",
+                "cryptographic_binding_methods_supported": ["did:frek", "jwk"],
+                "credential_signing_alg_values_supported": ["EdDSA"],
+                "proof_types_supported": {
+                    "jwt": {"proof_signing_alg_values_supported": ["EdDSA", "ES256"]},
+                },
+                "claims": {
+                    "frek_id": {"display": [{"name": "FREK-ID", "locale": "fr-FR"}]},
+                    "currentStage": {"display": [{"name": "Stage Luciole", "locale": "fr-FR"}]},
+                    "eventId": {"display": [{"name": "Evenement", "locale": "fr-FR"}]},
+                    "specVersion": {"display": [{"name": "Version standard", "locale": "fr-FR"}]},
+                },
+                "display": [
+                    {
+                        "name": "FREK Cultural Identity (SD-JWT)",
+                        "locale": "fr-FR",
+                        "description": "Format mobile / offline / selective disclosure native",
+                    }
+                ],
+            },
         },
     }
 

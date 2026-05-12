@@ -234,6 +234,23 @@ CHANGELOG = [
             "Roadmap geographique annoncee : CC2026 -> CARICOM -> ID4Africa -> EUDI -> USA mDL -> IPO 2028",
         ],
     },
+    {
+        "version": "1.0.0+core-events-sdjwt",
+        "date": "2026-05-12",
+        "changes": [
+            "Phase d'amorcage CC2026 — Systeme nerveux souverain CVLN (additif, retrocompatible) :",
+            "Module `core/` — couche evenementielle souveraine sur /api/core/* (separe de /api/v1/*)",
+            "Collections nouvelles : frek_subjects (sujets vivants), frek_events (timeline horodatable), frek_scoring_rules (table de ponderation editable a chaud)",
+            "POST /api/core/ingest — receveur souverain idempotent (sha256 frek_id|event_id|action|timestamp)",
+            "Sources autorisees : kiltikonet, fms, kora — secrets bearers rotatifs par source (FREKCORE_SECRET_*)",
+            "GET /api/core/frek/{frek_id}, /event/{event_id}/stats, /ecosystem/pulse, POST /admin/reload-rules",
+            "Cultural Impact Score = base(action,context) + bonus(badge_type) — JAMAIS hardcode, toujours lu depuis Mongo",
+            "Squelette enrichment pose des la naissance (frek_subject_did, nominatif, jeton_cc_linked, nfc_badge_written, eudi_vc_issued) — Phases 2/3/5 pretes sans migration",
+            "Phase 4.6 — SD-JWT VC : format `vc+sd-jwt` ajoute en complement de ldp_vc (IETF draft-ietf-oauth-sd-jwt-vc), meme cle Ed25519",
+            "POST /api/v1/eudi/credential/verify-sdjwt + issuer metadata declare les 2 formats",
+            "Aucune cle Ed25519 regeneree. Aucun /.well-known/* modifie. Aucun flow OID4VCI casse.",
+        ],
+    },
 ]
 
 
