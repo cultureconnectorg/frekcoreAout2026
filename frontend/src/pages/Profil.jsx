@@ -240,7 +240,7 @@ export default function Profil() {
 
               <p className="font-mono text-[11px] text-white/30 mt-4 max-w-xl leading-relaxed">
                 Seules vos traces personnelles apparaissent ici. La masse de la plateforme
-                (CC2026, événements globaux) reste sur la page <Link to="/accueil" className="text-[#2cc4f5]/70 underline">d'accueil</Link>.
+                reste sur la page <Link to="/accueil" className="text-[#2cc4f5]/70 underline">d'accueil</Link>.
               </p>
             </section>
 

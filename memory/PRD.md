@@ -227,6 +227,17 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 
 ## Audit technique — Test suite verte (06/05/2026)
 - **pytest backend : 182/182 passed, 2 skipped, 0 failed (2:30)**
+
+## Phase porteur — 3 pages utilisateur livrees (01/06/2026, frontend uniquement, 100% critical flows OK iteration_17)
+- **Directive stricte respectee** : aucun fichier backend touche, aucune collection Mongo modifiee, aucune page existante alteree (App.jsx : ajout additif de 3 routes uniquement).
+- **`/accueil`** (`pages/Accueil.jsx`) : vitrine plateforme (compteur anime total_events via `/api/core/ecosystem/pulse`, 3 chiffres CVLN evenements/oeuvres/participants, refresh 30s) + entree compte personnel (input FREK-ID -> redirige `/profil/{id}`, lien "Creer mon profil FREK" -> `/`). Statut pulse Plateforme active/dormante. Aucun melange avec donnees personnelles.
+- **`/profil/:frek_id`** (`pages/Profil.jsx`) : compte neutre/personnel. Fetch parallele `/api/core/frek/{id}` + `/api/v1/identity/{id}/status` + `/api/core/fingerprint/consent/{id}`. Etat vide = sections lisibles ("Aucune presence encore — scannez votre premier badge", etc.). Etat rempli = 3 timelines classees FREK-P (presences) / FREK-O (oeuvres) / FREK-X (croisements). Badge "Profil culturel certifie" si au moins une couche fingerprint consentie. Boutons : telecharger passport.json (Ed25519) + ouvrir /verify. Compteurs strictement personnels. Aucun chiffre plateforme (40k, CC2026, masse) n'apparait.
+- **`/scanner`** (`pages/Scanner.jsx`) : pointeuse FREK-P plein ecran, input auto-focus (compatible HID scanner). Resolution badge_id via `GET /api/badges/{badge_id}` public quand applicable, sinon traite l'entree comme FREK-ID brut. Queue localStorage `frek_offline_queue` (sync au retour reseau). Indicateur reseau en ligne/hors ligne. Confirmation "Presence enregistree" + compteur session locale + compteur plateforme separe (chiffres CVLN, jamais melanges aux personnels). Bouton vider la file.
+- **Tests frontend** (iteration_17) : 100% flux critiques, 1 soft-violation corrigee (mention "CC2026" retiree de la copie /profil). Aucun bug UI, aucune regression sur /, /verify/:frekId, /dashboard, /scan/*. Tous les data-testids presents et uniques.
+- **Endpoints consommes** (lecture seule, publics) : `/api/core/ecosystem/pulse`, `/api/core/event/CC2026/stats`, `/api/core/frek/{id}`, `/api/v1/identity/{id}/status`, `/api/core/fingerprint/consent/{id}`, `/api/v1/passport/{id}`, `/api/badges/{badge_id}`.
+
+## Audit technique — Test suite verte (06/05/2026)
+- **pytest backend : 182/182 passed, 2 skipped, 0 failed (2:30)**
 - Migration tests vers `localhost:8001` (in-cluster) via `conftest.py` (purge `rate_limits` par session + per-test sauf TestRateLimit)
 - Helper `_ensure_unique_sparse_index` resout IndexKeySpecsConflict + DuplicateKeyError sur null en utilisant `partialFilterExpression` au lieu de sparse
 - Endpoints `/api/email/templates` et `/api/email/stats` exposent `ses_mode` + `total_sent` (alias)
