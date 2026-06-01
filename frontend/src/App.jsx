@@ -16,6 +16,8 @@ import ScanApp from './scan/ScanApp';
 import Accueil from './pages/Accueil';
 import Profil from './pages/Profil';
 import Scanner from './pages/Scanner';
+import Poste from './pages/Poste';
+import Card from './pages/Card';
 
 // Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
@@ -77,6 +79,8 @@ function App() {
         <Route path="/accueil" element={<Accueil />} />
         <Route path="/profil/:frekId" element={<Profil />} />
         <Route path="/scanner" element={<Scanner />} />
+        <Route path="/poste" element={<Poste />} />
+        <Route path="/card/:frekId" element={<Card />} />
         
         {/* Redirections anciennes URLs */}
         <Route path="/certify" element={<Navigate to="/" replace />} />

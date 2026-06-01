@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
+import PulseBanner from '../components/PulseBanner';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -280,6 +281,14 @@ export function Certify() {
                   >
                     Preuve d'existence fréquentielle
                   </motion.p>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45, duration: 0.6 }}
+                    className="flex justify-center mb-10 sm:mb-12"
+                  >
+                    <PulseBanner />
+                  </motion.div>
                 </motion.div>
 
                 {/* BOUTON PRINCIPAL */}

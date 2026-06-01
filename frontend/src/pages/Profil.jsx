@@ -1,24 +1,20 @@
 /**
- * FREK — Profil personnel /profil/:frek_id
+ * FREK — Profil personnel /profil/:frek_id (theme clair Certify)
  *
  * Compte neutre à la création — se remplit uniquement du vécu personnel.
- * Aucun chiffre de la plateforme (CC2026, 40k, masse) n'est affiché ici.
+ * L'agent IA classe en FREK-P (présences) / FREK-O (œuvres) / FREK-X (croisements).
+ * La FREK Card virtuelle, nominative et liée à vie, est intégrée.
  *
- * Endpoints consommés (lecture seule, publics) :
- *   - GET /api/core/frek/{frek_id}              (subject + 100 derniers events)
- *   - GET /api/v1/identity/{frek_id}/status     (statut public, optionnel)
- *   - GET /api/v1/passport/{frek_id}            (passeport souverain Ed25519)
- *   - GET /api/core/fingerprint/consent/{frek_id} (badge "certifié" si consent accordé)
+ * Aucune donnée de la plateforme n'apparaît ici.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import FrekCard from '../components/FrekCard';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
-// Actions classifiables FREK-P (présence), FREK-O (œuvre), FREK-X (croisement)
 const PRESENCE_ACTIONS = new Set(['ACTIVATION', 'SCAN', 'CHECKIN', 'PRESENCE', 'ACCESS']);
 const WORK_ACTIONS = new Set(['EMISSION', 'CERTIFY', 'CERTIFICATION', 'CREATION', 'NOTARIZE']);
-// Tout autre action = croisement / interaction
 
 function classify(action) {
   const a = (action || '').toUpperCase();
@@ -37,11 +33,20 @@ function formatDate(iso) {
   } catch { return iso; }
 }
 
+function BackgroundDecor() {
+  return (
+    <>
+      <div aria-hidden className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-gradient-to-br from-[#2cc4f5] to-[#06b6d4] rounded-full blur-3xl opacity-30" />
+      <div aria-hidden className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-gradient-to-tr from-[#0ea5e9] to-[#2cc4f5] rounded-full blur-3xl opacity-25" />
+    </>
+  );
+}
+
 function EmptySection({ label, message, testid }) {
   return (
-    <div data-testid={testid} className="bg-[#0a1520]/30 border border-dashed border-[#2cc4f5]/15 rounded-xl p-6 sm:p-8 text-center">
-      <div className="font-mono text-[10px] text-[#2cc4f5]/40 uppercase tracking-widest mb-2">{label}</div>
-      <div className="font-mono text-sm text-white/40 italic">{message}</div>
+    <div data-testid={testid} className="bg-white/60 backdrop-blur-xl border border-dashed border-[#2cc4f5]/30 rounded-xl p-6 sm:p-8 text-center shadow-sm">
+      <div className="font-mono text-[10px] text-[#0ea5e9] uppercase tracking-widest mb-2">{label}</div>
+      <div className="font-mono text-sm text-slate-400 italic">{message}</div>
     </div>
   );
 }
@@ -49,28 +54,27 @@ function EmptySection({ label, message, testid }) {
 function Timeline({ items, kind, testid }) {
   if (!items?.length) return null;
   const colorMap = {
-    presence: { dot: 'bg-[#2cc4f5]', text: 'text-[#2cc4f5]', label: 'FREK-P · Présence' },
-    work:     { dot: 'bg-[#f7931a]', text: 'text-[#f7931a]', label: 'FREK-O · Œuvre' },
-    cross:    { dot: 'bg-emerald-400', text: 'text-emerald-400', label: 'FREK-X · Croisement' },
+    presence: { dot: 'bg-[#0ea5e9]', text: 'text-[#0ea5e9]', label: 'FREK-P · Présence' },
+    work:     { dot: 'bg-[#f59e0b]', text: 'text-[#d97706]', label: 'FREK-O · Œuvre' },
+    cross:    { dot: 'bg-emerald-500', text: 'text-emerald-600', label: 'FREK-X · Croisement' },
   };
   const c = colorMap[kind];
   return (
     <div data-testid={testid} className="space-y-3">
       {items.map((ev, i) => (
-        <div key={`${ev.timestamp}-${i}`} className="bg-[#0a1520]/50 border border-[#2cc4f5]/10 rounded-lg p-4 flex items-start gap-4">
+        <div key={`${ev.timestamp}-${i}`} className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-4 flex items-start gap-4 shadow-sm">
           <span className={`mt-1.5 inline-block h-2 w-2 rounded-full ${c.dot} shrink-0`} />
           <div className="flex-1 min-w-0">
             <div className={`font-mono text-[10px] ${c.text} uppercase tracking-widest`}>{c.label}</div>
-            <div className="font-mono text-sm text-white mt-1 break-words">
+            <div className="font-mono text-sm text-slate-800 mt-1 break-words">
               {ev.action}{ev.badge_type ? ` · ${ev.badge_type}` : ''}
             </div>
-            <div className="font-mono text-[11px] text-white/40 mt-1">
-              {formatDate(ev.timestamp)}
-              {ev.event_id ? ` · contexte ${ev.event_id}` : ''}
+            <div className="font-mono text-[11px] text-slate-400 mt-1">
+              {formatDate(ev.timestamp)}{ev.event_id ? ` · contexte ${ev.event_id}` : ''}
             </div>
           </div>
           {typeof ev.score_delta === 'number' && (
-            <div className="font-mono text-[10px] text-white/30 shrink-0">+{ev.score_delta}</div>
+            <div className="font-mono text-[10px] text-slate-400 shrink-0">+{ev.score_delta}</div>
           )}
         </div>
       ))}
@@ -90,9 +94,7 @@ export default function Profil() {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      setLoading(true);
-      setError(null);
-      setNotFound(false);
+      setLoading(true); setError(null); setNotFound(false);
       try {
         const [pRes, sRes, cRes] = await Promise.allSettled([
           fetch(`${API_URL}/api/core/frek/${encodeURIComponent(frekId)}`),
@@ -104,9 +106,8 @@ export default function Profil() {
         const profileOk = pRes.status === 'fulfilled' && pRes.value.ok;
         const statusOk = sRes.status === 'fulfilled' && sRes.value.ok;
 
-        if (!profileOk && !statusOk) {
-          setNotFound(true);
-        } else {
+        if (!profileOk && !statusOk) setNotFound(true);
+        else {
           if (profileOk) setProfile(await pRes.value.json());
           if (statusOk) setStatus(await sRes.value.json());
         }
@@ -123,7 +124,6 @@ export default function Profil() {
     return () => { cancelled = true; };
   }, [frekId]);
 
-  // Sépare les events en 3 timelines : FREK-P, FREK-O, FREK-X
   const buckets = useMemo(() => {
     const events = profile?.events || [];
     const presence = [], work = [], cross = [];
@@ -136,13 +136,11 @@ export default function Profil() {
     return { presence, work, cross };
   }, [profile]);
 
-  // Badge "Profil culturel certifié" : si au moins une couche fingerprint est consentie
   const hasFingerprintConsent = useMemo(() => {
     if (!consent?.layers) return false;
     return Object.values(consent.layers).some(Boolean);
   }, [consent]);
 
-  // Téléchargement passeport souverain
   const downloadPassport = async () => {
     try {
       const r = await fetch(`${API_URL}/api/v1/passport/${encodeURIComponent(frekId)}`);
@@ -162,41 +160,42 @@ export default function Profil() {
 
   if (!frekId) {
     return (
-      <div className="min-h-screen bg-[#050a0d] text-white flex items-center justify-center p-6">
-        <div className="text-center font-mono text-sm text-white/60">FREK-ID manquant. <Link to="/accueil" className="text-[#2cc4f5] underline">Retour</Link></div>
+      <div className="min-h-screen bg-[#f8fafc] text-slate-700 flex items-center justify-center p-6">
+        <div className="text-center font-mono text-sm">FREK-ID manquant. <Link to="/accueil" className="text-[#0ea5e9] underline">Retour</Link></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#050a0d] via-[#0a1520] to-[#050a0d] text-white">
-      <header className="bg-[#050a0d]/95 backdrop-blur-xl border-b border-[#2cc4f5]/10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 relative overflow-hidden">
+      <BackgroundDecor />
+
+      <header className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+        <div className="bg-white/70 backdrop-blur-2xl rounded-2xl border border-white/60 shadow-lg shadow-slate-200/50 px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <Link to="/accueil" className="flex items-center gap-2 sm:gap-3" data-testid="profil-back-link">
-            <img src="/frek-logo.png" alt="FREK" className="h-6 sm:h-8 w-auto" />
-            <span className="font-display text-lg sm:text-xl tracking-wider text-[#2cc4f5]">FREK</span>
+            <span className="font-display text-xl tracking-wider bg-gradient-to-r from-[#2cc4f5] to-[#0ea5e9] bg-clip-text text-transparent font-semibold">FREK</span>
           </Link>
-          <span className="font-mono text-[10px] sm:text-xs text-white/40 uppercase tracking-widest">Profil personnel</span>
+          <span className="font-mono text-[10px] sm:text-xs text-slate-400 uppercase tracking-widest">Profil personnel</span>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {loading && (
           <div className="text-center py-20" data-testid="profil-loading">
-            <div className="w-10 h-10 mx-auto border-2 border-[#0a1520] border-t-[#2cc4f5] rounded-full animate-spin mb-4" />
-            <p className="font-mono text-xs text-[#2cc4f5]/60">Chargement du profil...</p>
+            <div className="w-10 h-10 mx-auto border-2 border-slate-200 border-t-[#2cc4f5] rounded-full animate-spin mb-4" />
+            <p className="font-mono text-xs text-[#0ea5e9]">Chargement du profil...</p>
           </div>
         )}
 
         {!loading && notFound && (
           <div className="text-center py-20" data-testid="profil-not-found">
-            <h1 className="font-display text-3xl text-white mb-3">Profil introuvable</h1>
-            <p className="font-mono text-sm text-white/40 mb-8">
+            <h1 className="font-display text-3xl text-slate-800 mb-3">Profil introuvable</h1>
+            <p className="font-mono text-sm text-slate-400 mb-8">
               Ce FREK-ID n'existe pas encore — il sera créé à votre première trace.
             </p>
             <Link
               to="/accueil"
-              className="inline-block px-5 py-3 bg-[#2cc4f5] text-[#050a0d] font-mono text-xs uppercase tracking-wider rounded hover:bg-[#33cfff] transition-all font-bold"
+              className="inline-block px-5 py-3 bg-gradient-to-r from-[#2cc4f5] to-[#0ea5e9] text-white font-mono text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-[#2cc4f5]/30 hover:shadow-xl transition-all font-semibold"
               data-testid="profil-not-found-cta"
             >
               Retour
@@ -206,131 +205,119 @@ export default function Profil() {
 
         {!loading && !notFound && (
           <>
-            {/* En-tête personnel */}
-            <section data-testid="profil-header" className="mb-8 sm:mb-12">
-              <div className="font-mono text-[10px] text-[#2cc4f5]/60 uppercase tracking-widest mb-2">
-                Votre compte FREK
+            {/* FREK Card virtuelle nominative — lien vers /card en plein écran */}
+            <section data-testid="profil-card-section" className="mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="font-mono text-[10px] text-[#0ea5e9] uppercase tracking-widest">Votre FREK Card</div>
+                  <h2 className="font-display text-2xl text-slate-800 mt-1">Nominative · à vie · vivante</h2>
+                </div>
+                <Link
+                  to={`/card/${encodeURIComponent(frekId)}`}
+                  data-testid="profil-open-card-fullscreen"
+                  className="px-3 py-1.5 bg-white border border-slate-200 hover:border-[#2cc4f5] text-slate-600 font-mono text-[10px] uppercase tracking-wider rounded-lg transition-colors shadow-sm"
+                >
+                  Plein écran
+                </Link>
               </div>
-              <h1 className="font-display text-3xl sm:text-4xl text-white break-all" data-testid="profil-frek-id">
-                {frekId}
-              </h1>
+              <Link to={`/card/${encodeURIComponent(frekId)}`} className="block hover:scale-[1.01] transition-transform">
+                <FrekCard frekId={frekId} />
+              </Link>
+            </section>
+
+            <section data-testid="profil-header" className="mb-8 sm:mb-10">
+              <div className="font-mono text-[10px] text-[#0ea5e9] uppercase tracking-widest mb-2">Identifiant souverain</div>
+              <h1 className="font-display text-2xl sm:text-3xl text-slate-800 break-all" data-testid="profil-frek-id">{frekId}</h1>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {status && !status.revoked && !status.expired && (
-                  <span data-testid="profil-status-active" className="px-2.5 py-1 bg-[#2cc4f5]/15 text-[#2cc4f5] font-mono text-[10px] uppercase tracking-wider rounded-full border border-[#2cc4f5]/30">
+                  <span data-testid="profil-status-active" className="px-2.5 py-1 bg-[#2cc4f5]/10 text-[#0ea5e9] font-mono text-[10px] uppercase tracking-wider rounded-full border border-[#2cc4f5]/30">
                     Actif · Stage {status.current_stage}
                   </span>
                 )}
                 {status?.revoked && (
-                  <span data-testid="profil-status-revoked" className="px-2.5 py-1 bg-red-500/15 text-red-300 font-mono text-[10px] uppercase tracking-wider rounded-full border border-red-500/30">
-                    Révoqué
-                  </span>
+                  <span data-testid="profil-status-revoked" className="px-2.5 py-1 bg-red-50 text-red-600 font-mono text-[10px] uppercase tracking-wider rounded-full border border-red-200">Révoqué</span>
                 )}
                 {status?.expired && !status?.revoked && (
-                  <span data-testid="profil-status-expired" className="px-2.5 py-1 bg-amber-500/15 text-amber-300 font-mono text-[10px] uppercase tracking-wider rounded-full border border-amber-500/30">
-                    Expiré
-                  </span>
+                  <span data-testid="profil-status-expired" className="px-2.5 py-1 bg-amber-50 text-amber-700 font-mono text-[10px] uppercase tracking-wider rounded-full border border-amber-200">Expiré</span>
                 )}
                 {hasFingerprintConsent && (
-                  <span data-testid="profil-fingerprint-badge" className="px-2.5 py-1 bg-emerald-500/15 text-emerald-300 font-mono text-[10px] uppercase tracking-wider rounded-full border border-emerald-500/30">
+                  <span data-testid="profil-fingerprint-badge" className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-mono text-[10px] uppercase tracking-wider rounded-full border border-emerald-200">
                     Profil culturel certifié
                   </span>
                 )}
               </div>
 
-              <p className="font-mono text-[11px] text-white/30 mt-4 max-w-xl leading-relaxed">
+              <p className="font-mono text-[11px] text-slate-400 mt-4 max-w-xl leading-relaxed">
                 Seules vos traces personnelles apparaissent ici. La masse de la plateforme
-                reste sur la page <Link to="/accueil" className="text-[#2cc4f5]/70 underline">d'accueil</Link>.
+                reste sur la page <Link to="/accueil" className="text-[#0ea5e9] underline">d'accueil</Link>.
               </p>
             </section>
 
             {error && (
-              <div className="mb-6 rounded-lg p-3 bg-red-500/10 border border-red-500/30 font-mono text-[11px] text-red-300" data-testid="profil-error">
+              <div className="mb-6 rounded-lg p-3 bg-red-50 border border-red-200 font-mono text-[11px] text-red-600" data-testid="profil-error">
                 {error}
               </div>
             )}
 
-            {/* Actions personnelles : passeport + export RGPD */}
             <section data-testid="profil-actions" className="mb-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={downloadPassport}
                 data-testid="profil-download-passport-btn"
-                className="text-left bg-[#0a1520]/60 hover:bg-[#0a1520] border border-[#2cc4f5]/20 hover:border-[#2cc4f5]/50 rounded-xl p-4 transition-colors"
+                className="text-left bg-white/70 hover:bg-white border border-slate-200 hover:border-[#2cc4f5] rounded-xl p-4 transition-colors shadow-sm"
               >
-                <div className="font-mono text-[10px] text-[#2cc4f5]/60 uppercase tracking-widest mb-1">Passeport souverain</div>
-                <div className="font-mono text-sm text-white">Télécharger passport.json</div>
-                <div className="font-mono text-[10px] text-white/40 mt-1">Signé Ed25519 · vérifiable offline</div>
+                <div className="font-mono text-[10px] text-[#0ea5e9] uppercase tracking-widest mb-1">Passeport souverain</div>
+                <div className="font-mono text-sm text-slate-800">Télécharger passport.json</div>
+                <div className="font-mono text-[10px] text-slate-400 mt-1">Signé Ed25519 · vérifiable offline</div>
               </button>
 
               <Link
                 to={`/verify/${encodeURIComponent(frekId)}`}
                 data-testid="profil-verify-link"
-                className="block bg-[#0a1520]/60 hover:bg-[#0a1520] border border-[#2cc4f5]/20 hover:border-[#2cc4f5]/50 rounded-xl p-4 transition-colors"
+                className="block bg-white/70 hover:bg-white border border-slate-200 hover:border-[#2cc4f5] rounded-xl p-4 transition-colors shadow-sm"
               >
-                <div className="font-mono text-[10px] text-[#2cc4f5]/60 uppercase tracking-widest mb-1">Vérification publique</div>
-                <div className="font-mono text-sm text-white">Ouvrir page /verify</div>
-                <div className="font-mono text-[10px] text-white/40 mt-1">Ancrage Bitcoin · audit lisible</div>
+                <div className="font-mono text-[10px] text-[#0ea5e9] uppercase tracking-widest mb-1">Vérification publique</div>
+                <div className="font-mono text-sm text-slate-800">Ouvrir page /verify</div>
+                <div className="font-mono text-[10px] text-slate-400 mt-1">Ancrage Bitcoin · audit lisible</div>
               </Link>
             </section>
 
-            {/* Compteurs personnels — strictement issus du compte */}
             <section data-testid="profil-counters" className="mb-10 grid grid-cols-3 gap-3">
-              <div className="bg-[#0a1520]/40 border border-[#2cc4f5]/10 rounded-xl p-4">
-                <div className="font-mono text-[9px] text-[#2cc4f5]/50 uppercase tracking-widest">Présences</div>
-                <div data-testid="profil-count-presences" className="font-display text-2xl sm:text-3xl text-white tabular-nums mt-1">
-                  {buckets.presence.length}
-                </div>
+              <div className="bg-white/70 border border-white/60 rounded-xl p-4 shadow-sm">
+                <div className="font-mono text-[9px] text-[#0ea5e9] uppercase tracking-widest">Présences</div>
+                <div data-testid="profil-count-presences" className="font-display text-2xl sm:text-3xl text-slate-800 tabular-nums mt-1">{buckets.presence.length}</div>
               </div>
-              <div className="bg-[#0a1520]/40 border border-[#f7931a]/10 rounded-xl p-4">
-                <div className="font-mono text-[9px] text-[#f7931a]/60 uppercase tracking-widest">Œuvres</div>
-                <div data-testid="profil-count-works" className="font-display text-2xl sm:text-3xl text-white tabular-nums mt-1">
-                  {buckets.work.length}
-                </div>
+              <div className="bg-white/70 border border-white/60 rounded-xl p-4 shadow-sm">
+                <div className="font-mono text-[9px] text-amber-600 uppercase tracking-widest">Œuvres</div>
+                <div data-testid="profil-count-works" className="font-display text-2xl sm:text-3xl text-slate-800 tabular-nums mt-1">{buckets.work.length}</div>
               </div>
-              <div className="bg-[#0a1520]/40 border border-emerald-400/10 rounded-xl p-4">
-                <div className="font-mono text-[9px] text-emerald-400/60 uppercase tracking-widest">Croisements</div>
-                <div data-testid="profil-count-cross" className="font-display text-2xl sm:text-3xl text-white tabular-nums mt-1">
-                  {buckets.cross.length}
-                </div>
+              <div className="bg-white/70 border border-white/60 rounded-xl p-4 shadow-sm">
+                <div className="font-mono text-[9px] text-emerald-600 uppercase tracking-widest">Croisements</div>
+                <div data-testid="profil-count-cross" className="font-display text-2xl sm:text-3xl text-slate-800 tabular-nums mt-1">{buckets.cross.length}</div>
               </div>
             </section>
 
-            {/* Timelines */}
             <section className="space-y-10">
               <div>
-                <h2 className="font-display text-xl text-white mb-3">Présences</h2>
+                <h2 className="font-display text-xl text-slate-800 mb-3">Présences</h2>
                 {buckets.presence.length === 0 ? (
-                  <EmptySection
-                    label="FREK-P"
-                    testid="profil-empty-presences"
-                    message="Aucune présence encore — scannez votre premier badge."
-                  />
+                  <EmptySection label="FREK-P" testid="profil-empty-presences" message="Aucune présence encore — scannez votre premier badge." />
                 ) : (
                   <Timeline items={buckets.presence} kind="presence" testid="profil-timeline-presences" />
                 )}
               </div>
-
               <div>
-                <h2 className="font-display text-xl text-white mb-3">Œuvres certifiées</h2>
+                <h2 className="font-display text-xl text-slate-800 mb-3">Œuvres certifiées</h2>
                 {buckets.work.length === 0 ? (
-                  <EmptySection
-                    label="FREK-O"
-                    testid="profil-empty-works"
-                    message="Aucune œuvre encore — certifiez votre première création."
-                  />
+                  <EmptySection label="FREK-O" testid="profil-empty-works" message="Aucune œuvre encore — certifiez votre première création." />
                 ) : (
                   <Timeline items={buckets.work} kind="work" testid="profil-timeline-works" />
                 )}
               </div>
-
               <div>
-                <h2 className="font-display text-xl text-white mb-3">Croisements</h2>
+                <h2 className="font-display text-xl text-slate-800 mb-3">Croisements</h2>
                 {buckets.cross.length === 0 ? (
-                  <EmptySection
-                    label="FREK-X"
-                    testid="profil-empty-cross"
-                    message="Aucun événement encore."
-                  />
+                  <EmptySection label="FREK-X" testid="profil-empty-cross" message="Aucun événement encore." />
                 ) : (
                   <Timeline items={buckets.cross} kind="cross" testid="profil-timeline-cross" />
                 )}
@@ -340,10 +327,10 @@ export default function Profil() {
         )}
       </main>
 
-      <footer className="border-t border-[#2cc4f5]/10 mt-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] text-white/30 uppercase tracking-widest">
+      <footer className="relative z-10 border-t border-slate-200/70 mt-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] text-slate-400 uppercase tracking-widest">
           <span>Compte personnel · données privées</span>
-          <Link to="/privacy" className="hover:text-[#2cc4f5]">Confidentialité</Link>
+          <Link to="/privacy" className="hover:text-[#0ea5e9]">Confidentialité</Link>
         </div>
       </footer>
     </div>

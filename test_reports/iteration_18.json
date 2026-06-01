@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only testing of the LIGHT-themed restyle + new pages /poste /card + new components FrekCard/PulseBanner + Certify banner injection. 6 pages tested via Playwright. All data-testids present, all critical flows pass EXCEPT /poste replay queue — POST /api/v1/scan/access appears to return 401 during replay even with a freshly issued PIN token (results-ok stays at 0, queue size does not decrease).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/v1/scan/access (called from /poste replay)", "issue": "Returns 401 during PIN-authenticated replay flow — see RCA below"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "/poste replay queue", "issue": "After login as SUPERVISEUR-01/9999 + prefill localStorage frek_offline_queue with one real entry {code:'CC26-BNV-1J6U0', frek_id:'72396222-4acd-41c3-b6f3-a5f14f38c0ef', client_uuid:'test-replay-1'} and clicking poste-replay-btn, the OK counter never increments and queue size stays at 1. Console shows a 401 during the flow.", "affected_selectors": ["[data-testid='poste-replay-btn']","[data-testid='poste-results-ok']","[data-testid='poste-queue-size']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Investigate /poste replay 401: verify that Authorization: Bearer ${session.token} is being sent correctly, that the token returned by POST /api/v1/staff/login is the same field name expected by /api/v1/scan/access (access_token vs token), and that the staff has 'scan_access' permission for zone ENTREE. SUPERVISEUR-01 has scan_access according to test_credentials.md, so token shape or zone enforcement is the most likely root cause."
+  ],
+  "critical_code_review_comments": [
+    "Poste.jsx replayQueue stores token via saveSession({token: data.access_token, ...}) then sends Authorization: Bearer ${session.token}. If the staff_routes endpoint returns the token under a different key, the Authorization header becomes 'Bearer undefined' -> 401. Worth double-checking server response shape vs the JS access.",
+    "FrekCard.jsx fetches /api/badges/?event=CC2026&size=200 then searches for matching frek_id client-side. Works fine for the test sample (130 records) but will not scale beyond size=200. Consider GET /api/badges/by-frek-id/{frekId} once available.",
+    "Scanner.jsx still uses window.confirm() in clearQueue (noted in iter_17) — non-blocking but not testable.",
+    "Both new files use import.meta.env.VITE_BACKEND_URL (Vite) while .env also keeps REACT_APP_BACKEND_URL — inconsistent but functional.",
+    "All interactive elements have data-testid — excellent."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "~93% — 14/15 critical flows OK, 1 integration issue on /poste replay"},
+  "test_credentials": "SUPERVISEUR-01 / 9999 (used and accepted by /api/v1/staff/login). Bad PIN (0000) correctly rejected with 'Agent ou PIN invalide'.",
+  "seed_data_creation": "Prefilled localStorage 'frek_offline_queue' on /poste with one entry using real badge_id CC26-BNV-1J6U0 + real frek_id 72396222-4acd-41c3-b6f3-a5f14f38c0ef. No DB writes succeeded (401).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All other 14 critical flows passed: /accueil light theme + all 8 testids, navigation to /profil works. /profil shows FrekCard with name='Scan Test', frek-card-frek-id=correct uuid, status='Actif · Stage GENESIS', counters 0/0/0, no platform leak (231/130/148 not present). 'Plein écran' link → /card/:frekId renders frek-card-fullscreen + card-link-profile + card-link-verify. /scanner has all 3 mode buttons; NFC correctly disabled with label 'NFC (indispo)'; HID submit with CC26-BNV-1J6U0 returns real frek_id 72396222-... and stores in localStorage. /poste login flow: bad PIN shows 'Agent ou PIN invalide', good PIN shows poste-agent-name='Superviseur CC2026', logout returns to login. Certify homepage pulse-banner shows '231 présences · 130 FREK-IDs', clicks → /accueil. Console: only 4x 404 (favicon/static) + 1x 401 (during /poste replay) + 1x 404. No React key warnings.",
+  "rca of the issue": "RCA for /poste replay 401: Possible causes (sorted by likelihood) — (a) staff_routes /api/v1/staff/login returns the token under a different field (e.g. 'token' instead of 'access_token') so session.token is undefined and Authorization becomes 'Bearer undefined' → 401. (b) /api/v1/scan/access requires an additional header or a different token type (server vs staff). (c) Zone permission check rejects: although test_credentials.md states SUPERVISEUR-01 has all zones, the request body sends zone='ENTREE' — should be allowed. Repro steps: 1) goto /poste, 2) login SUPERVISEUR-01/9999, 3) await session, 4) localStorage.setItem('frek_offline_queue', JSON.stringify([{client_uuid:'x', code:'CC26-BNV-1J6U0', frek_id:'72396222-4acd-41c3-b6f3-a5f14f38c0ef', badge_id:'CC26-BNV-1J6U0', timestamp:new Date().toISOString()}])), 5) wait 5s for poste polling, 6) click poste-replay-btn, 7) observe poste-results-ok stays at 0. Mitigation: console.log the actual /api/v1/staff/login response in browser devtools to confirm token field name; then align Poste.jsx accordingly (line 80: `token: data.access_token`)."
+}
