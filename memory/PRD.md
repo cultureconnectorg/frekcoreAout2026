@@ -195,6 +195,21 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Endpoints lecture** : `GET /frek/{frek_id}` (profile + 100 derniers events, _id et idempotency_key filtres), `GET /event/{event_id}/stats` (agregations by_badge_type/by_source/avg_score/first&last_activation), `GET /ecosystem/pulse` (status ALIVE/DORMANT, sources actives 24h).
 - **Tests Core** (12 directive + 6 supplementaires) : creation subject, idempotence, sources rejetees, bearer invalide, score from rules not hardcoded (verifie en modifiant une regle en live), score base+bonus, profile, 404, stats by_badge, pulse structure, badge inconnu 422, no regression ldp_vc, SD-JWT issuance/verify/partial/tamper, metadata declare 2 formats, Ed25519 inchangee.
 
+## Phase 5 Cultural Fingerprint Layer — Livree (12/05/2026, 17/17 + regression 291/291 OK)
+- **Module `fingerprint/`** isole, additif, namespace `/api/core/fingerprint/*`. Propriete exclusive CVLN Group.
+- **7 couches** : cadence, affinity, device, social, anomaly, coupling, linguistic (stub).
+- **Consentement segmente** : opt-in granulaire par couche. Revocation = purge effective des donnees (RGPD/AfCFTA).
+- **Couche cadence** : statistiques sur frek_events (mean/median/stddev inter-event, histograms heure/jour, velocity 24h). Aucun stockage additionnel.
+- **Couche affinity** : vecteur 64-dim par feature hashing deterministe (sign hashing trick). Cosinus pour matching. Aucune dependance ML lourde.
+- **Couche device** : empreinte serveur (canvas/fonts/WebGL hash fourni par le client) avec pepper serveur. Detection automatique de collisions multi-FREK.
+- **Couche social** : graphe de co-presence via event_id. Top-5 peers, centrality_score.
+- **Couche anomaly** : detection bot (CV cadence) + collisions device. Seuils explicites (alert 0.5, block 0.85).
+- **Couche coupling** : enregistrement NFC scan + verification web. Taux de couplage online/offline.
+- **Couche linguistic** : stub propre (`available: false, reason: no_text_corpus_yet`).
+- **Endpoints** : `/consent/{frek_id}` (GET/POST), `/observe/{device,nfc,web-verify}`, `/{frek_id}` (admin), `/match` (cosinus, admin, double consent), `/export/{frek_id}` (RGPD).
+- **Tests** (17) : default opt-out, grant subset, revoke triggers purge, observe sans consent, observe avec consent, NFC -> web couples, admin gate, consent gates par couche, cadence computed, affinity vector normalise, match similar, match exige double consent, anomaly bot signal high (deterministe via Mongo direct), device collision, social copresence, export RGPD complet.
+- **Invariants respectes** : zero PII civile, zero cookie tiers, zero ML lourd, Ed25519 inchangee, _id Mongo jamais expose, FREK ne connait pas l'identite civile, scoring autoritaire CVLN.
+
 ## Phase 4.6 SD-JWT VC — Livre (12/05/2026)
 - **Module `eudi/sdjwt.py`** : format `vc+sd-jwt` (IETF draft-ietf-oauth-sd-jwt-vc-08+), **complement** de `ldp_vc` (jamais en remplacement).
 - **Structure** : `<JWT>~<disclosure>~<disclosure>~...~`. JWT signe Ed25519 (alg=EdDSA, typ=vc+sd-jwt, kid=did:frek:frekcore#frek-passport-v1).
