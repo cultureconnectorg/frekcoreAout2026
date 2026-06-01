@@ -13,6 +13,9 @@ import { Imprint } from './pages/Imprint';
 import { Help } from './pages/Help';
 import Dashboard from './pages/Dashboard';
 import ScanApp from './scan/ScanApp';
+import Accueil from './pages/Accueil';
+import Profil from './pages/Profil';
+import Scanner from './pages/Scanner';
 
 // Page "À propos" simplifiée (ancien contenu accessible)
 import { Nav } from './components/layout/Nav';
@@ -69,6 +72,11 @@ function App() {
 
         {/* PWA Scanner Staff terrain */}
         <Route path="/scan/*" element={<ScanApp />} />
+
+        {/* Nouvelles pages utilisateur — additives, aucun fichier existant modifie */}
+        <Route path="/accueil" element={<Accueil />} />
+        <Route path="/profil/:frekId" element={<Profil />} />
+        <Route path="/scanner" element={<Scanner />} />
         
         {/* Redirections anciennes URLs */}
         <Route path="/certify" element={<Navigate to="/" replace />} />

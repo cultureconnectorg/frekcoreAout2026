@@ -1,0 +1,43 @@
+{
+  "summary": "Frontend-only testing for the 3 new FREKCORE pages (/accueil, /profil/:frekId, /scanner). All critical flows pass: data-testids present, platform pulse stats render, redirect to profile works, scanner offline queue + localStorage works, badge lookup via GET /api/badges/{id} resolves frek_id, passport download triggers, not-found state renders, status badge METAMORPHOSE shown for legacy id, regressions on /, /dashboard, /verify/:frekId all return 200.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/profil/:frekId",
+        "issues": [
+          "The literal token 'CC2026' appears in explanatory copy ('La masse de la plateforme (CC2026, événements globaux) reste sur la page d'accueil.'). Spec says 'no CC2026 visible anywhere in personal profile sections' — this is a soft violation (it's only a reference label, no platform numbers leak). Consider rewording to 'La masse de la plateforme reste sur la page d'accueil.' for strict compliance.",
+          "Numbers 231 / 130 / 148 (platform totals) confirmed ABSENT from personal profile — strict rule respected for numeric data."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: remove 'CC2026' literal mention from the explanatory <p> inside Profil.jsx (line ~243) to fully respect the strict separation rule. Numeric data is already clean.",
+    "Minor: source files use import.meta.env.VITE_BACKEND_URL (Vite). frontend/.env has both REACT_APP_BACKEND_URL and VITE_BACKEND_URL — works fine, but inconsistent with rest of codebase guidance which expects process.env.REACT_APP_BACKEND_URL. No functional impact."
+  ],
+  "critical_code_review_comments": [
+    "Profil.jsx downloadPassport uses fetch + Blob + anchor click — works but no try/finally cleanup on URL.createObjectURL on early errors (minor mem leak only on failure path).",
+    "Scanner.jsx uses window.confirm() inside clearQueue — fine, but blocks the main thread and isn't easily testable without a dialog handler.",
+    "Both new files use `import.meta.env.VITE_BACKEND_URL` — inconsistent with /app/frontend/.env REACT_APP_BACKEND_URL convention. Works because VITE_BACKEND_URL is set, but document this choice.",
+    "All interactive elements have data-testid — excellent test surface coverage."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100% on critical flows; 1 soft-violation noted"},
+  "test_credentials": "n/a — all tested pages are public",
+  "seed_data_creation": "Used existing legacy frek_id 994a2c47-a66d-4f84-a535-b9f21d9d5b9c and badge_id CC26-BNV-1J6U0 (resolved to 72396222-4acd-41c3-b6f3-a5f14f38c0ef). No data created.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 new pages pass. Only one soft violation: the word 'CC2026' appears in disclaimer copy on /profil but no platform numbers leak. Status badge text confirmed = 'Actif · Stage METAMORPHOSE'. Scanner submit with bare FREK-ID stores entry in localStorage 'frek_offline_queue' with online:true/false flag. Badge lookup resolves real frek_id via public GET /api/badges/{id}. Passport download via /api/v1/passport/{id} works (file downloaded). Regression on /, /dashboard, /verify/:frekId all OK.",
+  "observations": {
+    "platform_total_observed": "Animated from 0 to 120 then to ~231 between fetches — live pulse working.",
+    "scanner_known_badge_resolution": "CC26-BNV-1J6U0 → 72396222-4acd-41c3-b6f3-a5f14f38c0ef (real frek_id from /api/badges lookup, detail label='Benevole').",
+    "console_errors": "Only React Router v6→v7 future flag warnings (informational) and a couple of 404s on missing static resources (likely favicon/manifest). No React key warnings, no fetch failures on the rendered page logic."
+  }
+}
