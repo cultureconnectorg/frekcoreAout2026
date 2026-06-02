@@ -1,0 +1,26 @@
+{
+  "summary": "Retest of /poste replay queue flow after endpoint fix in Poste.jsx (POST now goes to /api/v1/staff/scan/access instead of /api/v1/scan/access). ALL assertions PASS — the 401 bug from iteration_18 is resolved.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_19.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Endpoint fix in /app/frontend/src/pages/Poste.jsx line 121 (/api/v1/staff/scan/access) is correct and now matches the protected staff route. No further action needed for this flow.",
+    "Note for future iterations: 2nd-call response detail reads 'OK' rather than 'deja enregistre' because the server (staff route) does not return data.idempotent for already-replayed client_uuids — the UI still treats it as success (no error, no double-count) so behavior is correct, but the per-row detail label is slightly misleading. Low priority."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100% — 11/11 steps, 6/6 assertions PASS"},
+  "test_credentials": "SUPERVISEUR-01 / 9999 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Prefilled localStorage 'frek_offline_queue' with one entry {client_uuid: 'iter18-retest-<ts>', code: 'CC26-BNV-1J6U0', frek_id: '72396222-4acd-41c3-b6f3-a5f14f38c0ef', badge_id: 'CC26-BNV-1J6U0', zone: ENTREE} before navigation, then re-prefilled the same client_uuid for the idempotence check. Two server-side scan/access records were inserted (idempotent on the 2nd call).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iteration_18 covered 14/15 critical flows; iteration_19 closed the last failing flow (/poste replay). Network trace observed during this run: POST /api/v1/staff/login → 200, POST /api/v1/staff/scan/access (1st) → 200, POST /api/v1/staff/scan/access (2nd, same client_uuid) → 200, POST /api/v1/staff/login (re-login) → 200. Zero 401, zero 4xx/5xx on any tracked API call. Console: no errors. Queue size transitions 1 → 0 after each replay. Logout/login cycle works.",
+  "rca of the issue": "Root cause from iteration_18: Poste.jsx replayQueue() called the public /api/v1/scan/access endpoint, which does not accept staff Bearer tokens — it returned 401. Fix (verified this iteration): switched to the staff-protected /api/v1/staff/scan/access endpoint which accepts the PIN-issued Bearer token. Repro of fix: 1) prefill localStorage, 2) login SUPERVISEUR-01/9999, 3) click poste-replay-btn → results-ok=1, queue-size=0, network shows 200 on /api/v1/staff/scan/access. Idempotence verified by replaying the same client_uuid a second time and getting another 200 with no error and final queue size 0."
+}

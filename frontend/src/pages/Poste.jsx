@@ -118,7 +118,7 @@ export default function Poste() {
       }
       const code = entry.code || entry.badge_id || entry.frek_id;
       try {
-        const r = await fetch(`${API_URL}/api/v1/scan/access`, {
+        const r = await fetch(`${API_URL}/api/v1/staff/scan/access`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
