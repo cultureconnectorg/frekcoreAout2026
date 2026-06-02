@@ -236,6 +236,29 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Tests frontend** (iteration_17) : 100% flux critiques, 1 soft-violation corrigee (mention "CC2026" retiree de la copie /profil). Aucun bug UI, aucune regression sur /, /verify/:frekId, /dashboard, /scan/*. Tous les data-testids presents et uniques.
 - **Endpoints consommes** (lecture seule, publics) : `/api/core/ecosystem/pulse`, `/api/core/event/CC2026/stats`, `/api/core/frek/{id}`, `/api/v1/identity/{id}/status`, `/api/core/fingerprint/consent/{id}`, `/api/v1/passport/{id}`, `/api/badges/{badge_id}`.
 
+## Phase porteur v2 — FREK Card + Poste Staff + Theme clair (01/06/2026, frontend, iteration_19 100%)
+- **Theme clair Certify-style applique partout** (`#f8fafc` + blobs cyan + cartes verre blanc) : Accueil, Profil, Scanner, Poste, Card. Coherence visuelle stricte avec page `/`.
+- **FREK Card virtuelle nominative et individuelle a vie** (`components/FrekCard.jsx`) :
+  - Carte premium gradient cyan, puce NFC visuelle, QR code (en plein ecran), horloge live (mise a jour seconde).
+  - Nominative : prenom + nom recuperes de `/api/badges/?event=CC2026` (public) + type badge (BNV/VIP/ART...).
+  - Classification IA-style : 3 compteurs FREK-P / FREK-O / FREK-X calcules a partir de `/api/core/frek/{id}.events`.
+  - Status badge (ACTIF/REVOQUE/EXPIRE) + stage Luciole, lies a vie au FREK-ID immuable.
+  - Integree dans `/profil/:frek_id` + page plein ecran dediee `/card/:frek_id` (partageable, accessible via QR).
+- **Poste Staff `/poste`** (`pages/Poste.jsx`) :
+  - Auth PIN staff via `POST /api/v1/staff/login` (reuse 100% infra existante).
+  - Selecteur de zone unique pour toute la session (ENTREE par defaut, 7 zones).
+  - Affichage temps reel de la file localStorage `frek_offline_queue` (refresh 5s).
+  - Replay batch via `POST /api/v1/staff/scan/access` avec Bearer staff. Idempotent par `client_uuid` (le backend deduplique). Resultats OK / Skip / Erreur affiches en live, file purgee des entrees rejouees.
+  - Bouton Stop pour interrompre, gestion 401 (session expiree -> auto-logout).
+- **Scanner multi-modes universel** (`pages/Scanner.jsx`) :
+  - **HID/clavier** : pistolets USB/Bluetooth, lecteurs RFID, USB-NFC (par defaut, auto-focus).
+  - **Camera** : telephone QR/DataMatrix via `html5-qrcode` (dynamic import, lib deja en deps).
+  - **Web NFC** : NDEFReader natif (Android Chrome). Bouton disabled "(indispo)" si non supporte.
+  - Couvre ~100% de l'ecosysteme scanner mondial sans verrou materiel.
+- **Pulse banner injecte dans `/` (Certify)** (`components/PulseBanner.jsx`) : indicateur "Plateforme vivante · X presences · Y FREK-IDs" cliquable, navigue vers `/accueil`. Aucune autre modification de Certify.jsx.
+- **Endpoints supplementaires consommes** : `POST /api/v1/staff/login`, `POST /api/v1/staff/scan/access`. Aucun nouvel endpoint cree.
+- **Tests frontend** (iteration_18 + iteration_19) : 100% des flux critiques apres correction d'un path endpoint (`/api/v1/scan/access` -> `/api/v1/staff/scan/access`). Aucune regression sur les pages existantes.
+
 ## Audit technique — Test suite verte (06/05/2026)
 - **pytest backend : 182/182 passed, 2 skipped, 0 failed (2:30)**
 - Migration tests vers `localhost:8001` (in-cluster) via `conftest.py` (purge `rate_limits` par session + per-test sauf TestRateLimit)
