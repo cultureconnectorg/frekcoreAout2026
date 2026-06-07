@@ -243,6 +243,7 @@ export default function Accueil() {
           <span>FrekCore — Notaire culturel tech</span>
           <div className="flex gap-4">
             <Link to="/scanner" data-testid="accueil-link-scanner" className="hover:text-[#0ea5e9] transition-colors">Pointeuse</Link>
+            <Link to="/atlas" data-testid="accueil-link-atlas" className="hover:text-[#0ea5e9] transition-colors">Atlas</Link>
             <Link to="/poste" data-testid="accueil-link-poste" className="hover:text-[#0ea5e9] transition-colors">Poste staff</Link>
             <Link to="/spec" className="hover:text-[#0ea5e9] transition-colors">Spec</Link>
             <Link to="/privacy" className="hover:text-[#0ea5e9] transition-colors">Confidentialité</Link>

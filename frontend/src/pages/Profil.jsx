@@ -330,7 +330,10 @@ export default function Profil() {
       <footer className="relative z-10 border-t border-slate-200/70 mt-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] text-slate-400 uppercase tracking-widest">
           <span>Compte personnel · données privées</span>
-          <Link to="/privacy" className="hover:text-[#0ea5e9]">Confidentialité</Link>
+          <div className="flex gap-4">
+            <Link to="/atlas" data-testid="profil-link-atlas" className="hover:text-[#0ea5e9]">Atlas</Link>
+            <Link to="/privacy" className="hover:text-[#0ea5e9]">Confidentialité</Link>
+          </div>
         </div>
       </footer>
     </div>

@@ -67,6 +67,10 @@ from fingerprint.routes import fp_router, set_db as fp_set_db, ensure_indexes as
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
+# Import FREK Geo — Phase 6 Couche geolocalite souveraine (additif, namespace /api/geo/*)
+from geo.routes import geo_router, set_db as geo_set_db
+from geo.service import ensure_indexes as geo_ensure_indexes
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -224,6 +228,10 @@ app.include_router(fp_router, prefix="/api")
 # (les partenaires embeddent <script src="https://frekcore.com/api/v1/seal.js">)
 app.include_router(seal_router, prefix="/api/v1")
 
+# FREK Geo — Phase 6 Couche geolocalite souveraine (additif, namespace /api/geo/*)
+geo_set_db(db)
+app.include_router(geo_router, prefix="/api")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -354,6 +362,8 @@ async def seed_clients():
     await core_seed_rules()
     # FREK Cultural Fingerprint Layer — indexes
     await fp_ensure_indexes()
+    # FREK Geo — indexes Phase 6
+    await geo_ensure_indexes()
     await db.staff.create_index("locked_until", sparse=True)
     await db.staff.create_index("failed_attempts", sparse=True)
     # Compound index event+timestamp pour requetes audit/event scopees

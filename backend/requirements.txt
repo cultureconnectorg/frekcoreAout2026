@@ -148,3 +148,5 @@ watchfiles==1.1.1
 websockets==15.0.1
 yarl==1.22.0
 zipp==3.23.0
+h3==4.5.0
+openlocationcode==1.0.1

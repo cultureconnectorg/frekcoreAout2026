@@ -65,10 +65,34 @@ export default function Scanner() {
   const [error, setError] = useState(null);
   const [platformTotal, setPlatformTotal] = useState(null);
   const [nfcSupported, setNfcSupported] = useState(false);
+  const [geoEnabled, setGeoEnabled] = useState(() => localStorage.getItem('frek_geo_enabled') === '1');
+  const lastPosRef = useRef(null);
 
   useEffect(() => {
     setNfcSupported(typeof window !== 'undefined' && 'NDEFReader' in window);
   }, []);
+
+  // Capture GPS si geoEnabled — on rafraichit toutes les 60s en arriere-plan
+  useEffect(() => {
+    if (!geoEnabled || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    let watchId;
+    const onSuccess = (pos) => {
+      lastPosRef.current = {
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        accuracy_m: pos.coords.accuracy,
+      };
+    };
+    const onError = () => { /* silent — pas de localisation */ };
+    watchId = navigator.geolocation.watchPosition(onSuccess, onError, { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 });
+    return () => { if (watchId) navigator.geolocation.clearWatch(watchId); };
+  }, [geoEnabled]);
+
+  const toggleGeo = () => {
+    const next = !geoEnabled;
+    setGeoEnabled(next);
+    localStorage.setItem('frek_geo_enabled', next ? '1' : '0');
+  };
 
   useEffect(() => {
     const onOn = () => setOnline(true);
@@ -159,7 +183,25 @@ export default function Scanner() {
     recordPresence(entry);
     setValue('');
     setBusy(false);
-  }, [value, busy, online, mode, recordPresence]);
+
+    // Geo : si capture activee + position dispo, on observe en arriere-plan (idempotent)
+    if (geoEnabled && lastPosRef.current && entry.frek_id) {
+      const pos = lastPosRef.current;
+      try {
+        await fetch(`${API_URL}/api/geo/observe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            frek_id: entry.frek_id,
+            lat: pos.lat,
+            lon: pos.lon,
+            accuracy_m: pos.accuracy_m,
+            source_event_id: entry.client_uuid,
+          }),
+        });
+      } catch { /* offline ok */ }
+    }
+  }, [value, busy, online, mode, recordPresence, geoEnabled]);
 
   // ===== Caméra (html5-qrcode) =====
   const startCamera = useCallback(async () => {
@@ -285,6 +327,20 @@ export default function Scanner() {
             </button>
           ))}
         </div>
+
+        {/* Geo opt-in */}
+        <button
+          onClick={toggleGeo}
+          data-testid="scanner-geo-toggle"
+          className={`mb-4 ml-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-wider border transition ${
+            geoEnabled
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+              : 'bg-white border-slate-200 text-slate-500 hover:border-[#2cc4f5]'
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${geoEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+          Géo {geoEnabled ? 'activée' : 'désactivée'}
+        </button>
 
         {/* Champ principal */}
         <section data-testid="scanner-input-zone" className="bg-white/70 backdrop-blur-2xl border border-white/60 rounded-2xl shadow-xl shadow-slate-200/40 p-6 sm:p-8">
@@ -418,7 +474,10 @@ export default function Scanner() {
       <footer className="relative z-10 border-t border-slate-200/70">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] text-slate-400 uppercase tracking-widest">
           <span>Pointeuse · données locales d'abord</span>
-          <span>file persistée dans <code className="text-[#0ea5e9]">frek_offline_queue</code></span>
+          <div className="flex gap-4">
+            <Link to="/atlas" data-testid="scanner-link-atlas" className="hover:text-[#0ea5e9]">Atlas</Link>
+            <span>file persistée dans <code className="text-[#0ea5e9]">frek_offline_queue</code></span>
+          </div>
         </div>
       </footer>
     </div>

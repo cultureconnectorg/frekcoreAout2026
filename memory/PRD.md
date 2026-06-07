@@ -236,6 +236,45 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - **Tests frontend** (iteration_17) : 100% flux critiques, 1 soft-violation corrigee (mention "CC2026" retiree de la copie /profil). Aucun bug UI, aucune regression sur /, /verify/:frekId, /dashboard, /scan/*. Tous les data-testids presents et uniques.
 - **Endpoints consommes** (lecture seule, publics) : `/api/core/ecosystem/pulse`, `/api/core/event/CC2026/stats`, `/api/core/frek/{id}`, `/api/v1/identity/{id}/status`, `/api/core/fingerprint/consent/{id}`, `/api/v1/passport/{id}`, `/api/badges/{badge_id}`.
 
+## Batch A — Visibilité & cohérence (07/06/2026, doctrine recadrée intégrée)
+- **Liens nav `/atlas`** ajoutés aux footers Accueil, Profil, Scanner (additif, aucun fichier existant cassé).
+- **Notarisation geo-située Bitcoin** — nouvel endpoint `POST /api/geo/notarize`. Crée un payload `{frek_id, geo:{plus_code, h3_9, h3_12, geohash_8, lat, lon}, satellite_witness:{eox_s2, nasa_gibs}, observation_at}` puis appelle `notarize_event(payload_type="geo_anchor")` du module notary existant (zero modification). Respecte le consent (403 si level=none). **Preuve curl : block #1260 ancré, hash `2d568ae60da877e1...`, payload réel sauvé en FREK-Chain et soumis à OTS Bitcoin.**
+- **FREK Card v2** — tier visuel derivé du `cultural_impact_score` :
+  - Bronze (0-49) · Argent (50-199) · Or (200-499) · Platine (500+) · Neuve (score null)
+  - Gradient personnalisé par tier (cuivre / argent métallique / or doré / platine froide / cyan neuve)
+  - `data-tier` exposé sur la carte pour test
+  - Badge "Impact N" + badge "dernière activité" (relatif : "il y a 3 h", "à l'instant", "inactive")
+  - Pulse emerald si activité < 24h (la carte "respire" sur le terrain, "dort" en sommeil)
+  - Score & last_event_at calculés depuis `/api/core/frek/{id}` existant — aucun nouveau endpoint
+- **Doctrine intégrée** :
+  - Porteur = gratuit à vie, mécanique invisible
+  - Pro = JCC uniquement, jamais Stripe direct
+  - Comptage universel pour tout flux humain (présence, stream, formation, vote, NFC tap)
+  - Batch C recadré : monétisation JCC tiers (pas free/pro/enterprise visible porteur)
+
+## Phase 6 — Geo Layer souveraine (02/06/2026, backend + frontend, 13 preuves curl + ecran Atlas)
+- **Module `geo/`** isole, additif, namespace `/api/geo/*`. Aucune cle, aucune dependance commerciale.
+- **Stack souveraine** :
+  - **Plus Code** (Open Location Code Apache 2.0, lib `openlocationcode==1.0.1`) — encodage 10/11 chars local.
+  - **H3** (Uber Apache 2.0, lib `h3==4.5.0`) — hex spatial indexing res 9 (~175m) + res 12 (~7m).
+  - **Geohash** (public domain, implementation locale) — precision 8 chars.
+  - **Nominatim OSM** (free public, 1 req/s, User-Agent FrekCore declare) — reverse-geocoding avec cache H3 (5000 entrees).
+  - **NASA GIBS** (MODIS Terra true color, gratuit no-auth, tuiles JPEG WMTS) — imagerie quotidienne 250m.
+  - **EOX Sentinel-2 cloudless 2023** (gratuit, attribution CC-BY 4.0, WMS) — mosaique 10m.
+  - **OpenStreetMap** (free public, attribution) — basemap.
+- **Consentement segmente 4 niveaux** (`none` | `country` | `city` | `precise`) — opt-in par defaut, revocation = purge effective (RGPD/AfCFTA compliant).
+- **Endpoints** (~9) : `POST /encode` (zero call externe), `GET/POST /consent/{frek_id}`, `POST /observe` (idempotent par hash sha256(frek_id|h3_12|minute)), `GET /trail/{frek_id}`, `GET /heatmap` (agregation H3 anonyme), `GET /satellite` (URL tuile gratuite), `GET /satellite/sources`.
+- **Indexes Mongo** : `frek_geo_consent.frek_id` unique, `frek_geo_observations.idempotency_key` unique, `(frek_id, observed_at desc)`, `h3_9`.
+- **Frontend** : nouvelle page `/atlas` (heatmap H3 + classement pays + imagerie satellite reelle Fort-de-France / Paris / Tokyo via boutons). `/scanner` enrichi avec toggle "Geo activee" (opt-in localStorage `frek_geo_enabled`), `navigator.geolocation.watchPosition` en arriere-plan, observation envoyee automatiquement avec chaque scan reussi.
+- **Preuves curl reelles** (iteration en cours) :
+  - Plus Code Fort-de-France `776WJW3R+F6` calcule en local
+  - Nominatim reel : `{country:'France', region:'Martinique'}` pour (14.6037, -61.0594)
+  - Nominatim reel : `{country:'France', region:'Île-de-France', city:'Paris'}` pour (48.8566, 2.3522)
+  - EOX Sentinel-2 URL HTTP 200, JPEG 30KB reel
+  - NASA GIBS URL HTTP 200, JPEG 12KB reel
+  - Heatmap retourne 2 cellules + 1 pays + 2 observations 24h
+- **Roadmap geo etendue** : ce module porte la **carte chaude mondiale** des presences FrekCore — fondation pour Atlas mondial, anchrage geo-situe sur FREK-Chain, et future certification par temoin satellite (couple `(plus_code, sentinel_tile, capture_date)` ancrable Bitcoin).
+
 ## Phase porteur v2 — FREK Card + Poste Staff + Theme clair (01/06/2026, frontend, iteration_19 100%)
 - **Theme clair Certify-style applique partout** (`#f8fafc` + blobs cyan + cartes verre blanc) : Accueil, Profil, Scanner, Poste, Card. Coherence visuelle stricte avec page `/`.
 - **FREK Card virtuelle nominative et individuelle a vie** (`components/FrekCard.jsx`) :
