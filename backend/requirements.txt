@@ -150,3 +150,5 @@ yarl==1.22.0
 zipp==3.23.0
 h3==4.5.0
 openlocationcode==1.0.1
+qrcode==8.2
+reportlab==4.4.10

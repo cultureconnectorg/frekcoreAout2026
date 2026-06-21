@@ -71,6 +71,9 @@ from seal import seal_router
 from geo.routes import geo_router, set_db as geo_set_db
 from geo.service import ensure_indexes as geo_ensure_indexes
 
+# Import FREK PDF Batch — generation self-service de badges PDF (additif)
+from pdf_batch.routes import pdf_batch_router, set_db as pdf_batch_set_db
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -232,6 +235,21 @@ app.include_router(seal_router, prefix="/api/v1")
 geo_set_db(db)
 app.include_router(geo_router, prefix="/api")
 
+# FREK PDF Batch — Batch B (additif, namespace /api/v1/pdf-batch/*)
+pdf_batch_set_db(db)
+app.include_router(pdf_batch_router, prefix="/api/v1")
+
+# FREK Counter — Batch C (Compteur souverain universel CVLN, namespace /api/core/count*)
+from counter.routes import counter_router, set_db as counter_set_db
+from counter.service import ensure_indexes as counter_ensure_indexes, seed_rules_if_empty as counter_seed
+counter_set_db(db)
+app.include_router(counter_router, prefix="/api/core")
+
+# FREK Investor — Pulse cryptographique due diligence (additif, namespace /api/v1/investor/*)
+from investor.routes import investor_router, set_db as investor_set_db
+investor_set_db(db)
+app.include_router(investor_router, prefix="/api/v1")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -364,6 +382,11 @@ async def seed_clients():
     await fp_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
+    # FREK Counter — indexes + seed regles
+    await counter_ensure_indexes()
+    seeded = await counter_seed()
+    if seeded > 0:
+        logger.info(f"FREK Counter: {seeded} regles de scoring seedees")
     await db.staff.create_index("locked_until", sparse=True)
     await db.staff.create_index("failed_attempts", sparse=True)
     # Compound index event+timestamp pour requetes audit/event scopees
