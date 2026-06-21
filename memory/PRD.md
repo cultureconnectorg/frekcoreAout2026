@@ -306,3 +306,44 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - Tests admin passent maintenant le header `X-Admin-Key` (verifie SECRET_KEY)
 - Tests PWA assets ciblent `localhost:3000` (frontend) au lieu du backend
 - Test `anchor/upgrade` borne a `max_blocks=1` pour eviter timeouts CI
+
+
+## Batch D — Heritage + Sync Baserow (21/06/2026)
+
+### D.1 — FREK Heritage / Transmission (LIVRE)
+- Module `heritage/` isole, additif, namespace `/api/v1/heritage/*`. Aucune modification des modules core.
+- **Doctrine** : un FREK-ID est NOMINATIF et a vie. Lors d'un transfert (deces, donation, retraite, revocation), la lignee cryptographique est conservee — nouveau detenteur, mais historique immuable ancre sur FREK-Chain.
+- **Securite** : zero PII en clair. Seul `sha256(email_beneficiaire)` + `sha256(claim_secret)` sont stockes. Le `claim_secret` (24 bytes urlsafe) est genere et retourne UNE seule fois au declarant.
+- **Endpoints (6)** :
+  - `POST /heritage/{frek_id}/declare` — declare un beneficiaire (auth client emit), retourne `claim_secret` a transmettre hors-bande.
+  - `GET /heritage/{frek_id}` — affiche la declaration active (sans secret).
+  - `DELETE /heritage/{frek_id}` — revoque la declaration.
+  - `POST /heritage/claim` — le beneficiaire revendique (public, email + secret hors-bande). Transfere la propriete.
+  - `POST /heritage/{frek_id}/transfer` — transfert force par le client (deces atteste, donation), conditionnel sur `manual` dans conditions.
+  - `GET /heritage/lineage/{frek_id}` — lignee complete et publique (hash only), chain of custody.
+- **Notarisation Bitcoin** : chaque `declare`, `revoke`, `transfer` = nouveau block sur FREK-Chain (payload_type=`heritage_declare`/`heritage_revoke`/`heritage_transfer`), automatiquement ancre via OpenTimestamps.
+- **Preuves curl** (testees end-to-end) :
+  - emit -> declare -> claim -> lineage : OK
+  - bad claim_secret : rejete (403/404)
+  - re-claim sur declaration deja consommee : rejete
+  - blocks #1262 (declare) + #1263 (transfer) avec chain integrity (prev_hash) confirmes
+- **Indexes Mongo** : `frek_heritage_declarations.declaration_id` unique, `(frek_id, active)`, `frek_heritage_transfers.transfer_id` unique.
+
+### D.3 — Sync Baserow bi-directional (LIVRE, attente token utilisateur)
+- Module `sync/` isole, additif, namespace `/api/v1/sync/*`. Aucune modification des modules core.
+- **Doctrine** : FREKCORE est SOURCE OF TRUTH. Baserow est la couche operationnelle/CRM. Sync explicite (cron externe ou admin manuel), aucun hook auto sur les modules core.
+- **Endpoints (5)** :
+  - `GET /sync/baserow/status` — admin, cursor + compteurs.
+  - `POST /sync/baserow/push/{frek_id}` — push une identite (create or update via mapping).
+  - `POST /sync/baserow/push?limit=N&since=ISO` — push batch depuis cursor.
+  - `POST /sync/baserow/pull?size=N` — pull rows Baserow, reconcilie le mapping.
+  - `POST /sync/baserow/webhook` — webhook receiver Baserow, signature HMAC-SHA256 verifiee si `BASEROW_WEBHOOK_SECRET` defini.
+  - `GET /sync/baserow/log` — admin, log des syncs.
+- **Auth** : `X-Admin-Key: $SECRET_KEY` requis sur tous les endpoints sauf webhook (signature HMAC).
+- **Collections** : `frek_sync_mapping` (frek_id <-> baserow_row_id), `frek_sync_log`, `frek_sync_cursor`.
+- **Statut actuel** : code 100% pret. Le token Baserow actuel `BASEROW_TOKEN` retourne `401 ERROR_TOKEN_DOES_NOT_EXIST` — a regenerer cote utilisateur sur baserow.io (Account > Tokens).
+
+### D.2 — SMTP frekcore.com (PARKED)
+- Decision : option (c) SMTP direct via hebergeur du domaine frekcore.com (souverain, aucune dependance AWS/Resend).
+- **En attente** : creds SMTP utilisateur (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM).
+- **Plan a la reprise** : refactor `email_service/routes.py` SES -> `aiosmtplib`, conserver les templates Jinja2 et le mode fallback `logged`.

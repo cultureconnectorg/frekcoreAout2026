@@ -62,3 +62,22 @@ STOKEN=$(curl -s -X POST "$API_URL/api/v1/staff/login" \
 - Region : eu-west-1
 - Sender : `frekcore@gmail.com` (verification SES Sandbox cote utilisateur)
 - Mode fallback (`logged`) tant que sender non verifie
+
+
+## Sync Baserow (Admin)
+
+`X-Admin-Key: $SECRET_KEY` requis. Token `BASEROW_TOKEN` actuellement 401 (a regenerer cote baserow.io).
+
+```bash
+ADMIN_KEY=$(grep "^SECRET_KEY=" /app/backend/.env | cut -d '=' -f2)
+curl -s "$API_URL/api/v1/sync/baserow/status" -H "X-Admin-Key: $ADMIN_KEY"
+```
+
+## SMTP frekcore.com (en attente creds utilisateur)
+
+Variables a definir dans `/app/backend/.env` :
+- `SMTP_HOST` (ex: ssl0.ovh.net, mail.gandi.net)
+- `SMTP_PORT` (465 SSL ou 587 STARTTLS)
+- `SMTP_USER` (ex: noreply@frekcore.com)
+- `SMTP_PASSWORD`
+- `SMTP_FROM` (ex: "FrekCore <noreply@frekcore.com>")

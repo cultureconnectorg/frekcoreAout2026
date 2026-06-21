@@ -250,6 +250,16 @@ from investor.routes import investor_router, set_db as investor_set_db
 investor_set_db(db)
 app.include_router(investor_router, prefix="/api/v1")
 
+# FREK Heritage / Transmission (additif, namespace /api/v1/heritage/*)
+from heritage.routes import heritage_router, set_db as heritage_set_db
+heritage_set_db(db)
+app.include_router(heritage_router, prefix="/api/v1")
+
+# FREK Sync — Baserow bi-directional (additif, namespace /api/v1/sync/*)
+from sync.routes import sync_router, set_db as sync_set_db
+sync_set_db(db)
+app.include_router(sync_router, prefix="/api/v1")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -387,6 +397,20 @@ async def seed_clients():
     seeded = await counter_seed()
     if seeded > 0:
         logger.info(f"FREK Counter: {seeded} regles de scoring seedees")
+    # FREK Heritage — indexes (additif)
+    await db.frek_heritage_declarations.create_index("declaration_id", unique=True)
+    await db.frek_heritage_declarations.create_index("frek_id")
+    await db.frek_heritage_declarations.create_index([("frek_id", 1), ("active", 1)])
+    await db.frek_heritage_transfers.create_index("transfer_id", unique=True)
+    await db.frek_heritage_transfers.create_index("frek_id")
+    logger.info("FREK Heritage indexes crees")
+
+    # FREK Sync (Baserow) — indexes (additif)
+    await db.frek_sync_mapping.create_index([("service", 1), ("frek_id", 1)], unique=True)
+    await db.frek_sync_mapping.create_index("baserow_row_id", sparse=True)
+    await db.frek_sync_log.create_index([("service", 1), ("at", -1)])
+    await db.frek_sync_cursor.create_index("service", unique=True)
+    logger.info("FREK Sync (Baserow) indexes crees")
     await db.staff.create_index("locked_until", sparse=True)
     await db.staff.create_index("failed_attempts", sparse=True)
     # Compound index event+timestamp pour requetes audit/event scopees
