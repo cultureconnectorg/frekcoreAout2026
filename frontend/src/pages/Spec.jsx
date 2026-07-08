@@ -1,148 +1,107 @@
-/**
- * FREK v2 — Page Spécifications
- * Version publique simplifiée
- */
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
+/**
+ * FREKCORE — Charte de confiance (page publique).
+ * Niveau IP : PUBLIC. Aucune ingenierie exposee.
+ * Doctrine : "Montrer la preuve. Cacher la recette."
+ */
+
+const API = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL;
 
 export function Spec() {
+  const [charter, setCharter] = useState(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/v1/spec/`).then((r) => r.json()).then(setCharter).catch(() => {});
+  }, []);
+
+  const container = { hidden: {}, show: { transition: { staggerChildren: 0.15 } } };
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } },
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#050a0d] via-[#0a1520] to-[#050a0d] text-white">
-      {/* Header */}
-      <header className="bg-[#050a0d]/95 backdrop-blur-xl border-b border-[#2cc4f5]/10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 sm:gap-3">
-            <img src="/frek-logo.png" alt="FREK" className="h-6 sm:h-8 w-auto" />
-            <span className="font-display text-lg sm:text-xl tracking-wider text-[#2cc4f5]">FREK</span>
-          </Link>
-          <Link
-            to="/"
-            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#2cc4f5] text-[#050a0d] font-mono text-[10px] sm:text-xs uppercase tracking-wider rounded hover:bg-[#33cfff] transition-all font-bold"
-          >
-            Certifier
-          </Link>
-        </div>
-      </header>
+    <div className="relative min-h-screen bg-gradient-to-br from-white via-blue-50 to-blue-100 overflow-hidden">
+      <div aria-hidden="true" className="fixed inset-0 pointer-events-none">
+        <motion.div
+          className="absolute top-1/4 right-0 w-[500px] h-[500px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.1), transparent 70%)', filter: 'blur(80px)' }}
+          animate={{ x: [-30, 30, -30], opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
 
-      {/* Main */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-        <div className="mb-8 sm:mb-12">
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl tracking-wider text-[#2cc4f5] mb-4">
-            Spécifications
-          </h1>
-          <p className="font-mono text-xs sm:text-sm text-[#8ab4c8]/60 uppercase tracking-wider">
-            Standard FREK v2.0
+      <motion.header
+        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+        className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto"
+      >
+        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="spec-brand">FREKCORE</Link>
+        <nav className="flex gap-6 text-sm text-slate-600">
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign">← Signer</Link>
+          <Link to="/manifeste" className="hover:text-blue-600 transition-colors" data-testid="link-manifesto-spec">Manifeste</Link>
+        </nav>
+      </motion.header>
+
+      <main className="relative z-10 max-w-3xl mx-auto px-6 py-16">
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.6 }}
+          className="text-xs text-slate-500 uppercase tracking-[0.3em] mb-4"
+        >
+          Charte de confiance · v{charter?.charter_version || '1.0'}
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-12 leading-tight"
+          data-testid="spec-headline"
+        >
+          Notre engagement.
+        </motion.h1>
+
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+          {(charter?.principles || []).map((p, idx) => (
+            <motion.div
+              key={idx}
+              variants={item}
+              className="border-l-2 border-blue-600 pl-6 py-2"
+              data-testid={`spec-principle-${idx + 1}`}
+            >
+              <div className="text-xs text-blue-600 font-mono mb-1">0{idx + 1}</div>
+              <p className="text-xl md:text-2xl text-slate-800 leading-relaxed font-light">{p}</p>
+            </motion.div>
+          ))}
+
+          {charter?.commitment && (
+            <motion.div
+              variants={item}
+              className="mt-16 p-8 bg-white/60 backdrop-blur border border-white/40 rounded-3xl shadow-xl"
+              data-testid="spec-commitment"
+            >
+              <p className="text-lg text-slate-900 font-semibold leading-relaxed">
+                {charter.commitment}
+              </p>
+            </motion.div>
+          )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.8 }}
+          className="mt-20 text-sm text-slate-500 space-y-2"
+        >
+          <p>
+            Partenaire ? <span className="text-slate-700">La documentation complète est accessible sous NDA.</span>
           </p>
-        </div>
-
-        <div className="space-y-8 sm:space-y-12">
-          {/* Principe */}
-          <section className="bg-[#0a1520]/50 rounded-xl p-6 sm:p-8 border border-[#2cc4f5]/10">
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Certification Fréquentielle
-            </h2>
-            <p className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed">
-              FREK transforme chaque fichier audio en une <strong className="text-[#2cc4f5]">empreinte unique</strong> — 
-              un vecteur mathématique qui caractérise la signature fréquentielle de l'œuvre sans permettre 
-              sa reconstitution.
-            </p>
-          </section>
-
-          {/* FREK-ID */}
-          <section>
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Format FREK-ID
-            </h2>
-            <div className="bg-[#0a1520]/50 rounded-xl p-5 sm:p-6 border border-[#2cc4f5]/10 mb-4">
-              <code className="font-mono text-sm sm:text-base text-[#2cc4f5] break-all">
-                FREK-{'{YYYY}'}-{'{NNNN}'}-{'{hash}'}-{'{chain}'}
-              </code>
-            </div>
-            <div className="font-body text-sm text-[#8ab4c8]/70 space-y-2">
-              <p><strong className="text-[#8ab4c8]">YYYY</strong> — Année de création</p>
-              <p><strong className="text-[#8ab4c8]">NNNN</strong> — Numéro séquentiel</p>
-              <p><strong className="text-[#8ab4c8]">hash</strong> — Empreinte cryptographique</p>
-              <p><strong className="text-[#8ab4c8]">chain</strong> — Lien de chaînage</p>
-            </div>
-          </section>
-
-          {/* Cycle de vie */}
-          <section className="bg-[#0a1520]/50 rounded-xl p-6 sm:p-8 border border-[#2cc4f5]/10">
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Cycle de Vie
-            </h2>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {[
-                { num: 1, name: 'GENESIS' },
-                { num: 2, name: 'WORKSHOP' },
-                { num: 3, name: 'METAMORPHOSE' },
-                { num: 4, name: 'EMISSION' },
-                { num: 5, name: 'LEGACY' },
-              ].map((stade) => (
-                <div key={stade.num} className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-[#2cc4f5]/10 border border-[#2cc4f5]/20">
-                  <span className="font-mono text-xs text-[#2cc4f5]/50">{stade.num}</span>
-                  <span className="font-mono text-[10px] sm:text-xs text-[#2cc4f5] uppercase">{stade.name}</span>
-                </div>
-              ))}
-            </div>
-            <p className="font-body text-sm text-[#8ab4c8]/60 mt-4">
-              L'EMISSION est <strong className="text-[#2cc4f5]">irréversible</strong> — une fois émise, 
-              une attestation ne peut plus être modifiée.
-            </p>
-          </section>
-
-          {/* Garanties */}
-          <section>
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Garanties
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="bg-[#0a1520]/50 rounded-lg p-4 border border-[#2cc4f5]/10">
-                <div className="font-mono text-sm text-[#2cc4f5] mb-2">Unicité</div>
-                <p className="font-body text-xs text-[#8ab4c8]/60">Chaque FREK-ID est unique et vérifiable</p>
-              </div>
-              <div className="bg-[#0a1520]/50 rounded-lg p-4 border border-[#2cc4f5]/10">
-                <div className="font-mono text-sm text-[#2cc4f5] mb-2">Horodatage</div>
-                <p className="font-body text-xs text-[#8ab4c8]/60">Timestamp précis de l'attestation</p>
-              </div>
-              <div className="bg-[#0a1520]/50 rounded-lg p-4 border border-[#2cc4f5]/10">
-                <div className="font-mono text-sm text-[#2cc4f5] mb-2">Chaînage</div>
-                <p className="font-body text-xs text-[#8ab4c8]/60">Attestations liées cryptographiquement</p>
-              </div>
-              <div className="bg-[#0a1520]/50 rounded-lg p-4 border border-[#2cc4f5]/10">
-                <div className="font-mono text-sm text-[#2cc4f5] mb-2">Immuabilité</div>
-                <p className="font-body text-xs text-[#8ab4c8]/60">Impossible de modifier une émission</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Standard ouvert */}
-          <section className="bg-gradient-to-r from-[#2cc4f5]/5 to-transparent rounded-xl p-6 sm:p-8 border border-[#2cc4f5]/10">
-            <h2 className="font-mono text-sm sm:text-base text-[#2cc4f5] uppercase tracking-wider mb-4">
-              Standard Ouvert
-            </h2>
-            <p className="font-body text-sm sm:text-base text-[#8ab4c8]/80 leading-relaxed">
-              FREK est un protocole ouvert sous licence <strong className="text-[#2cc4f5]">CC BY 4.0</strong>. 
-              Les spécifications d'interopérabilité sont disponibles pour les opérateurs agréés.
-            </p>
-          </section>
-        </div>
+          <p className="text-xs text-slate-400">
+            Développeur ? Le vérificateur standalone est <Link to="/api/v1/passport/verifier/python" className="text-blue-600 hover:underline">accessible ici</Link>.
+          </p>
+        </motion.div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#2cc4f5]/10 mt-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 text-center">
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4">
-            <Link to="/philosophy" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
-              Philosophie
-            </Link>
-            <Link to="/legal" className="font-mono text-[10px] sm:text-xs text-[#8ab4c8]/40 hover:text-[#2cc4f5]/70 uppercase tracking-wider transition-colors">
-              Cadre Juridique
-            </Link>
-          </div>
-          <p className="font-mono text-[9px] sm:text-[10px] text-[#8ab4c8]/20 uppercase tracking-wider">
-            © 2026 CVLN Group · frekcore.com
-          </p>
-        </div>
+      <footer className="relative z-10 p-6 text-center text-xs text-slate-400">
+        FREKCORE — Infrastructure de preuve culturelle
       </footer>
     </div>
   );

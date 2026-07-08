@@ -1,3 +1,10 @@
+> ⚠️ **CONFIDENTIAL — FREKCORE Internal**
+> Distribution restricted. NDA required for external sharing.
+> Ce document appartient au niveau Vault (Level 3) de la doctrine IP FREKCORE.
+
+---
+
+
 # FREKCORE Reliability Report v1.0
 
 **Statut** : Release Candidate — 3 des 5 axes fermés

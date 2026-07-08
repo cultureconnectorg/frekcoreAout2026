@@ -3,7 +3,8 @@ FREK Spec — Documentation publique du standard FREK v1.0.0.
 Endpoint sans auth, immutable (versionnee), expose le contrat protocolaire
 pour permettre l'implementation independante de verificateurs.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Header
+from typing import Optional
 
 spec_router = APIRouter(prefix="/spec", tags=["FREK Standard — Spec publique"])
 
@@ -254,26 +255,38 @@ CHANGELOG = [
 ]
 
 
+import os
+_NDA_KEY = os.environ.get("FREK_NDA_KEY", "")
+
+
 @spec_router.get("/")
-async def spec_index():
+async def spec_charter():
+    """Charte de confiance publique — 5 principes, aucune ingenierie."""
     return {
-        "current_version": FREK_SPEC["spec_version"],
-        "versions_published": ["1.0.0"],
-        "endpoints": {
-            "current": "/api/v1/spec/v1.0.0",
-            "changelog": "/api/v1/spec/changelog",
-            "openapi": "/api/openapi.json",
-            "swagger": "/docs",
-        },
+        "charter_version": "1.0",
+        "brand": "FREKCORE",
+        "principles": [
+            "Chaque moment signe recoit une preuve durable.",
+            "La preuve est verifiable independamment, sans dependre de FREKCORE.",
+            "FREKCORE minimise les donnees necessaires a la creation d'une preuve.",
+            "La chaine de preuves est ancree sur une infrastructure publique et immuable.",
+            "FREKCORE ne modifie jamais retroactivement une preuve emise.",
+        ],
+        "commitment": "Cette charte engage FREKCORE. Sa violation est un incident public documente.",
+        "verify_root": "/api/v1/passport/key",
+        "verifier_public": "/api/v1/passport/verifier/python",
     }
 
 
-@spec_router.get("/v1.0.0")
-async def spec_v1_0_0():
-    """Specification figee de FREK v1.0.0 — immutable, vouee a la perennite."""
+@spec_router.get("/full")
+async def spec_full(x_nda_key: Optional[str] = Header(None)):
+    """Specification complete versionnee. Necessite X-NDA-Key (partenaire signe)."""
+    if not _NDA_KEY or not x_nda_key or x_nda_key != _NDA_KEY:
+        raise HTTPException(403, "X-NDA-Key requis. Contactez FREKCORE pour signer un NDA.")
     return FREK_SPEC
 
 
 @spec_router.get("/changelog")
 async def spec_changelog():
+    """Changelog publique — versions et engagements de stabilite."""
     return {"versions": CHANGELOG}

@@ -131,7 +131,16 @@ core_set_db(db)
 fp_set_db(db)
 
 # Create the main app without a prefix
-app = FastAPI(title="FREK — Fichier de Referencement et d'Empreinte Kulturelle", version="2.0.0")
+# Doctrine IP protection : surface d'attaque minimale en production.
+# En dev, FREK_PUBLIC_DOCS=true pour reactiver Swagger si necessaire.
+_PUBLIC_DOCS = os.environ.get("FREK_PUBLIC_DOCS", "false").lower() == "true"
+app = FastAPI(
+    title="FREK — Fichier de Referencement et d'Empreinte Kulturelle",
+    version="2.0.0",
+    docs_url="/docs" if _PUBLIC_DOCS else None,
+    redoc_url="/redoc" if _PUBLIC_DOCS else None,
+    openapi_url="/openapi.json" if _PUBLIC_DOCS else None,
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")

@@ -1,3 +1,10 @@
+> ⚠️ **CONFIDENTIAL — FREKCORE Internal**
+> Distribution restricted. NDA required for external sharing.
+> Ce document appartient au niveau Vault (Level 3) de la doctrine IP FREKCORE.
+
+---
+
+
 # FREKCORE Sprint E — Proof of Existence Audit
 ## Audit de souverainete technique
 

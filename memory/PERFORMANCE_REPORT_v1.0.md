@@ -1,3 +1,10 @@
+> ⚠️ **CONFIDENTIAL — FREKCORE Internal**
+> Distribution restricted. NDA required for external sharing.
+> Ce document appartient au niveau Vault (Level 3) de la doctrine IP FREKCORE.
+
+---
+
+
 # FREKCORE Sprint F — Performance Audit v1.0
 
 **Question fermée** : *"Quelle charge FREKCORE peut-il absorber aujourd'hui, dans sa configuration actuelle, avant dégradation mesurable ?"*

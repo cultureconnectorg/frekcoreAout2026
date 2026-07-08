@@ -1,3 +1,10 @@
+> ⚠️ **CONFIDENTIAL — FREKCORE Internal**
+> Distribution restricted. NDA required for external sharing.
+> Ce document appartient au niveau Vault (Level 3) de la doctrine IP FREKCORE.
+
+---
+
+
 # FREKCORE Sprint G — Resilience Audit v1.0
 
 **Question fermée** : *"Que se passe-t-il quand une dépendance de FREKCORE tombe ? Le système panique, dégrade proprement, ou se protège ?"*

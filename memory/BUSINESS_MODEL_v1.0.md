@@ -1,3 +1,10 @@
+> ⚠️ **CONFIDENTIAL — FREKCORE Internal**
+> Distribution restricted. NDA required for external sharing.
+> Ce document appartient au niveau Vault (Level 3) de la doctrine IP FREKCORE.
+
+---
+
+
 # BUSINESS_MODEL — FREKCORE v1.0
 
 **Version** : 1.0
