@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 23 — WebAuthn diag messages + engagement session persistante. Backend 6/6 PASSED (identity/init, identity/{id}/register/begin returns full WebAuthn options rp.id+challenge+user.id+pubKeyCredParams+authenticatorSelection, identity/authenticate/begin, moment/sign, fk/create). Frontend: WebAuthn diag FULLY FIXED (message détaillé 154 chars 'Aucun authentificateur biométrique détecté sur ce device. Activez Touch ID / Face ID / Windows Hello, ou utilisez une clé de sécurité USB, puis réessayez.' — plus AUCUN 'Passkey annulée.' générique). Engagement banner apparaît après 1er sign, persiste après reload, checkbox cachée + inherited text montré, bouton renew fait disparaître le bandeau. Audit journal /mine visible avec 1 session listée après signs, invisible avec localStorage vide. Cross-nav OK. UN BUG BLOQUANT trouvé : le compteur de moments dans l'engagement reste à 0 — linkMomentToEngagement() n'est jamais appelé après un sign réussi.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Moment.jsx sign()",
+        "issue": "Après un signature réussie, linkMomentToEngagement(data) n'est jamais appelé. Résultat : le bandeau 'Engagement actif' affiche toujours '0 moment' même après 2 signatures ; le journal d'audit /mine liste la session avec '0 moment rattaché' et 'Aucun moment signé sous cet engagement'. La doctrine 'chaque nouveau moment auto-rattaché' n'est pas respectée dans le storage.",
+        "selector": "[data-testid='moment-engagement-status'], [data-testid='mine-audit-session-*']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Sign moment → engagement.moments[]",
+        "issue": "Le state activeEngagement en mémoire n'est pas rafraîchi non plus après un sign, donc même si le bandeau reste affiché, son compteur ne bouge jamais côté UI.",
+        "affected_selectors": ["[data-testid='moment-engagement-status']", "[data-testid='moment-engagement-active']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_engagement_regression.py",
+    "/app/test_reports/pytest/pytest_iter23.xml"
+  ],
+  "action_items": [
+    "Fix Moment.jsx sign(): après réception de `data` du backend, appeler `const eng = linkMomentToEngagement({ frek_id: data.frek_id, title: title.trim(), metadata: data.metadata }); setActiveEngagement(eng);` avant setPhase('done'). Sans ce fix, le compteur reste à 0 et le journal d'audit /mine liste les sessions sans détail des moments — le sens même du fix engagement 4h (garder trace de ce qui a été signé sous quelle promesse) est perdu."
+  ],
+  "critical_code_review_comments": [
+    "Moment.jsx line 129-175 : la fonction sign() crée bien l'engagement (startEngagement) mais oublie de lier le moment signé à cette session. Correctif à 2 lignes.",
+    "engagement.js linkMomentToEngagement mute `eng.moments` en place puis appelle write(eng) — OK. Cependant, si le caller ne remet pas le retour dans setActiveEngagement, l'UI ne se rafraîchit pas. Envisager d'exposer un événement 'storage' ou un hook useEngagement() pour éviter cette double gestion.",
+    "Moment.jsx : le bandeau engagement rend `activeEngagement.moments.length` mais activeEngagement est capturé au mount (useState initializer) — même si linkMomentToEngagement écrit en localStorage, sans setActiveEngagement(eng) le composant ne re-render pas.",
+    "Identity.jsx line 137-160 : bien pensé — isUVPAA + inIframe + originMismatch + differentiation NotAllowedError/InvalidStateError/SecurityError. Le fix WebAuthn diag est robuste."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_engagement_regression.py (nouveau — 6 tests régression)"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6)",
+    "frontend": "88% — 8/9 flows passent, seul le compteur moments engagement est cassé"
+  },
+  "test_credentials": "N/A — endpoints publics anonymes.",
+  "seed_data_creation": "Tests backend créent des identités anonymes TEST_engage_sess_* et un objet FK TEST_engagement_fk. Aucune PII. Pas de cleanup nécessaire.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Le bug engagement counter est facile à valider : signer 1 moment, ouvrir devtools -> localStorage.getItem('frek_engagement_session') -> le champ .moments doit contenir 1 entrée avec frek_id + title + signed_at. Actuellement il reste []. Le fix doit ajouter l'appel linkMomentToEngagement dans Moment.jsx sign() après réception de data et avant/après setResult. Ne PAS re-tester WebAuthn diag ni cross-nav si déjà OK.",
+  "rca of the issue": "Bug 'Engagement actif · 0 moment' : dans Moment.jsx la fonction sign() appelle startEngagement() si nécessaire, envoie la requête sign, sauve localMoment via saveLocalMoment(data), mais oublie linkMomentToEngagement(data). Résultat : localStorage.frek_engagement_session.moments reste [] et localStorage.frek_engagement_history[0].moments reste []. Le bandeau et le journal d'audit affichent donc '0 moment' peu importe le nombre de signs. Reproduction : / → signer avec titre + engagement coché → observer bandeau 'Engagement actif · 0 moment' → naviguer /mine → journal d'audit 'Aucun moment signé sous cet engagement'. Mitigation immédiate : après `setResult(data);` ajouter `const eng = linkMomentToEngagement({ frek_id: data.frek_id, title: title.trim() }); if (eng) setActiveEngagement(eng);` — 2 lignes."
+}

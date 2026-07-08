@@ -2,6 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import BrandLogo from '../components/BrandLogo';
+import {
+  getActiveEngagement,
+  startEngagement,
+  linkMomentToEngagement,
+  clearActiveEngagement,
+  formatExpiry,
+} from '../lib/engagement';
 
 /**
  * FREKCORE — Fenetre d'acces #1 : Signer le moment present.
@@ -67,6 +74,7 @@ export default function Moment() {
   const [localMoments, setLocalMoments] = useState(getLocalMoments());
   const [title, setTitle] = useState('');
   const [engagement, setEngagement] = useState(false);
+  const [activeEngagement, setActiveEngagement] = useState(() => getActiveEngagement());
   const [geoConsent, setGeoConsent] = useState(false);
 
   // Media v1.1
@@ -116,7 +124,7 @@ export default function Moment() {
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
-  const canSign = title.trim().length >= 3 && engagement;
+  const canSign = title.trim().length >= 3 && (engagement || !!activeEngagement);
 
   const sign = async ({ store = false } = {}) => {
     if (!canSign) {
@@ -124,6 +132,12 @@ export default function Moment() {
       return;
     }
     setPhase('signing'); setError('');
+    // 1) Assure une session engagement (crée si aucune active)
+    let currentEng = activeEngagement;
+    if (!currentEng) {
+      currentEng = await startEngagement(localStorage.getItem('frek_moment_session'));
+      setActiveEngagement(currentEng);
+    }
     const geo = await captureGeo();
     const session_id = getSession();
     try {
@@ -337,6 +351,34 @@ export default function Moment() {
                 />
               </motion.div>
 
+              {/* Bandeau engagement session actif */}
+              {activeEngagement && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                  className="max-w-xl mx-auto mb-6 bg-blue-50/80 backdrop-blur border border-blue-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3"
+                  data-testid="moment-engagement-active"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-blue-700 text-lg" aria-hidden="true">🛡️</span>
+                    <div className="text-left">
+                      <div className="text-xs text-blue-900 font-bold" data-testid="moment-engagement-status">
+                        Engagement actif · {activeEngagement.moments.length} moment{activeEngagement.moments.length > 1 ? 's' : ''}
+                      </div>
+                      <div className="text-[10px] text-blue-700">
+                        Expire à <span data-testid="moment-engagement-expiry">{formatExpiry(activeEngagement.expires_at)}</span> · signature <span className="font-mono">{activeEngagement.id}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { clearActiveEngagement(); setActiveEngagement(null); setEngagement(false); }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline"
+                    data-testid="moment-engagement-renew"
+                  >
+                    Renouveler / retirer
+                  </button>
+                </motion.div>
+              )}
+
               {/* CADRE ÉTHIQUE — obligatoire avant signature */}
               <motion.div
                 variants={item}
@@ -363,18 +405,25 @@ export default function Moment() {
                   <span className="text-[10px] text-slate-400 mt-1 block">Minimum 3 caractères. Ce titre sera public et vérifiable à vie.</span>
                 </label>
 
-                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700 leading-snug" data-testid="moment-engagement-toggle">
-                  <input
-                    type="checkbox"
-                    checked={engagement}
-                    onChange={(e) => setEngagement(e.target.checked)}
-                    className="w-4 h-4 accent-blue-600 mt-0.5 shrink-0"
-                    data-testid="moment-engagement-checkbox"
-                  />
-                  <span>
-                    Je déclare que ce moment est <b>authentique</b> et j&apos;accepte que sa signature soit <b>publique et permanente</b>.
-                  </span>
-                </label>
+                {!activeEngagement && (
+                  <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700 leading-snug" data-testid="moment-engagement-toggle">
+                    <input
+                      type="checkbox"
+                      checked={engagement}
+                      onChange={(e) => setEngagement(e.target.checked)}
+                      className="w-4 h-4 accent-blue-600 mt-0.5 shrink-0"
+                      data-testid="moment-engagement-checkbox"
+                    />
+                    <span>
+                      Je déclare que ce moment est <b>authentique</b> et j&apos;accepte que sa signature soit <b>publique et permanente</b>. Valide 4h pour les moments qui suivent.
+                    </span>
+                  </label>
+                )}
+                {activeEngagement && (
+                  <p className="text-[10px] text-slate-500 leading-relaxed" data-testid="moment-engagement-inherited">
+                    Engagement déjà pris — valide jusqu&apos;à {formatExpiry(activeEngagement.expires_at)}. Chaque nouveau moment est automatiquement rattaché à cette signature d&apos;engagement.
+                  </p>
+                )}
               </motion.div>
 
               {/* Bouton(s) de signature */}

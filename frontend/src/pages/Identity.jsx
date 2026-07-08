@@ -135,8 +135,9 @@ export default function Identity() {
   useEffect(() => { loadCurrent(); }, [loadCurrent]);
 
   const register = async () => {
+    setError('');
     if (!webauthnSupported) {
-      setError('WebAuthn non disponible sur ce navigateur.');
+      setError('Ce navigateur ne supporte pas WebAuthn. Utilisez Safari, Chrome, Firefox ou Edge à jour.');
       return;
     }
     if (inIframe) {
@@ -147,18 +148,47 @@ export default function Identity() {
       setError(`Domaine incohérent (${currentOrigin} vs ${backendOrigin}). Ouvrez FREKCORE dans un nouvel onglet sur le bon domaine.`);
       return;
     }
-    if (!identity?.frek_id) return;
+    // Verif pre-ceremony : le device a-t-il un authenticator utilisable ?
+    try {
+      if (typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if (!available) {
+          setError('Aucun authentificateur biométrique détecté sur ce device. Activez Touch ID / Face ID / Windows Hello, ou utilisez une clé de sécurité USB, puis réessayez.');
+          return;
+        }
+      }
+    } catch { /* isUVPAA optional */ }
+    if (!identity?.frek_id) {
+      setError('Aucun FREK-ID chargé. Rechargez la page ou revenez à /universe.');
+      return;
+    }
     setPhase('ceremony');
-    setError('');
     try {
       const optsRes = await fetch(`${API}/api/v1/identity/${identity.frek_id}/register/begin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      if (!optsRes.ok) throw new Error(`begin ${optsRes.status}`);
+      if (!optsRes.ok) throw new Error(`Impossible de récupérer les options WebAuthn (begin ${optsRes.status})`);
       const opts = await optsRes.json();
-      const cred = await navigator.credentials.create({ publicKey: toPubKeyOptions(opts) });
+      let cred;
+      try {
+        cred = await navigator.credentials.create({ publicKey: toPubKeyOptions(opts) });
+      } catch (err) {
+        // Message dedie selon la cause reelle du NotAllowedError
+        const name = err?.name || 'Error';
+        if (name === 'NotAllowedError') {
+          throw new Error('Passkey refusée par le device — soit annulée, soit le navigateur n\u2019a pas trouvé d\u2019authentificateur utilisable. Vérifiez que Touch ID / Face ID / Windows Hello est actif, puis relancez.');
+        }
+        if (name === 'InvalidStateError') {
+          throw new Error('Une Passkey existe déjà pour ce FREK-ID sur ce device. Utilisez "Retrouver votre univers" à la place.');
+        }
+        if (name === 'SecurityError') {
+          throw new Error(`Erreur de sécurité WebAuthn — domaine ou origine incompatible (rpId doit correspondre à ${backendOrigin}).`);
+        }
+        throw new Error(`${name}: ${err?.message || 'erreur ceremony inconnue'}`);
+      }
+      if (!cred) throw new Error('Aucune credential renvoyée par le navigateur.');
       const serialized = serializeCredential(cred);
       const completeRes = await fetch(`${API}/api/v1/identity/${identity.frek_id}/register/complete`, {
         method: 'POST',
@@ -167,23 +197,22 @@ export default function Identity() {
       });
       if (!completeRes.ok) {
         const err = await completeRes.json().catch(() => ({}));
-        throw new Error(err.detail || `complete ${completeRes.status}`);
+        throw new Error(err.detail || `Backend a refusé la Passkey (complete ${completeRes.status})`);
       }
       const data = await completeRes.json();
       localStorage.setItem(IDENTITY_TOKEN_KEY, data.session_token);
       setIdentity(data.identity);
       setPhase('protected');
     } catch (e) {
-      const msg = e?.name === 'NotAllowedError' ? 'Passkey annulée.'
-        : (e?.message || 'Erreur inconnue lors de la création de la Passkey.');
-      setError(msg);
+      setError(e.message || 'Erreur inconnue lors de la création de la Passkey.');
       setPhase('anonymous');
     }
   };
 
   const authenticate = async () => {
+    setError('');
     if (!webauthnSupported) {
-      setError('WebAuthn non disponible sur ce navigateur.');
+      setError('Ce navigateur ne supporte pas WebAuthn.');
       return;
     }
     if (inIframe) {
@@ -195,16 +224,25 @@ export default function Identity() {
       return;
     }
     setPhase('ceremony');
-    setError('');
     try {
       const optsRes = await fetch(`${API}/api/v1/identity/authenticate/begin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      if (!optsRes.ok) throw new Error(`begin ${optsRes.status}`);
+      if (!optsRes.ok) throw new Error(`Impossible de récupérer les options d\u2019authentification (begin ${optsRes.status})`);
       const opts = await optsRes.json();
-      const cred = await navigator.credentials.get({ publicKey: toPubKeyOptions(opts) });
+      let cred;
+      try {
+        cred = await navigator.credentials.get({ publicKey: toPubKeyOptions(opts) });
+      } catch (err) {
+        const name = err?.name || 'Error';
+        if (name === 'NotAllowedError') {
+          throw new Error('Aucune Passkey FREK trouvée sur ce device, ou requête annulée. Créez d\u2019abord votre univers depuis un appareil où la Passkey est enregistrée.');
+        }
+        throw new Error(`${name}: ${err?.message || 'erreur ceremony inconnue'}`);
+      }
+      if (!cred) throw new Error('Aucune credential renvoyée par le navigateur.');
       const serialized = serializeCredential(cred);
       const completeRes = await fetch(`${API}/api/v1/identity/authenticate/complete`, {
         method: 'POST',
@@ -213,16 +251,14 @@ export default function Identity() {
       });
       if (!completeRes.ok) {
         const err = await completeRes.json().catch(() => ({}));
-        throw new Error(err.detail || `complete ${completeRes.status}`);
+        throw new Error(err.detail || `Backend a refusé l\u2019authentification (complete ${completeRes.status})`);
       }
       const data = await completeRes.json();
       localStorage.setItem(IDENTITY_TOKEN_KEY, data.session_token);
       setIdentity(data.identity);
       setPhase('protected');
     } catch (e) {
-      const msg = e?.name === 'NotAllowedError' ? 'Passkey annulée.'
-        : (e?.message || 'Impossible de retrouver la Passkey.');
-      setError(msg);
+      setError(e.message || 'Impossible de retrouver la Passkey.');
       setPhase('anonymous');
     }
   };

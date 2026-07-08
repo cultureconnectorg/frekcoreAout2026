@@ -2,10 +2,83 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import BrandLogo from '../components/BrandLogo';
+import { getAllEngagements, formatExpiry } from '../lib/engagement';
 
 const API = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL;
 const SESSION_KEY = 'frek_moment_session';
 const IDENTITY_TOKEN_KEY = 'frek_identity_token';
+
+function AuditJournal() {
+  const [history, setHistory] = useState([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setHistory(getAllEngagements()); }, []);
+  if (!history.length) return null;
+  const totalSigned = history.reduce((s, h) => s + (h.moments?.length || 0), 0);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.5 }}
+      className="mb-6 bg-white/70 backdrop-blur border border-blue-100 rounded-2xl overflow-hidden"
+      data-testid="mine-audit-journal"
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-blue-50/40 transition-colors"
+        data-testid="mine-audit-toggle"
+      >
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.25em] text-blue-600 mb-1">Journal d&apos;audit</div>
+          <div className="text-slate-900 font-bold">
+            {history.length} session{history.length > 1 ? 's' : ''} d&apos;engagement · {totalSigned} moment{totalSigned > 1 ? 's' : ''} rattaché{totalSigned > 1 ? 's' : ''}
+          </div>
+        </div>
+        <span className={`transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 divide-y divide-slate-100" data-testid="mine-audit-list">
+          {history.map((h) => {
+            const expired = Date.now() > h.expires_at;
+            return (
+              <div key={h.id} className="p-5" data-testid={`mine-audit-session-${h.id}`}>
+                <div className="flex flex-wrap items-baseline justify-between gap-3 mb-3">
+                  <div>
+                    <div className="text-xs text-slate-500 mb-0.5">
+                      Engagement <span className="font-mono text-slate-900">{h.id}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Ouvert le {new Date(h.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {' · '}
+                      {expired ? <span className="text-slate-500">expiré à {formatExpiry(h.expires_at)}</span> : <span className="text-blue-700 font-semibold">actif jusqu&apos;à {formatExpiry(h.expires_at)}</span>}
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-600">{h.moments?.length || 0} moment{(h.moments?.length || 0) > 1 ? 's' : ''}</div>
+                </div>
+                {h.moments && h.moments.length > 0 ? (
+                  <ol className="space-y-1.5 pl-1">
+                    {h.moments.map((m, idx) => (
+                      <li key={`${h.id}-${idx}`} className="text-xs text-slate-700 flex items-baseline gap-2">
+                        <span className="text-slate-400 tabular-nums w-8 shrink-0">{String(idx + 1).padStart(2, '0')}·</span>
+                        <span className="truncate flex-1">{m.title}</span>
+                        <Link
+                          to={`/verify/${m.frek_id}`}
+                          className="text-blue-600 hover:underline shrink-0"
+                          data-testid={`mine-audit-moment-${m.frek_id}`}
+                        >
+                          preuve →
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Aucun moment signé sous cet engagement.</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 export default function MyMoments() {
   const [moments, setMoments] = useState([]);
@@ -182,7 +255,10 @@ export default function MyMoments() {
             </Link>
           </div>
         ) : (
-          <motion.div variants={container} initial="hidden" animate="show" className="space-y-3" data-testid="mine-list">
+          <>
+            {/* Journal d'audit — engagement sessions */}
+            <AuditJournal />
+            <motion.div variants={container} initial="hidden" animate="show" className="space-y-3" data-testid="mine-list">
             {fkObjects.map((f) => (
               <motion.div key={`fk-${f.frek_id}`} variants={item} whileHover={{ x: 4 }}>
                 <div className="block bg-white/70 backdrop-blur border border-blue-200 rounded-xl p-5 hover:border-blue-400 transition-all" data-testid={`mine-fk-${f.frek_id}`}>
@@ -228,6 +304,7 @@ export default function MyMoments() {
               </motion.div>
             ))}
           </motion.div>
+          </>
         )}
       </main>
 
