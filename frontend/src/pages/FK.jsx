@@ -56,7 +56,10 @@ export default function FK() {
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 mb-3">
             Un objet culturel<br />qui traverse le temps.
           </h1>
-          <p className="text-base text-slate-600 max-w-xl mx-auto">
+          <p className="text-base text-slate-700 max-w-xl mx-auto mb-3 font-medium" data-testid="fk-positioning">
+            FK est le format d&apos;objet culturel de FREKCORE : un conteneur qui réunit création, contexte, droits et preuve dans un objet numérique vérifiable.
+          </p>
+          <p className="text-sm text-slate-500 max-w-xl mx-auto">
             Un fichier <code className="text-blue-700 font-mono">.fk</code> transporte l&apos;identité, l&apos;histoire et la preuve d&apos;une création — pas seulement son contenu.
           </p>
         </motion.div>

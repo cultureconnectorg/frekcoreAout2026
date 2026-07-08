@@ -888,3 +888,24 @@ FK élargit le marché adressable de FREKCORE de "notaire audio" à **notaire cu
 - `/` : logo seul (sans wordmark) + nav Univers/Manifeste/Spec/Explorer.
 - Backend startup log confirme RP config exact.
 
+
+
+### Phase 5 — Messaging 5 publics (08/07/2026)
+
+Doctrine posée par le fondateur : "ne pas vendre la technologie en premier. Le problème résolu est la perte d'identité et de contexte des créations numériques dans le temps."
+
+**Universe.jsx** :
+- Message central ajouté : "FREKCORE est une infrastructure de confiance qui permet de créer, protéger et transmettre des objets numériques vérifiables."
+- Phrase de rendez-vous ajoutée : "Aujourd'hui, un fichier transporte des données. FREKCORE permet aux créations numériques de transporter leur identité, leur histoire et leur preuve."
+- 5 profils recadrés selon les personas exacts du fondateur :
+  1. **Artiste** — "FREKCORE transforme une création numérique en objet culturel vérifiable..."
+  2. **Label / Industrie musicale** — "couche de confiance entre créateurs, œuvres et acteurs qui les exploitent..."
+  3. **Notaire / Juriste** — "attestation numérique d'existence, d'intégrité et d'origine déclarée..."
+  4. **Institution culturelle** — "préserver et transmettre des objets culturels numériques avec leur contexte..."
+  5. **Développeur / Partenaire technique** — "infrastructure ouverte permettant de créer et vérifier..."
+- Le message persona choisi s'affiche en permanence sous la carte "Je crée mon univers en tant que" (`universe-profile-message`).
+
+**Manifeste.jsx** : phrase de rendez-vous placée en premier bloc, encadrée par une bordure bleue gauche pour lecture immédiate.
+
+**FK.jsx** : positionnement recadré — "FK est le format d'objet culturel de FREKCORE : un conteneur qui réunit création, contexte, droits et preuve dans un objet numérique vérifiable."
+

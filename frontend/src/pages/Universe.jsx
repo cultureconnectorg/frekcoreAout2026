@@ -32,35 +32,35 @@ const PROFILES = [
     label: 'Artiste',
     tagline: 'protéger mes créations',
     identity_type: 'individual',
-    detail: 'Signer chaque morceau, chaque œuvre, chaque captation. Les transformer en objets culturels vérifiables.',
+    detail: 'FREKCORE transforme une création numérique en objet culturel vérifiable : son identité, son histoire et son intégrité peuvent l\u2019accompagner dans le temps.',
+  },
+  {
+    id: 'label',
+    label: 'Label / Industrie musicale',
+    tagline: 'connecter créateurs, œuvres et exploitants',
+    identity_type: 'institution',
+    detail: 'FREKCORE crée une couche de confiance entre les créateurs, les œuvres et les acteurs qui les exploitent. Chaque création peut transporter son identité, ses contributeurs et sa preuve d\u2019existence.',
+  },
+  {
+    id: 'notaire',
+    label: 'Notaire / Juriste',
+    tagline: 'apporter une couche de preuve vérifiable',
+    identity_type: 'professional',
+    detail: 'FREKCORE fournit une attestation numérique d\u2019existence, d\u2019intégrité et d\u2019origine déclarée d\u2019un objet. Il ne remplace pas l\u2019autorité juridique, il apporte une couche de preuve vérifiable.',
   },
   {
     id: 'institution',
-    label: 'Institution',
-    tagline: 'préserver mon patrimoine',
+    label: 'Institution culturelle',
+    tagline: 'préserver et transmettre',
     identity_type: 'institution',
-    detail: 'Archiver des collections avec preuve d\'existence, d\'intégrité et d\'origine déclarée sur la durée.',
+    detail: 'FREKCORE permet de préserver et transmettre des objets culturels numériques avec leur contexte, leur histoire et leur preuve d\u2019intégrité.',
   },
   {
-    id: 'professionnel',
-    label: 'Professionnel',
-    tagline: 'gérer mes preuves numériques',
+    id: 'developpeur',
+    label: 'Développeur / Partenaire technique',
+    tagline: 'créer et vérifier via une infrastructure ouverte',
     identity_type: 'professional',
-    detail: 'Notariser des contrats, des livrables, des décisions. Vérifiables sans dépendre de FREKCORE.',
-  },
-  {
-    id: 'organisation',
-    label: 'Organisation',
-    tagline: 'préparer mes usages collaboratifs',
-    identity_type: 'institution',
-    detail: 'Fondation posée pour des flux multi-membres. Aucune structure imposée avant qu\'un besoin réel n\'apparaisse.',
-  },
-  {
-    id: 'personnel',
-    label: 'Personnel',
-    tagline: 'conserver mes moments importants',
-    identity_type: 'individual',
-    detail: 'Un souvenir, un instant, une preuve. Aucun compte, aucun mot de passe.',
+    detail: 'FREKCORE fournit une infrastructure ouverte permettant de créer et vérifier des objets numériques porteurs d\u2019identité, de métadonnées, de droits et de preuves.',
   },
 ];
 
@@ -215,7 +215,7 @@ export default function Universe() {
           initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <p className="text-xs text-slate-500 uppercase tracking-[0.3em] mb-4">Univers FREKCORE</p>
           <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-slate-900 leading-tight mb-4" data-testid="universe-headline">
@@ -223,6 +223,20 @@ export default function Universe() {
           </h1>
           <p className="text-lg text-slate-600 max-w-xl mx-auto" data-testid="universe-subline">
             Créez, protégez et retrouvez vos objets numériques dans un espace souverain.
+          </p>
+        </motion.div>
+
+        {/* Message central + phrase de rendez-vous */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.7 }}
+          className="mb-14 bg-white/70 backdrop-blur border border-blue-100 rounded-3xl p-7 shadow-sm text-center max-w-2xl mx-auto"
+          data-testid="universe-central-message"
+        >
+          <p className="text-lg text-slate-800 leading-relaxed">
+            <span className="font-bold text-slate-900">FREKCORE est une infrastructure de confiance</span> qui permet de créer, protéger et transmettre des objets numériques vérifiables.
+          </p>
+          <p className="mt-4 text-sm text-slate-500 italic leading-relaxed" data-testid="universe-rdv-phrase">
+            Aujourd&apos;hui, un fichier transporte des données. FREKCORE permet aux créations numériques de transporter leur identité, leur histoire et leur preuve.
           </p>
         </motion.div>
 
@@ -248,21 +262,26 @@ export default function Universe() {
         {profile && !showProfilePicker && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="mb-10 bg-white/70 backdrop-blur-xl border border-blue-200 rounded-2xl p-5 flex items-center justify-between"
+            className="mb-10 bg-white/70 backdrop-blur-xl border border-blue-200 rounded-2xl p-5"
             data-testid="universe-profile-card"
           >
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-blue-600 mb-1">Je crée mon univers en tant que</div>
-              <div className="text-slate-900 font-bold text-lg" data-testid="universe-profile-label">{profile.label}</div>
-              <div className="text-slate-600 text-sm">{profile.tagline}</div>
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-blue-600 mb-1">Je crée mon univers en tant que</div>
+                <div className="text-slate-900 font-bold text-lg" data-testid="universe-profile-label">{profile.label}</div>
+                <div className="text-slate-600 text-sm">{profile.tagline}</div>
+              </div>
+              <button
+                onClick={() => setShowProfilePicker(true)}
+                className="text-blue-600 hover:text-blue-800 text-xs font-semibold shrink-0"
+                data-testid="universe-profile-change"
+              >
+                Changer
+              </button>
             </div>
-            <button
-              onClick={() => setShowProfilePicker(true)}
-              className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
-              data-testid="universe-profile-change"
-            >
-              Changer
-            </button>
+            <p className="text-sm text-slate-700 leading-relaxed border-t border-blue-100 pt-3" data-testid="universe-profile-message">
+              {profile.detail}
+            </p>
           </motion.div>
         )}
 

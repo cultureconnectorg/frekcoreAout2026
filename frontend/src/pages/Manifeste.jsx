@@ -58,24 +58,28 @@ export function Manifeste() {
           className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-16 leading-tight"
           data-testid="manifeste-headline"
         >
-          Pour que rien ne s'efface.
+          Pour que rien ne s&apos;efface.
         </motion.h1>
 
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-10 text-lg md:text-xl text-slate-700 font-light leading-relaxed">
+          <motion.p variants={item} className="text-xl md:text-2xl text-slate-900 font-medium leading-relaxed border-l-4 border-blue-500 pl-6" data-testid="manifeste-rdv-phrase">
+            Aujourd&apos;hui, un fichier transporte des données.
+            <br />FREKCORE permet aux créations numériques de transporter leur identité, leur histoire et leur preuve.
+          </motion.p>
           <motion.p variants={item}>
-            La culture n'est pas un divertissement. C'est la mémoire de ce que nous choisissons de retenir, de transmettre, de défendre.
+            La culture n&apos;est pas un divertissement. C&apos;est la mémoire de ce que nous choisissons de retenir, de transmettre, de défendre.
           </motion.p>
           <motion.p variants={item}>
             Chaque moment culturel — un concert, une œuvre, une parole, une rencontre — mérite une trace que le temps ne dévore pas.
           </motion.p>
           <motion.p variants={item}>
-            FREKCORE existe pour cette raison unique : <span className="text-slate-900 font-semibold">rendre l'instant permanent, la présence vérifiable, la mémoire souveraine.</span>
+            FREKCORE existe pour cette raison unique : <span className="text-slate-900 font-semibold">rendre l&apos;instant permanent, la présence vérifiable, la mémoire souveraine.</span>
           </motion.p>
           <motion.p variants={item}>
             Nous ne construisons pas une plateforme. Nous construisons une institution numérique qui engage sa parole.
           </motion.p>
           <motion.p variants={item}>
-            Ce que tu signes aujourd'hui pourra être lu dans dix ans, dans cinquante ans, sans nous demander la permission.
+            Ce que tu signes aujourd&apos;hui pourra être lu dans dix ans, dans cinquante ans, sans nous demander la permission.
           </motion.p>
         </motion.div>
 
