@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE — La porte d'entrée de l'univers.
@@ -200,7 +201,7 @@ export default function Universe() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="universe-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="universe-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
           <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="universe-link-sign">Signer</Link>
           <Link to="/mine" className="hover:text-blue-600 transition-colors" data-testid="universe-link-mine">Mon univers</Link>

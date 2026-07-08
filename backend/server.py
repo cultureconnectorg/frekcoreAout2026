@@ -311,6 +311,24 @@ async def _identity_engine_startup():
         await identity_ensure_indexes()
     except Exception as _e:
         logging.getLogger(__name__).warning(f"Identity Engine indexes skipped: {_e}")
+    # Verifie explicitement que le RP WebAuthn est bien configure — sinon
+    # les Passkeys seraient enregistrees contre un rpId inutilisable.
+    try:
+        from identity_engine.service import rp_config_status
+        status = rp_config_status()
+        _log = logging.getLogger(__name__)
+        if status.get("configured"):
+            _log.info(
+                f"Identity Engine RP: rp_id={status['rp_id']} origin={status['origin']}"
+            )
+        else:
+            _log.warning(
+                "Identity Engine RP NON CONFIGURE (FREK_RP_ORIGIN manquant). "
+                "Les Passkeys ne fonctionneront pas tant que le domaine public "
+                "n'est pas defini. Detail: " + status.get("reason", "")
+            )
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Identity Engine RP check skipped: {_e}")
 
 app.add_middleware(
     CORSMiddleware,

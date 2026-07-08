@@ -37,25 +37,65 @@ RP_NAME = "FREKCORE"
 SESSION_TTL_DAYS = 90
 
 
+class WebAuthnConfigError(RuntimeError):
+    """FREK_RP_ORIGIN doit etre defini explicitement en production.
+
+    On refuse le fallback silencieux vers `localhost` : sinon les Passkeys
+    seraient enregistrees contre un rpId irrelevant et jamais reutilisables
+    sur le vrai domaine.
+    """
+
+
 def _rp_id_from_url(backend_url: str) -> str:
     """Extrait le domaine (host) sans le schema ni port."""
     try:
-        return urlparse(backend_url).hostname or "localhost"
+        host = urlparse(backend_url).hostname
     except Exception:
-        return "localhost"
+        host = None
+    return host or ""
+
+
+def _configured_url() -> str:
+    """Origin canonique de l'app. Doit correspondre au domaine reel servi."""
+    return (
+        os.environ.get("FREK_RP_ORIGIN")
+        or os.environ.get("REACT_APP_BACKEND_URL", "")
+    ).rstrip("/")
 
 
 def get_rp_id() -> str:
-    # Prefer explicit FREK_RP_ORIGIN, fall back to REACT_APP_BACKEND_URL
-    url = os.environ.get("FREK_RP_ORIGIN") or os.environ.get("REACT_APP_BACKEND_URL", "")
-    return _rp_id_from_url(url) or "localhost"
+    """RP ID = hostname exact du domaine ou tourne l'app.
+
+    Aucune valeur par defaut : si mal configure, WebAuthn refusera la ceremony
+    plutot que d'enregistrer une Passkey contre `localhost` inutilisable.
+    """
+    url = _configured_url()
+    host = _rp_id_from_url(url) if url else ""
+    if not host:
+        raise WebAuthnConfigError(
+            "FREK_RP_ORIGIN manquant. Configurez le domaine public exact "
+            "(ex: https://frekcore.com) avant d'utiliser les Passkeys."
+        )
+    return host
 
 
 def get_origin() -> str:
-    url = (os.environ.get("FREK_RP_ORIGIN") or os.environ.get("REACT_APP_BACKEND_URL", "")).rstrip("/")
-    if url:
-        return url
-    return "http://localhost:3000"
+    """Origin complet (schema + host [+ port])."""
+    url = _configured_url()
+    if not url:
+        raise WebAuthnConfigError(
+            "FREK_RP_ORIGIN manquant. Configurez le domaine public exact "
+            "(ex: https://frekcore.com) avant d'utiliser les Passkeys."
+        )
+    return url
+
+
+def rp_config_status() -> dict:
+    """Sert au /health/deep pour verifier que la config Passkey est prete."""
+    try:
+        return {"configured": True, "rp_id": get_rp_id(), "origin": get_origin()}
+    except WebAuthnConfigError as e:
+        return {"configured": False, "reason": str(e)}
 
 
 def now_iso() -> str:

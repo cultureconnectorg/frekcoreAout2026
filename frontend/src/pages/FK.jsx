@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE — FK Cultural Object Container (v0.1)
@@ -34,7 +35,7 @@ export default function FK() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto w-full"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="fk-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="fk-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
           <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="fk-link-universe">Univers</Link>
           <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="fk-link-home">Signer</Link>

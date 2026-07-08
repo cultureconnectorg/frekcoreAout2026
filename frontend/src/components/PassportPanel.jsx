@@ -168,8 +168,9 @@ export default function PassportPanel({ frekId }) {
           </a>
         )}
         <a
-          href={`${API_URL}/api/v1/passport/verifier/python`}
-          download="verify_passport.py"
+          href={`/verifier?lang=python`}
+          target="_blank"
+          rel="noopener noreferrer"
           data-testid="passport-download-verifier"
           className="px-3 py-1.5 border border-white/20 text-white/60 font-mono text-[10px] uppercase tracking-wider rounded hover:border-white/40 hover:text-white/80 transition-all"
         >

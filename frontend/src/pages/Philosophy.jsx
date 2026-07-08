@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE — Philosophie (page publique).
@@ -37,9 +38,10 @@ export function Philosophy() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="philo-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="philo-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
-          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign-philo">← Signer</Link>
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="link-universe-philo">Univers</Link>
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign-philo">Signer</Link>
           <Link to="/manifeste" className="hover:text-blue-600 transition-colors" data-testid="link-manifeste-philo">Manifeste</Link>
           <Link to="/spec" className="hover:text-blue-600 transition-colors" data-testid="link-spec-philo">Charte</Link>
         </nav>

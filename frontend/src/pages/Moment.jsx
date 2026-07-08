@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE — Fenetre d'acces #1 : Signer le moment present.
@@ -198,7 +199,7 @@ export default function Moment() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 p-6 flex justify-between items-center"
       >
-        <div className="text-xl font-bold tracking-tight text-slate-900" data-testid="moment-brand">FREKCORE</div>
+        <BrandLogo to="/universe" testId="moment-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
           {[
             { to: '/universe', label: 'Univers', tid: 'link-universe' },

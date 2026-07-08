@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 const API = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL;
 const SESSION_KEY = 'frek_moment_session';
@@ -76,7 +77,7 @@ export default function MyMoments() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="mine-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="mine-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
           <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="link-universe-mine">Univers</Link>
           <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign">Signer</Link>

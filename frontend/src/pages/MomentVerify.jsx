@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE — Verification d'un moment signe (route publique #1).
@@ -67,9 +68,10 @@ export default function MomentVerify({ frekId }) {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto w-full"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="mv-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="mv-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
-          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="mv-link-sign">← Signer</Link>
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="mv-link-universe">Univers</Link>
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="mv-link-sign">Signer</Link>
           <Link to="/manifeste" className="hover:text-blue-600 transition-colors" data-testid="mv-link-manifeste">Manifeste</Link>
         </nav>
       </motion.header>

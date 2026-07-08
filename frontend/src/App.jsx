@@ -12,6 +12,7 @@ import { Manifeste } from './pages/Manifeste';
 import FK from './pages/FK';
 import Identity from './pages/Identity';
 import Universe from './pages/Universe';
+import Verifier from './pages/Verifier';
 import { Privacy } from './pages/Privacy';
 import { Cookies } from './pages/Cookies';
 import { Terms } from './pages/Terms';
@@ -85,6 +86,9 @@ function AnimatedRoutes() {
           {/* Univers FREKCORE — la porte d'entree unifiee */}
           <Route path="/universe" element={<Universe />} />
           <Route path="/create" element={<Universe />} />
+
+          {/* Verificateur offline — page interne (evite le blanc du raw text/x-python) */}
+          <Route path="/verifier" element={<Verifier />} />
 
           {/* Vérification publique */}
           <Route path="/verify/:frekId" element={<Verify />} />

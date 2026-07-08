@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE — Explorer public.
@@ -50,9 +51,10 @@ export function Explorer() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="explorer-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="explorer-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
-          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign-explorer">← Signer</Link>
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="link-universe-explorer">Univers</Link>
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign-explorer">Signer</Link>
           <Link to="/spec" className="hover:text-blue-600 transition-colors" data-testid="link-spec-explorer">Charte</Link>
         </nav>
       </motion.header>

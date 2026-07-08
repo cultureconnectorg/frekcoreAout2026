@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import BrandLogo from '../components/BrandLogo';
 
 /**
  * FREKCORE Identity — Passkey attache au FREK-ID.
@@ -77,6 +78,21 @@ export default function Identity() {
   const [linkedMoments, setLinkedMoments] = useState(0);
   const webauthnSupported = typeof window !== 'undefined' &&
     window.PublicKeyCredential !== undefined;
+  // Detection iframe : WebAuthn est bloque dans les iframes cross-origin
+  // (cas de la preview Emergent embarquee dans app.emergent.sh).
+  const inIframe = typeof window !== 'undefined' && (() => {
+    try { return window.self !== window.top; } catch { return true; }
+  })();
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const backendOrigin = (API || '').replace(/\/$/, '');
+  const originMismatch = currentOrigin && backendOrigin && currentOrigin !== backendOrigin;
+
+  const openInNewTab = () => {
+    const url = backendOrigin
+      ? `${backendOrigin}${window.location.pathname}`
+      : window.location.href;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const loadCurrent = useCallback(async () => {
     const token = localStorage.getItem(IDENTITY_TOKEN_KEY);
@@ -123,6 +139,14 @@ export default function Identity() {
       setError('WebAuthn non disponible sur ce navigateur.');
       return;
     }
+    if (inIframe) {
+      setError('Passkey bloquée par le cadre de prévisualisation. Ouvrez FREKCORE dans un nouvel onglet pour associer une Passkey.');
+      return;
+    }
+    if (originMismatch) {
+      setError(`Domaine incohérent (${currentOrigin} vs ${backendOrigin}). Ouvrez FREKCORE dans un nouvel onglet sur le bon domaine.`);
+      return;
+    }
     if (!identity?.frek_id) return;
     setPhase('ceremony');
     setError('');
@@ -160,6 +184,14 @@ export default function Identity() {
   const authenticate = async () => {
     if (!webauthnSupported) {
       setError('WebAuthn non disponible sur ce navigateur.');
+      return;
+    }
+    if (inIframe) {
+      setError('Passkey bloquée par le cadre de prévisualisation. Ouvrez FREKCORE dans un nouvel onglet.');
+      return;
+    }
+    if (originMismatch) {
+      setError(`Domaine incohérent (${currentOrigin} vs ${backendOrigin}). Ouvrez FREKCORE dans un nouvel onglet sur le bon domaine.`);
       return;
     }
     setPhase('ceremony');
@@ -208,7 +240,7 @@ export default function Identity() {
         initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
         className="relative z-10 p-6 flex justify-between items-center max-w-5xl mx-auto w-full"
       >
-        <Link to="/" className="text-xl font-bold text-slate-900" data-testid="identity-brand">FREKCORE</Link>
+        <BrandLogo to="/universe" testId="identity-brand" />
         <nav className="flex gap-6 text-sm text-slate-600">
           <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="identity-link-universe">Univers</Link>
           <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="identity-link-sign">Signer</Link>
@@ -218,6 +250,32 @@ export default function Identity() {
       </motion.header>
 
       <main className="relative z-10 flex-1 max-w-2xl mx-auto w-full px-6 py-12">
+        {(inIframe || originMismatch) && phase !== 'protected' && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-8 bg-amber-50 border border-amber-300 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4"
+            data-testid="identity-iframe-warning"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="text-amber-900 font-bold text-sm mb-1">
+                {inIframe ? 'Passkey bloquée dans ce cadre' : 'Domaine incohérent'}
+              </div>
+              <div className="text-amber-800 text-xs leading-relaxed">
+                {inIframe
+                  ? 'Les navigateurs interdisent WebAuthn dans une prévisualisation intégrée. Ouvrez FREKCORE dans un nouvel onglet pour associer une Passkey en une seconde.'
+                  : `Votre onglet est sur ${currentOrigin} mais l'API est sur ${backendOrigin}. Passez sur le bon domaine avant d'associer une Passkey.`}
+              </div>
+            </div>
+            <button
+              onClick={openInNewTab}
+              className="shrink-0 px-4 py-2 bg-amber-600 text-white rounded-full text-xs font-semibold hover:bg-amber-700 transition-colors"
+              data-testid="identity-open-new-tab"
+            >
+              Ouvrir dans un nouvel onglet →
+            </button>
+          </motion.div>
+        )}
+
         <AnimatePresence mode="wait">
           {phase === 'loading' && (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

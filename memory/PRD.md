@@ -825,3 +825,66 @@ Ordre d'implémentation quand un signal déclenchera :
 ### Impact stratégique
 
 FK élargit le marché adressable de FREKCORE de "notaire audio" à **notaire culturel universel**. Le vecteur d'adoption devient un **format qui circule**, pas une infrastructure à convaincre à chaque fois. Publics touchés : artistes, labels, musées, archives, institutions, ayants droit, notaires, distributeurs, chercheurs.
+
+
+---
+
+## PHASE 16 — Univers unifié + logo cliquable + Passkey iframe fix (08/07/2026)
+
+### Doctrine appliquée
+> Un utilisateur ne doit plus percevoir plusieurs applications séparées.
+> FREK-ID reste l'identité universelle. Les profils d'usage sont un choix d'expérience, pas des comptes.
+
+### Livré
+
+**Phase 0 — Audit obligatoire** (aucun code écrit) :
+- Cartographié `identity_engine`, `moment`, `fk`, `MyMoments.jsx`.
+- Confirmé : auto-link `X-FREK-Session` déjà en place sur `/moment/sign`, `/sign-media`, `/fk/create`.
+- Confirmé : `identity_type` supporte déjà `individual/professional/institution` (Pydantic Literal).
+- ✅ Zero nouveau endpoint backend, zero nouvelle collection Mongo, zero nouveau système d'auth.
+
+**Phase 1 — `/universe` (porte d'entrée unique)** (`pages/Universe.jsx`, alias `/create`) :
+- Hero "Bienvenue dans votre univers FREKCORE".
+- 4 étapes visuelles (Créer/retrouver FREK-ID → Passkey → Objets → Patrimoine) avec statut done/ready/locked calculé côté client via `/identity/me`.
+- 5 profils d'usage (Artiste/Institution/Professionnel/Organisation/Personnel) → `localStorage.frek_universe_profile` + mapping `identity_type` sur `/identity/init` existant.
+- Panneau état identité (FREK-ID + Passkey + compteurs moments/FK).
+
+**Phase 2 — `/mine` en "Mon Univers"** (`pages/MyMoments.jsx`) :
+- Headline "Mon univers." (au lieu de "Ton univers.").
+- Nouveau panneau `mine-identity-panel` (FREK-ID + Passkeys + niveau souverain).
+- Legal notice footer.
+
+**Phase 3 — Profil d'usage** : sélecteur non-invasif via `universe-profile-picker`, 5 choix mappés sur les 3 `identity_type` backend existants.
+
+**Phase 4 — Positionnement FK** : titre écran de succès "Objet culturel vérifiable." + tagline expliquant que FK n'est pas une archive technique.
+
+**Phase 6 — Messaging légal recadré** : suppression des "certifie la vérité" ; ajout partout de "FREKCORE atteste l'existence, l'intégrité et l'origine déclarée d'un objet numérique." (footers /universe, /mine, /manifeste, /fk, /verifier). Manifeste précise : "Nous ne remplaçons ni un juge ni un notaire d'État."
+
+**Logo brand cliquable** (`components/BrandLogo.jsx`) :
+- Composant réutilisable, logo `/frek-logo.png` seul (sans wordmark par défaut, sur demande fondateur).
+- Bouton `<Link>` vers `/universe` (canonical hub) sur toutes les pages v1.0 : Universe, Moment, MyMoments, Identity, FK, Manifeste, Spec, Explorer, Philosophy, MomentVerify, Verifier.
+- Micro-animation : scale + rotate au hover, active-shrink.
+
+**Fix `/verifier` (page blanche "Accessible ici")** (`pages/Verifier.jsx`) :
+- Route interne `/verifier?lang={python|js}` qui rendait un `text/x-python` brut → blanc dans certains navigateurs / iframes.
+- Aperçu code monospace, boutons "Télécharger" + "Copier" + tabs Python/JavaScript + README.
+- Consomme les endpoints existants `/api/v1/passport/verifier/{python,js,readme}` sans les modifier.
+- `Spec.jsx` et `PassportPanel.jsx` pointent désormais vers `/verifier`.
+
+**Fix Passkey "Passkey annulée" instantané** (`identity_engine/service.py` + `pages/Identity.jsx`) :
+- Detection iframe cross-origin + mismatch domaine côté frontend → bandeau `identity-iframe-warning` + bouton "Ouvrir dans un nouvel onglet".
+- Vérification pré-ceremony dans `register()` et `authenticate()` : bloque le prompt avant qu'il n'échoue.
+- Backend : **suppression du fallback silencieux `localhost`**. `get_rp_id()` / `get_origin()` lèvent `WebAuthnConfigError` si `FREK_RP_ORIGIN` manquant.
+- Nouveau helper `rp_config_status()` + log startup explicite (rp_id + origin visibles au boot).
+- Preuve boot : `Identity Engine RP: rp_id=culture-chain.preview.emergentagent.com origin=https://culture-chain.preview.emergentagent.com`.
+
+### Ce qui n'a PAS été touché (doctrine "signal réel")
+- Community Graph, Trust Bridge OAuth/DID, Organizational multi-membres, Institutional API keys, CLI FK, FREKANSLA fingerprint : structure `identity_type=professional/institution` déjà en place, aucune UI construite avant signal réel.
+
+### Preuves fonctionnelles
+- `/universe` charge, hero + 4 étapes + profil picker OK.
+- `/verifier` affiche code Python et JS avec download/copy — plus de page blanche.
+- `/identity` : état anonymous visible, FREK-ID `id-XXXXXXXX-XXXX`, bouton Passkey présent + bandeau iframe warning affiché uniquement quand nécessaire.
+- `/` : logo seul (sans wordmark) + nav Univers/Manifeste/Spec/Explorer.
+- Backend startup log confirme RP config exact.
+
