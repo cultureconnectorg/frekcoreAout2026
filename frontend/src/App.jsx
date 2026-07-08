@@ -7,6 +7,7 @@ import { Generate } from './pages/Generate';
 import { Legal } from './pages/Legal';
 import { Spec as SpecPage } from './pages/Spec';
 import { Philosophy } from './pages/Philosophy';
+import { Manifeste } from './pages/Manifeste';
 import { Privacy } from './pages/Privacy';
 import { Cookies } from './pages/Cookies';
 import { Terms } from './pages/Terms';
@@ -58,9 +59,9 @@ function App() {
         <Route path="/" element={<Moment />} />
         <Route path="/mine" element={<MyMoments />} />
 
-        {/* Certify = Manifeste + landing historique */}
+        {/* Certify = ancien landing historique. Manifeste = page v1.0 refondue. */}
         <Route path="/certify" element={<Certify />} />
-        <Route path="/manifeste" element={<Certify />} />
+        <Route path="/manifeste" element={<Manifeste />} />
         
         {/* Vérification publique */}
         <Route path="/verify/:frekId" element={<Verify />} />
