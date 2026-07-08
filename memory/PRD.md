@@ -347,3 +347,31 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - Decision : option (c) SMTP direct via hebergeur du domaine frekcore.com (souverain, aucune dependance AWS/Resend).
 - **En attente** : creds SMTP utilisateur (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM).
 - **Plan a la reprise** : refactor `email_service/routes.py` SES -> `aiosmtplib`, conserver les templates Jinja2 et le mode fallback `logged`.
+
+
+## RC v1.0 Sprint A+B — Vital security (08/07/2026)
+
+### Sprint A — Backup + Persistence cle Ed25519 (LIVRE)
+- **`/app/scripts/backup_frekcore.sh`** : mongodump + copie `.passport_key.pem` + `.env` + manifest.json + tar.gz + chiffrement GPG AES256 optionnel + retention 30j auto.
+- **`/app/scripts/restore_test.sh`** : dechiffrement + extract + verif hash Ed25519 (MATCH avec live) + restore dans DB temporaire (`{DB_NAME}_restore_test_{ts}`) + verif 4 collections critiques + auto-cleanup.
+- **`/app/scripts/backup_scheduler.py`** : daemon Python leger, execute par supervisor `frek_backup`. 03:00 UTC quotidien par defaut, configurable via `FREK_BACKUP_HOUR_UTC`.
+- **`/etc/supervisor/conf.d/frek_backup.conf`** : autostart=true, autorestart=true.
+- **Preuve E2E** : 1.8MB archive GPG AES256, restore complete 1097 frek_identities + 1446 frek_stages + 1263 notary_blocks + 156 frek_clients + Ed25519 sha256 MATCH.
+
+### Sprint B — Health probes + Admin backup ops (LIVRE)
+- **Module `health/`** additif, namespace `/api/v1/health/*` + `/api/v1/admin/backup/*`.
+- **`GET /health/live`** : liveness K8s probe (repond toujours).
+- **`GET /health/ready`** : readiness K8s (verifie Mongo ping).
+- **`GET /health/deep`** : sante complete 6 checks (Mongo count, Ed25519 sha256/mode/size, disk, memory RSS, notary chain integrity, last backup) + uptime + status agrege.
+- **`GET /admin/backup/status`** (X-Admin-Key) : liste archives + last backup metadata + script presence.
+- **`POST /admin/backup/trigger`** (X-Admin-Key, optional `gpg_passphrase`) : declenche backup a la demande.
+- **`POST /admin/backup/restore-test/{archive}`** (X-Admin-Key) : verifie qu'une archive est reellement restaurable.
+- **Preuve HTTP** : trigger backup -> restore-test -> Ed25519 MATCH -> 1263 blocks OK, tout via curl HTTP end-to-end.
+
+### Documentation
+- **`/app/memory/RUNBOOK.md`** : procedure complete backup + restore + urgence + monitoring externe (UptimeRobot, Better Stack, cronjob.org) + alertes critiques + checklist RC v1.0.
+
+### Reste Semaine 1 (action user)
+- 🟠 Configurer `BACKUP_GPG_PASSPHRASE` dans supervisor conf (recommande prod).
+- 🟠 Configurer UptimeRobot / Better Stack sur `/api/v1/health/live` + `/health/deep`.
+- 🟢 (Optionnel) Sentry FastAPI pour auto-capture exceptions.

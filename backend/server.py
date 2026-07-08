@@ -260,6 +260,12 @@ from sync.routes import sync_router, set_db as sync_set_db
 sync_set_db(db)
 app.include_router(sync_router, prefix="/api/v1")
 
+# FREK Health & Admin Ops (additif, namespace /api/v1/health/* + /api/v1/admin/*)
+from health.routes import health_router, admin_ops_router, set_db as health_set_db
+health_set_db(db)
+app.include_router(health_router, prefix="/api/v1")
+app.include_router(admin_ops_router, prefix="/api/v1")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
