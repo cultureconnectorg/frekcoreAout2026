@@ -135,7 +135,9 @@ function CreateFK() {
       fd.append('return_json', 'true');
       files.forEach((f) => fd.append('files', f));
 
-      const res = await fetch(`${API}/api/v1/fk/create`, { method: 'POST', body: fd });
+      const identityToken = localStorage.getItem('frek_identity_token');
+      const headers = identityToken ? { 'X-FREK-Session': identityToken } : {};
+      const res = await fetch(`${API}/api/v1/fk/create`, { method: 'POST', body: fd, headers });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || `HTTP ${res.status}`);

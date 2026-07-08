@@ -121,6 +121,8 @@ export default function Moment() {
     const session_id = getSession();
     try {
       let res;
+      const identityToken = localStorage.getItem('frek_identity_token');
+      const authHeaders = identityToken ? { 'X-FREK-Session': identityToken } : {};
       if (mediaFile) {
         const fd = new FormData();
         fd.append('file', mediaFile);
@@ -128,11 +130,11 @@ export default function Moment() {
         if (title.trim()) fd.append('title', title.trim());
         if (geo) fd.append('geo', JSON.stringify(geo));
         fd.append('session_id', session_id);
-        res = await fetch(`${API}/api/v1/moment/sign-media`, { method: 'POST', body: fd });
+        res = await fetch(`${API}/api/v1/moment/sign-media`, { method: 'POST', body: fd, headers: authHeaders });
       } else {
         res = await fetch(`${API}/api/v1/moment/sign`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ title: title.trim() || null, geo, session_id }),
         });
       }

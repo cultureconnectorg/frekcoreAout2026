@@ -360,6 +360,38 @@ async def _ensure_unique_sparse_index(collection, field: str):
             raise
 
 @app.on_event("startup")
+async def warmup_infrastructure():
+    """Pre-warm : indexes MongoDB + ping DB + charge passport keys AVANT premier request.
+    Supprime le cold-start p99 observe sur la premiere requete apres deploy.
+    """
+    log = logging.getLogger("frek.warmup")
+    try:
+        # 1. Ping MongoDB pour ouvrir la connexion pool
+        await db.command("ping")
+        # 2. Force la creation des indexes identity_engine (avant que le premier
+        #    /identity/init ne bloque 30s sur la creation du TTL index)
+        try:
+            from identity_engine.routes import ensure_indexes as _ii
+            await _ii()
+        except Exception as e:
+            log.warning(f"identity_engine index warmup: {e}")
+        # 3. Warm passport key (Ed25519 loaded from disk / seeded)
+        try:
+            from passport import keys as _pk
+            _pk.public_key_pem()
+        except Exception as e:
+            log.warning(f"passport warmup: {e}")
+        # 4. Warm notary chain — creation index cle
+        try:
+            await db.notary_blocks.create_index([("height", -1)])
+        except Exception:
+            pass
+        log.info("FREK warmup complete — indexes, mongo pool, passport key preloaded")
+    except Exception as e:
+        log.warning(f"Warmup skipped: {e}")
+
+
+@app.on_event("startup")
 async def seed_clients():
     """Seed default API clients on startup"""
     clients_to_seed = [

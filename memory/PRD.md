@@ -495,6 +495,51 @@ signable avec un vrai fichier (photo prioritaire, audio en secondaire).
 
 ---
 
+## PHASE 15 — Branchement des briques (08/07/2026)
+
+### Doctrine appliquée
+> Ne pas ajouter de concepts. Ne pas refaire l'architecture. Brancher proprement les briques existantes.
+
+### Ce qui a été branché
+
+**Backend — Auto-link identity via `X-FREK-Session`**
+- `POST /moment/sign` : accepte header optionnel `X-FREK-Session`. Si token valide → moment auto-ajouté à `frek_persons.linked_objects[]` de l'identity correspondante.
+- `POST /moment/sign-media` : idem, header optionnel.
+- `POST /fk/create` : idem, header optionnel.
+- Rétrocompatibilité totale : sans token, comportement inchangé (moment/fk anonymes).
+- Token invalide : skip silencieux du link, la signature réussit quand même.
+
+**Frontend — Envoi automatique du token**
+- `Moment.jsx` : `X-FREK-Session` injecté sur `/sign` et `/sign-media` si présent dans localStorage.
+- `FK.jsx` : `X-FREK-Session` injecté sur `/fk/create` si présent.
+- `MyMoments.jsx` : refonte pour afficher l'univers **unifié** — si identity protégée détectée, fetch `/api/v1/identity/{id}/objects` qui renvoie moments + FK ensemble ; sinon fallback anonyme `moment/mine?session_id=X`.
+- Nouveau CTA `/mine` : "Protéger cet univers →" (link vers `/identity`) dès 1 moment signé, pour convertir l'utilisateur anonyme en univers persistant.
+
+### Bugs corrigés en passant
+- Cache Vite stale sur MyMoments.jsx après purge deps (l'import axios n'existait plus en réel mais le cache le montrait)
+- Duplicate JSX return orphelin après refonte du composant (tronqué à 210 lignes propres)
+
+### Flow utilisateur final "un geste → une preuve durable" (Priorité 3)
+1. Utilisateur arrive sur `/`
+2. Signe (avec ou sans photo/audio) → moment `m-*` créé + block FREK-Chain
+3. Voit `/mine` → prompt "Protéger cet univers" si ≥1 moment
+4. Va sur `/identity` → clique "Associer une Passkey" → Touch ID / Face ID → protégée
+5. `session_token` stocké → tous les prochains `/moment/sign` et `/fk/create` sont **automatiquement liés** à son FREK-Identity
+6. Sur autre appareil : `/identity` → "Retrouver votre univers" → Passkey → retrouve moments + FK
+7. Chaque objet FK peut être vérifié offline via son fichier `.fk` (Ed25519 embarqué)
+
+### Ce qui reste dans le backlog (aucun code avant signal)
+- Namespaces DID (`did:frek:user/artist/label/institution:*`) — structure prête, non exposée
+- Community graph (relations inter-FREK-IDs)
+- Organizational identity (membres, permissions)
+- CLI FK autonome
+- FREKANSLA intelligence layer (fingerprint)
+- Import ID3/EXIF/XMP
+- Page publique `/spec/fk` (charte visible) — spec déjà rédigée dans `/app/memory/FK_CULTURE_SPEC_v1.0.md`
+
+
+---
+
 ## PHASE 14 — Freeze v1.0 Production (08/07/2026)
 
 ### Décision fondateur

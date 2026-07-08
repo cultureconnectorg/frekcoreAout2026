@@ -21,7 +21,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Header
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -110,6 +110,7 @@ async def _sign_moment_core(
     session_id: Optional[str],
     http_request: Request,
     media: Optional[Dict[str, Any]] = None,
+    identity_frek_id: Optional[str] = None,
 ) -> "SignMomentResponse":
     """Logique commune de signature partagee entre /sign (JSON) et /sign-media (multipart).
 
@@ -213,6 +214,16 @@ async def _sign_moment_core(
 
     await _record_rate_limit(ip_key)
 
+    # Auto-link a une FREK Identity si un session token identity valide est fourni
+    if identity_frek_id:
+        try:
+            await db.frek_persons.update_one(
+                {"frek_id": identity_frek_id},
+                {"$addToSet": {"linked_objects": frek_id}},
+            )
+        except Exception as e:
+            logger.warning(f"identity auto-link failed for {frek_id}: {e}")
+
     block_hash = block.get("block_hash") if isinstance(block, dict) else None
 
     logger.info(
@@ -238,16 +249,15 @@ async def _sign_moment_core(
 
 
 @moment_router.post("/sign", response_model=SignMomentResponse)
-async def sign_moment(request: SignMomentRequest, http_request: Request):
+async def sign_moment(request: SignMomentRequest, http_request: Request,
+                     x_frek_session: Optional[str] = Header(None)):
     """Signe le moment present (JSON pur, sans media binaire). Public, anonyme.
 
-    Cree :
-    - FREK-ID stage GENESIS
-    - Block FREK-Chain notarise
-    - Passport Ed25519 recuperable
-
-    Anti-abus : rate limit 20/h/IP.
+    Si un header X-FREK-Session valide est fourni, le moment est automatiquement
+    lie a la FREK Identity correspondante.
     """
+    from identity_engine import service as _idsvc
+    identity_frek_id = _idsvc.verify_session_token(x_frek_session) if x_frek_session else None
     return await _sign_moment_core(
         title=request.title,
         context=request.context,
@@ -258,6 +268,7 @@ async def sign_moment(request: SignMomentRequest, http_request: Request):
         session_id=request.session_id,
         http_request=http_request,
         media=None,
+        identity_frek_id=identity_frek_id,
     )
 
 
@@ -270,6 +281,7 @@ async def sign_moment_with_media(
     context: Optional[str] = Form(None),
     geo: Optional[str] = Form(None, description="JSON geo optionnel"),
     session_id: Optional[str] = Form(None),
+    x_frek_session: Optional[str] = Header(None),
 ):
     """Signe un moment avec un fichier joint (photo ou audio).
 
@@ -314,6 +326,8 @@ async def sign_moment_with_media(
     # On genere le frek_id AVANT l'upload pour l'utiliser dans le path
     # Mais _sign_moment_core genere son propre frek_id. On appelle donc d'abord
     # le core, puis on upload avec le frek_id retourne, puis on met a jour la DB.
+    from identity_engine import service as _idsvc
+    identity_frek_id = _idsvc.verify_session_token(x_frek_session) if x_frek_session else None
     result = await _sign_moment_core(
         title=title,
         context=context,
@@ -324,6 +338,7 @@ async def sign_moment_with_media(
         session_id=session_id,
         http_request=http_request,
         media=media_payload,
+        identity_frek_id=identity_frek_id,
     )
 
     # Si l'utilisateur a demande le stockage, upload maintenant
@@ -461,8 +476,12 @@ async def get_public_window_stats():
         "client_id": PUBLIC_CLIENT_ID,
         "created_at": {"$gte": datetime.fromtimestamp(last24h_cutoff, tz=timezone.utc).isoformat()},
     })
-    return {
-        "total_moments_signed": total,
-        "last_24h": last24h,
-        "public_window": "/moment/sign",
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        {
+            "total_moments_signed": total,
+            "last_24h": last24h,
+            "public_window": "/moment/sign",
+        },
+        headers={"Cache-Control": "public, max-age=30"},
+    )

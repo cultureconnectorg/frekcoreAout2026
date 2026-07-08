@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel
 
@@ -56,6 +56,7 @@ async def create_fk_endpoint(
     keep: bool = Form(False, description="Si true, .fk conserve cote serveur (recuperable via /download)"),
     files: List[UploadFile] = File(default_factory=list, description="Medias a inclure"),
     return_json: bool = Form(False, description="Si true, renvoie JSON info + fk_base64 au lieu du binaire"),
+    x_frek_session: Optional[str] = Header(None),
 ):
     """Cree un objet culturel FK signe. Retourne le .fk binaire par defaut."""
     # Validation
@@ -141,6 +142,19 @@ async def create_fk_endpoint(
         await db.fk_objects.insert_one(doc)
     except Exception as e:
         logger.warning(f"FK metadata insert failed: {e}")
+
+    # Auto-link a une FREK Identity si session token valide fourni
+    if x_frek_session:
+        try:
+            from identity_engine import service as _idsvc
+            identity_frek_id = _idsvc.verify_session_token(x_frek_session)
+            if identity_frek_id:
+                await db.frek_persons.update_one(
+                    {"frek_id": identity_frek_id},
+                    {"$addToSet": {"linked_objects": frek_id}},
+                )
+        except Exception as e:
+            logger.warning(f"FK identity auto-link failed for {frek_id}: {e}")
 
     # Reponse
     info = {
@@ -234,9 +248,12 @@ async def download_fk(frek_id: str):
 async def fk_stats():
     """Compteur public."""
     if db is None:
-        return {"count": 0}
+        return JSONResponse({"count": 0}, headers={"Cache-Control": "public, max-age=30"})
     count = await db.fk_objects.count_documents({})
-    return {"fk_version": FK_VERSION, "total_fk": count}
+    return JSONResponse(
+        {"fk_version": FK_VERSION, "total_fk": count},
+        headers={"Cache-Control": "public, max-age=30"},
+    )
 
 
 # ---------- PUBKEY ----------
@@ -244,9 +261,12 @@ async def fk_stats():
 @fk_router.get("/pubkey")
 async def fk_pubkey():
     """Cle publique FREKCORE pour verification tiers."""
-    return {
-        "algo": "ed25519",
-        "key_id": "frek-passport-v1",
-        "public_key_pem": passport_keys.public_key_pem(),
-        "public_key_raw_b64": passport_keys.public_key_raw_b64(),
-    }
+    return JSONResponse(
+        {
+            "algo": "ed25519",
+            "key_id": "frek-passport-v1",
+            "public_key_pem": passport_keys.public_key_pem(),
+            "public_key_raw_b64": passport_keys.public_key_raw_b64(),
+        },
+        headers={"Cache-Control": "public, max-age=3600, immutable"},
+    )
