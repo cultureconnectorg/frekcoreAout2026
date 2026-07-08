@@ -972,3 +972,41 @@ Première preuve
 
 **Preuve** : screenshot `/` montre le bouton grisé au chargement + le cadre complet + le bouton activé après remplissage.
 
+
+
+### Phase Engagement Session + Fix WebAuthn diag (08/07/2026)
+
+**Problème 1 remonté par fondateur** : "Signer un moment sans cadre est dangereux" → **résolu** phase précédente (cadre éthique + checkbox).
+
+**Problème 2 remonté par fondateur** : "toujours impossible passkey — tests verts mais frontend pas branché". Analyse :
+- Backend endpoints OK (9/9 pytest passent).
+- Frontend ceremony frontend renvoyait un `NotAllowedError` opaque → message "Passkey annulée." trompeur.
+
+**Fix WebAuthn diagnostic** (`pages/Identity.jsx`) :
+- Pré-check `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` avant la ceremony → si aucun authenticator biométrique dispo, message clair : "Aucun authentificateur biométrique détecté sur ce device. Activez Touch ID / Face ID / Windows Hello…".
+- Différenciation des erreurs :
+  - `NotAllowedError` → "Passkey refusée par le device — soit annulée, soit le navigateur n'a pas trouvé d'authentificateur utilisable."
+  - `InvalidStateError` → "Une Passkey existe déjà pour ce FREK-ID sur ce device. Utilisez 'Retrouver votre univers'."
+  - `SecurityError` → "Erreur de sécurité WebAuthn — rpId doit correspondre à ${backendOrigin}".
+  - Autres → `${errorName}: ${errorMessage}` visible pour debugging.
+- Bug résiduel possible côté user : le device n'a pas de Touch ID / Face ID / Windows Hello enrolled. Le message actuel guide correctement.
+
+**Engagement session persistante (option a)** (`lib/engagement.js` + `pages/Moment.jsx` + `pages/MyMoments.jsx`) :
+- Nouveau utility `engagement.js` : `getActiveEngagement()`, `startEngagement()`, `linkMomentToEngagement()`, `clearActiveEngagement()`, `formatExpiry()`, `getAllEngagements()`.
+- SHA-256 signature de l'engagement (`session_id + timestamp + salt`) stockée dans localStorage, TTL **4h**.
+- Historique complet (jusqu'à 50 dernières sessions) dans `frek_engagement_history` — accessible par `getAllEngagements()` pour le journal d'audit.
+- `Moment.jsx` :
+  - Détecte engagement actif au mount → **cache la checkbox**, affiche un **bandeau bleu "🛡️ Engagement actif · N moments · expire à HH:MM"** avec bouton "Renouveler / retirer".
+  - `canSign = title.length >= 3 && (engagement || activeEngagement)` → autorise signature sous engagement hérité.
+  - `sign()` crée automatiquement une engagement session au 1er sign si aucune active, puis `linkMomentToEngagement(moment)` sur chaque signature.
+- `MyMoments.jsx` — nouveau composant **`AuditJournal`** :
+  - Panneau repliable "Journal d'audit — N sessions d'engagement · M moments rattachés".
+  - Chaque session listée avec `id`, `created_at`, `expires_at`, moments rattachés + lien "preuve →" vers `/verify/{frek_id}`.
+  - Data-testid `mine-audit-journal`, `mine-audit-toggle`, `mine-audit-list`, `mine-audit-session-{id}`, `mine-audit-moment-{frek_id}`.
+
+**Fichiers modifiés** :
+- `+/app/frontend/src/lib/engagement.js` (nouveau)
+- `~/app/frontend/src/pages/Identity.jsx` (WebAuthn diagnostic)
+- `~/app/frontend/src/pages/Moment.jsx` (bandeau + engagement session)
+- `~/app/frontend/src/pages/MyMoments.jsx` (journal d'audit)
+

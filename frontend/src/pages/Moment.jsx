@@ -166,6 +166,12 @@ export default function Moment() {
       const data = await res.json();
       setResult(data);
       saveLocalMoment(data);
+      // Lie ce moment a l'engagement session actif (compteur + journal d'audit)
+      const updatedEng = linkMomentToEngagement({
+        frek_id: data.frek_id,
+        title: title.trim() || data.metadata?.title,
+      });
+      if (updatedEng) setActiveEngagement(updatedEng);
       setLocalMoments(getLocalMoments());
       setPhase('done');
     } catch (e) {
