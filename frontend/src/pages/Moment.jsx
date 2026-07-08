@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 
 /**
  * FREKCORE — Fenetre d'acces #1 : Signer le moment present.
@@ -77,17 +76,26 @@ export default function Moment() {
     const session_id = getSession();
 
     try {
-      const { data } = await axios.post(`${API}/api/v1/moment/sign`, {
-        title: title.trim() || null,
-        geo,
-        session_id,
+      const res = await fetch(`${API}/api/v1/moment/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim() || null,
+          geo,
+          session_id,
+        }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
       setResult(data);
       saveLocalMoment(data);
       setLocalMoments(getLocalMoments());
       setPhase('done');
     } catch (e) {
-      setError(e.response?.data?.detail || 'Erreur reseau. Reessaye.');
+      setError(e.message || 'Erreur reseau. Reessaye.');
       setPhase('error');
     }
   };

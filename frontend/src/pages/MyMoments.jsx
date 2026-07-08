@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 
 const API = import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL;
 const SESSION_KEY = 'frek_moment_session';
@@ -24,10 +23,9 @@ export default function MyMoments() {
       return;
     }
     setSessionId(s);
-    axios.get(`${API}/api/v1/moment/mine?session_id=${s}`)
-      .then(({ data }) => {
-        setMoments(data.moments || []);
-      })
+    fetch(`${API}/api/v1/moment/mine?session_id=${s}`)
+      .then((r) => r.ok ? r.json() : { moments: [] })
+      .then((data) => setMoments(data.moments || []))
       .catch(() => setMoments([]))
       .finally(() => setLoading(false));
   }, []);
