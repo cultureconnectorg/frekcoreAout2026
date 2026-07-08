@@ -1,0 +1,17 @@
+{
+  "height": 1265,
+  "prev_hash": "f02eb67d6e5432de69dc60d2dc34e11c1e6cbf55c6cd7f9bfff16c8ebb0b0d12",
+  "payload_type": "identity_emit",
+  "payload_id": "ed010822-077e-4f36-9ecb-d4aea3015f8e",
+  "payload_hash": "d4e13bb1b7bee6bfeaa6a5edefb674c96c0e539253709ba7ce6c3f91009ad7c3",
+  "block_hash": "eb6e6f3ebf37994ca7ef4509199a495c3eb96a9d7ecca3c95f4a98f9b7971c83",
+  "timestamp": "2026-07-08T10:39:17.168468+00:00",
+  "metadata": {
+    "client_id": "kiltikonet-cc2026"
+  },
+  "event_id": "SOVEREIGNTY_AUDIT",
+  "spec_version": "1.0.0",
+  "btc_anchored": false,
+  "btc_block_height": null,
+  "btc_attestation_time": null
+}

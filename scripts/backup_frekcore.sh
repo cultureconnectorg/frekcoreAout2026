@@ -73,15 +73,26 @@ ARCHIVE="${BACKUP_DEST}/frekcore-${STAMP}.tar.gz"
 tar -czf "$ARCHIVE" -C "$BACKUP_DEST" "frekcore-${STAMP}"
 rm -rf "$WORK"
 
-# --- 6. Chiffrement GPG si passphrase fournie ---
-if [[ -n "${BACKUP_GPG_PASSPHRASE:-}" ]]; then
-  echo "[$(date -u +%FT%TZ)] Encrypting with GPG..."
-  gpg --batch --yes --passphrase "$BACKUP_GPG_PASSPHRASE" \
-      --symmetric --cipher-algo AES256 \
-      -o "${ARCHIVE}.gpg" "$ARCHIVE"
-  rm -f "$ARCHIVE"
-  ARCHIVE="${ARCHIVE}.gpg"
+# --- 6. Chiffrement GPG OBLIGATOIRE ---
+# Doctrine RC v1.0 : aucune archive en clair ne quitte le systeme.
+if [[ -z "${BACKUP_GPG_PASSPHRASE:-}" ]]; then
+  # Fallback : lecture depuis fichier root-only
+  if [[ -f /root/.frekcore/backup_passphrase ]]; then
+    BACKUP_GPG_PASSPHRASE="$(cat /root/.frekcore/backup_passphrase)"
+  fi
 fi
+if [[ -z "${BACKUP_GPG_PASSPHRASE:-}" ]]; then
+  echo "[FATAL] BACKUP_GPG_PASSPHRASE requis. Doctrine RC v1.0 : chiffrement obligatoire." >&2
+  rm -f "$ARCHIVE"
+  exit 10
+fi
+
+echo "[$(date -u +%FT%TZ)] Encrypting with GPG AES256..."
+gpg --batch --yes --passphrase "$BACKUP_GPG_PASSPHRASE" \
+    --symmetric --cipher-algo AES256 \
+    -o "${ARCHIVE}.gpg" "$ARCHIVE"
+rm -f "$ARCHIVE"
+ARCHIVE="${ARCHIVE}.gpg"
 
 # --- 7. Retention (purge > RETENTION_DAYS) ---
 find "$BACKUP_DEST" -maxdepth 1 -name 'frekcore-*.tar.gz*' -type f \
@@ -95,7 +106,8 @@ mkdir -p /app/backups
 if [[ -n "${BACKUP_GPG_PASSPHRASE:-}" ]]; then
   ENC_JSON="true"
 else
-  ENC_JSON="false"
+  # Chiffrement obligatoire — si on arrive ici, c'est qu'on a lu depuis /root/.frekcore/
+  ENC_JSON="true"
 fi
 cat > /app/backups/.last_backup.json <<EOF
 {

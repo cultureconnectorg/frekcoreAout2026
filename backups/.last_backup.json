@@ -1,6 +1,6 @@
 {
-  "at": "2026-07-08T10-28-53Z",
-  "archive": "/app/backups/frekcore-2026-07-08T10-28-53Z.tar.gz.gpg",
+  "at": "2026-07-08T10-37-05Z",
+  "archive": "/app/backups/frekcore-2026-07-08T10-37-05Z.tar.gz.gpg",
   "size": "1.8M",
   "encrypted": true,
   "db_name": "test_database",

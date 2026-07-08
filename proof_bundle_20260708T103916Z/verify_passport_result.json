@@ -1,0 +1,66 @@
+{
+  "valid": true,
+  "mode": "full",
+  "errors": [],
+  "envelope": {
+    "spec_version": "1.0.0",
+    "passport_version": 1,
+    "key_id": "frek-passport-v1",
+    "frek_id": "ed010822-077e-4f36-9ecb-d4aea3015f8e",
+    "issued_at": "2026-07-08T10:39:17.411972+00:00",
+    "claims_count": 12,
+    "merkle_root": "9d0df5bffc0d0be9a2e29ebe043ed8563fe3127807b3e431453e58ab5c2b7629"
+  },
+  "claims": [
+    {
+      "key": "frek_id",
+      "value": "ed010822-077e-4f36-9ecb-d4aea3015f8e"
+    },
+    {
+      "key": "issued_at",
+      "value": "2026-07-08T10:39:17.411972+00:00"
+    },
+    {
+      "key": "spec_version",
+      "value": "1.0.0"
+    },
+    {
+      "key": "current_stage",
+      "value": "GENESIS"
+    },
+    {
+      "key": "stages_completed",
+      "value": [
+        "GENESIS"
+      ]
+    },
+    {
+      "key": "event_id",
+      "value": "SOVEREIGNTY_AUDIT"
+    },
+    {
+      "key": "source",
+      "value": "proof_of_existence"
+    },
+    {
+      "key": "expires_at",
+      "value": null
+    },
+    {
+      "key": "revoked",
+      "value": false
+    },
+    {
+      "key": "chain_height",
+      "value": 1265
+    },
+    {
+      "key": "chain_block_hash",
+      "value": "eb6e6f3ebf37994ca7ef4509199a495c3eb96a9d7ecca3c95f4a98f9b7971c83"
+    },
+    {
+      "key": "btc_anchored",
+      "value": false
+    }
+  ]
+}

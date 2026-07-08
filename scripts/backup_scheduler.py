@@ -14,7 +14,16 @@ from datetime import datetime, timezone, timedelta
 BACKUP_SCRIPT = "/app/scripts/backup_frekcore.sh"
 BACKUP_HOUR_UTC = int(os.environ.get("FREK_BACKUP_HOUR_UTC", "3"))
 BACKUP_MINUTE = int(os.environ.get("FREK_BACKUP_MINUTE", "0"))
+PASSPHRASE_FILE = os.environ.get("BACKUP_PASSPHRASE_FILE", "/root/.frekcore/backup_passphrase")
+
+# Lecture passphrase depuis fichier root-only (doctrine RC v1.0)
 GPG_PASS = os.environ.get("BACKUP_GPG_PASSPHRASE", "")
+if not GPG_PASS and os.path.exists(PASSPHRASE_FILE):
+    try:
+        with open(PASSPHRASE_FILE) as f:
+            GPG_PASS = f.read().strip()
+    except Exception:
+        pass
 
 
 def next_run() -> datetime:

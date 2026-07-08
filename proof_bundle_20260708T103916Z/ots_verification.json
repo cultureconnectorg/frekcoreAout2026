@@ -1,0 +1,14 @@
+{
+  "block_hash": "eb6e6f3ebf37994ca7ef4509199a495c3eb96a9d7ecca3c95f4a98f9b7971c83",
+  "ots_bytes": 844,
+  "pending_calendars": [
+    "PendingAttestation('https://bob.btc.calendar.opentimestamps.org')",
+    "PendingAttestation('https://alice.btc.calendar.opentimestamps.org')",
+    "PendingAttestation('https://alice.btc.calendar.opentimestamps.org')",
+    "PendingAttestation('https://finney.calendar.eternitywall.com')",
+    "PendingAttestation('https://bob.btc.calendar.opentimestamps.org')"
+  ],
+  "bitcoin_attestations": [],
+  "status": "PENDING_BTC",
+  "verdict": "Preuve valide, calendars publics independants FREKCORE"
+}
