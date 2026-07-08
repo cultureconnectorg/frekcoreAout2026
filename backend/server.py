@@ -283,8 +283,16 @@ app.include_router(admin_ops_router, prefix="/api/v1")
 
 # FREK Moment — Fenetre d'acces publique #1 (anonyme, un tap)
 from moment.routes import moment_router, set_db as moment_set_db
+from moment import storage as moment_storage
 moment_set_db(db)
 app.include_router(moment_router, prefix="/api/v1")
+
+# Init Object Storage pour les medias signes (optionnel, best-effort)
+try:
+    if moment_storage.init_storage():
+        logging.getLogger(__name__).info("FREK Moment Object Storage initialise")
+except Exception as _e:
+    logging.getLogger(__name__).warning(f"Object Storage init skipped: {_e}")
 
 app.add_middleware(
     CORSMiddleware,

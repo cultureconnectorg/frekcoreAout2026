@@ -414,3 +414,80 @@ Le cœur FREKCORE reste inchange (E/F/G valides). On revele la puissance existan
 - Frontend E2E OK : click SIGNER → ecran preuve visible + 3 boutons
 - Chain integrity : height=1313, valid=True
 - 8/8 endpoints critiques HTTP 200
+
+
+---
+
+## PHASE 10 — Multimédia réel minimal (08/07/2026)
+
+### Étape 2 de la cascade "signal réel → décision → construction"
+Suite à P0 (validation visuelle blanc/bleu ✅), livraison de l'étape 2 : le premier moment
+signable avec un vrai fichier (photo prioritaire, audio en secondaire).
+
+### Bug fixé
+- **Routage `/manifeste`** : `App.jsx` routait `/manifeste` vers `<Certify />` (ancienne UI cyan/dark)
+  au lieu de `<Manifeste />` (v1.0 blanc/bleu). Corrigé, page importée et route mise à jour.
+
+### Backend — module `moment/` étendu
+
+**Nouveaux endpoints** :
+- `POST /api/v1/moment/sign-media` (multipart) : signe un moment avec fichier joint (photo ou audio).
+  - `store=false` → hash SHA-256 seul, aucun binaire conservé (pur notaire).
+  - `store=true` → hash + fichier stocké dans Object Storage (encrypté au transit), récupérable via `/moment/media/{frek_id}`.
+  - Types autorisés : `image/{jpeg,png,webp,gif}`, `audio/{mp3,wav,webm,ogg,mp4,aac,flac}`.
+  - Taille max : 15 MB.
+- `GET /api/v1/moment/media/{frek_id}` : récupère le binaire stocké (404 si `store` était `false` ou expiré).
+- `GET /api/v1/moment/detail/{frek_id}` : renvoie metadata publique safe (titre, hash, kind, layers, block).
+
+**Modifications** :
+- `_sign_moment_core()` extrait comme helper partagé entre `/sign` (JSON) et `/sign-media` (multipart) — refacto sans changement de comportement pour la route JSON existante.
+- `SignMomentResponse` étendue avec `media_hash`, `media_kind`, `media_stored`, `media_url`.
+- Layer `media_kept` ajoutée quand fichier stocké.
+
+**Intégration Object Storage Emergent** :
+- Module `moment/storage.py` : wrapper minimal (`init_storage`, `put_object`, `get_object`, `validate_media`).
+- Init au startup best-effort, mode dégradé silencieux si `EMERGENT_LLM_KEY` absent (le hash reste ancré).
+- Path convention : `frekcore/moments/{frek_id}.{ext}`.
+
+### Frontend
+
+**Refonte `Moment.jsx` (`/`)** :
+- Boutons `+ Photo` et `+ Son` sous le hero.
+- Preview miniature dès sélection (thumbnail image OU icône audio + nom + taille).
+- Choix explicite après sélection :
+  - **Signer seul · hash uniquement** (bouton discret) — ton fichier reste chez toi.
+  - **Signer et conserver** (bouton principal, sombre) — fichier chiffré stocké, récupérable via ta preuve.
+- Ecran de preuve enrichi : ligne "Empreinte photo/audio" + message conservation.
+- Erreurs inline (fichier trop lourd, format non supporté).
+
+**Nouvelle page `MomentVerify.jsx`** (route `/verify/m-*`) :
+- Détection automatique dans `Verify.jsx` : les IDs préfixés `m-` (public window) sont routés vers cette UI blanc/bleu ; les IDs stage-based FREK-v1 restent sur l'ancienne UI dark.
+- Structure exacte demandée par le fondateur :
+  - Badge `✓ Moment attesté`
+  - FREK-ID (mono)
+  - Titre (optionnel, entre guillemets français)
+  - Date de signature
+  - Lieu (si geo capturée)
+  - Empreinte vérifiable (block Bitcoin)
+  - Empreinte photo/audio (media_hash)
+  - Couches capturées (badges)
+  - Actions : `[Voir aperçu]` (fetch blob, affiche image OU `<audio controls>`) + `[Télécharger l'original]`
+- Aucun lecteur riche : structure "page de preuve avant page média".
+
+### Tests E2E validés (curl + Playwright)
+| Test | Résultat |
+|---|---|
+| Regression `/sign` JSON | ✅ 200 OK, media_hash null |
+| `/sign-media` hash-only PNG | ✅ 200, layer=[timestamp,image,context], stored=false |
+| `/sign-media` store=true PNG | ✅ 200, layer includes media_kept, stored=true |
+| `GET /media/{id}` | ✅ 200, binaire identique à l'upload (diff -q OK) |
+| `POST /sign-media` avec text/plain | ✅ 400 "Type non supporte" |
+| `GET /detail/{id}` | ✅ block_hash lié, media metadata complète |
+| Frontend `/` : Photo picker → preview → sign+keep → done | ✅ E2E complet |
+| Frontend `/verify/m-*` : detail rendu + aperçu → download | ✅ complet |
+
+### Ce qui n'est **pas encore** livré (parties 3-6 de la cascade)
+- Audio live capture (micro navigateur, 60s max) — priorité 3, arrivera après scénarios musique/culture réels
+- Fix du 500 legacy `/api/frek/certify` (route audio ancienne page `/certify`, indépendante du nouveau flow)
+- Passkey / WebAuthn (Palier 2 identité) — bloqué sur signal réel
+- Multi-tenant B2B (Sprint M') — bloqué sur signal partenaire

@@ -1,15 +1,28 @@
 /**
  * FREK v2 — Page de Vérification
+ * Route les FREK-ID publics (prefix "m-") vers MomentVerify (theme clair v1.0).
+ * Les FREK-ID stage-based restent sur l'ancienne UI.
  */
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import PassportPanel from '../components/PassportPanel';
+import MomentVerify from './MomentVerify';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 export function Verify() {
   const { frekId } = useParams();
+
+  // Route les moments publics vers l'UI dediee (theme clair v1.0)
+  if (frekId && frekId.startsWith('m-')) {
+    return <MomentVerify frekId={frekId} />;
+  }
+
+  return <LegacyVerify frekId={frekId} />;
+}
+
+function LegacyVerify({ frekId }) {
   const [attestation, setAttestation] = useState(null);
   const [notary, setNotary] = useState(null);
   const [status, setStatus] = useState(null);
