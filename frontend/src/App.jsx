@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Certify } from './pages/Certify';
+import Moment from './pages/Moment';
+import MyMoments from './pages/MyMoments';
 import { Verify } from './pages/Verify';
 import { Generate } from './pages/Generate';
 import { Legal } from './pages/Legal';
@@ -52,8 +54,13 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Certify = Page principale */}
-        <Route path="/" element={<Certify />} />
+        {/* Fenetre d'acces publique #1 — le premier geste */}
+        <Route path="/" element={<Moment />} />
+        <Route path="/mine" element={<MyMoments />} />
+
+        {/* Certify = Manifeste + landing historique */}
+        <Route path="/certify" element={<Certify />} />
+        <Route path="/manifeste" element={<Certify />} />
         
         {/* Vérification publique */}
         <Route path="/verify/:frekId" element={<Verify />} />

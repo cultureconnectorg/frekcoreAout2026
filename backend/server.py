@@ -272,6 +272,11 @@ health_set_db(db)
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(admin_ops_router, prefix="/api/v1")
 
+# FREK Moment — Fenetre d'acces publique #1 (anonyme, un tap)
+from moment.routes import moment_router, set_db as moment_set_db
+moment_set_db(db)
+app.include_router(moment_router, prefix="/api/v1")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,

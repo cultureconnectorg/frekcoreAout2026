@@ -375,3 +375,42 @@ CC2026 — 22 Mai 2026 — Parc de La Savane, Fort-de-France. Objectif : 40 000 
 - 🟠 Configurer `BACKUP_GPG_PASSPHRASE` dans supervisor conf (recommande prod).
 - 🟠 Configurer UptimeRobot / Better Stack sur `/api/v1/health/live` + `/health/deep`.
 - 🟢 (Optionnel) Sentry FastAPI pour auto-capture exceptions.
+
+
+---
+
+## PHASE 9 — Production Live (08/07/2026)
+
+### Fin des phases "prototype" et "MVP"
+Doctrine actee par le fondateur : FREKCORE est desormais en **production live**.
+Tout nouveau developpement suit un standard production (audit, tests, monitoring, backup).
+Aucun ajout futur ne sera qualifie de "prototype" ou de "MVP".
+
+### Fenetre d'acces publique #1 — "Signer le moment present" (LIVRE)
+
+**Doctrine** : le bouton est **la porte**, pas le batiment.
+Le cœur FREKCORE reste inchange (E/F/G valides). On revele la puissance existante via une porte grand public simple.
+
+**Backend** — module `moment/` additif :
+- `POST /api/v1/moment/sign` : anonyme, sans auth, un tap. Cree FREK-ID + block notarise (payload_type=`moment_signed`) + passport recuperable. Multi-couches (timestamp defaut / geo opt-in / audio / image / titre / temoins).
+- `GET /api/v1/moment/mine?session_id=X` : liste les moments d'une session anonyme.
+- `GET /api/v1/moment/stats` : compteur public.
+- Rate limit **20 signatures/h/IP** (hash IP+day, aucune IP stockee).
+- Session anonyme cote client : `localStorage.frek_moment_session` (UUID v4).
+- Identifiants "moment" prefixes : `m-{6hex}-{4hex}` (distinguable des FREK-IDs classiques).
+
+**Frontend** — 2 pages production :
+- `/` : `Moment.jsx` — landing radicale, 1 bouton "SIGNER", options discretes (titre / geo checkbox), ecran preuve avec block_hash + passport + QR.
+- `/mine` : `MyMoments.jsx` — historique local + prompt "conserver ton univers" apres 3 moments.
+- Ancienne landing accessible sur `/certify` et `/manifeste`.
+
+**Identite progressive** (3 paliers) :
+- Palier 1 : FREK-ID anonyme, session localStorage LIVE
+- Palier 2 : attach email/passkey (bouton "bientot" visible, deblocage a la demande)
+- Palier 3 : espace pro (a construire quand un partenaire le demande)
+
+**Preuves E2E** :
+- Backend curl OK : `POST /moment/sign` retourne frek_id + block_hash + proof_url + passport_url + verify_url + layers_captured
+- Frontend E2E OK : click SIGNER → ecran preuve visible + 3 boutons
+- Chain integrity : height=1313, valid=True
+- 8/8 endpoints critiques HTTP 200
