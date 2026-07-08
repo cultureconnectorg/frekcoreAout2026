@@ -294,6 +294,11 @@ try:
 except Exception as _e:
     logging.getLogger(__name__).warning(f"Object Storage init skipped: {_e}")
 
+# FK — Cultural Object Container (Specification v1.0)
+from fk.routes import fk_router, set_db as fk_set_db
+fk_set_db(db)
+app.include_router(fk_router, prefix="/api/v1")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,

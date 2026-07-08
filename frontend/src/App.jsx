@@ -8,6 +8,7 @@ import { Legal } from './pages/Legal';
 import { Spec as SpecPage } from './pages/Spec';
 import { Philosophy } from './pages/Philosophy';
 import { Manifeste } from './pages/Manifeste';
+import FK from './pages/FK';
 import { Privacy } from './pages/Privacy';
 import { Cookies } from './pages/Cookies';
 import { Terms } from './pages/Terms';
@@ -63,6 +64,9 @@ function App() {
         <Route path="/certify" element={<Certify />} />
         <Route path="/manifeste" element={<Manifeste />} />
         
+        {/* FK Cultural Object Container — creation & verification */}
+        <Route path="/fk" element={<FK />} />
+
         {/* Vérification publique */}
         <Route path="/verify/:frekId" element={<Verify />} />
         

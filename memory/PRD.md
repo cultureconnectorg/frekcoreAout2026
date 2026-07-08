@@ -495,6 +495,84 @@ signable avec un vrai fichier (photo prioritaire, audio en secondaire).
 
 ---
 
+## PHASE 12 — FK Implementation MVP v0.1 (08/07/2026)
+
+### Signal validé et implémentation démarrée
+
+Décision fondateur : "On implante." Trio verrouillé :
+- **FREKANSLA** = création intelligente
+- **FK Culture** = objet culturel transportable
+- **FREKCORE** = confiance et continuité
+
+Cadrage précis intégré :
+- Endpoint `/fk/create` (pas `/pack`) — vocabulaire orienté objet culturel
+- **Exporter votre objet culturel FK** (pas "télécharger une archive")
+- Architecture prévoit les **7 couches dès v0.1**, `intelligence/` réservée pour FREKANSLA
+- **Test de survie** intégré : un `.fk` doit rester vérifiable sur toute machine, sans DB
+
+### Backend — module `/app/backend/fk/` (livré)
+
+- `models.py` — Pydantic strict pour les 7 couches (manifest, identity, creators, timeline, media, intelligence, rights, proof)
+- `packager.py` — création complète : FREK-ID `fk-{12hex}-{4hex}`, notarisation FREK-Chain, signature Ed25519 (clé passport réutilisée), assemblage ZIP conforme spec
+- `validator.py` — vérification **offline** : ZIP valid, couches présentes, hashes recalculés, root_hash, signature Ed25519 avec clé publique embarquée, intégrité binaire de chaque média
+- `routes.py` — 6 endpoints publics :
+  - `POST /api/v1/fk/create` (multipart : métadonnées + médias, jusqu'à 100 MB / 20 items)
+  - `POST /api/v1/fk/verify` (upload `.fk` → rapport détaillé)
+  - `GET /api/v1/fk/detail/{frek_id}` (metadata publique safe)
+  - `GET /api/v1/fk/{frek_id}/download` (si conservé côté serveur)
+  - `GET /api/v1/fk/stats` (compteur public)
+  - `GET /api/v1/fk/pubkey` (clé publique FREKCORE pour vérif tiers)
+
+### Frontend — route `/fk` (livrée)
+
+- Tabs "Créer un objet FK" / "Vérifier un .fk", theme blanc/bleu v1.0
+- Formulaire création : titre, type (9 catégories : song, album, event, captation, photo, artwork, heritage, document, other), créateur, description, multi-upload médias, toggle "Conserver une copie chiffrée côté FREKCORE"
+- Après création : affichage attestation complète (FREK-ID, root_hash, block, size, media count) + bouton **"Exporter votre objet culturel FK"** (download direct)
+- Vérification : drop zone → rapport valide/invalide + détail des 15+ contrôles
+
+### Tests (100% verts)
+
+- `test_create_fk_minimal` ✅
+- `test_create_fk_with_media` ✅
+- **`test_survival_offline_verification`** ✅ (test fondamental : identité intacte après oubli complet)
+- `test_tampering_detected_manifest` ✅ (modification manifest → invalidité détectée)
+- `test_tampering_detected_media` ✅ (modification média → invalidité détectée)
+- `test_canonical_json_deterministic` ✅ (hashes stables)
+- `test_frek_id_prefix` ✅ (distinction fk- / m- / stage-based)
+
+### Bug fixé pendant l'implem
+
+- **Ordre de scellement** : la première version calculait `layer_hashes` AVANT que `manifest.attestation_ref.block_hash` soit renseigné → le manifest écrit dans le ZIP différait du manifest hashé → validation échouait. Réordonnance : notariser d'abord, renseigner `attestation_ref` sur le manifest, PUIS calculer les hashes.
+
+### Ce qui n'est PAS livré (aligné cadrage fondateur)
+
+- ❌ Codec audio
+- ❌ Lecteur média
+- ❌ Blockchain complète (FREK-Chain souverain existant suffit)
+- ❌ Stockage massif (Object Storage existant + hash externes suffisent)
+- ⏳ Génération fingerprint audio (chromaprint / BPM / spectral) — attend FREKANSLA
+- ⏳ Import auto métadonnées natives (ID3, EXIF, XMP) — reporté
+- ⏳ Ancrage Bitcoin OTS spécifique `.fk` (block FREK-Chain suffit en v0.1)
+- ⏳ CLI Python autonome — l'API HTTP suffit
+
+### Impact stratégique
+
+Le jalon philosophique est atteint :
+> "Pour la première fois, une création numérique peut devenir un objet culturel portable, identifiable et attestable."
+
+Chaque acteur (artiste, label, musée, archive) peut désormais :
+1. Créer un `.fk` via `/fk` ou l'API
+2. L'échanger comme n'importe quel fichier
+3. Le vérifier sans dépendre de FREKCORE (Ed25519 embarqué + hashes recalculables)
+
+Prochains signaux réels qui débloqueront la suite :
+- Un artiste demande `song.fk` en usage réel → CLI + intégration DAW
+- Un musée demande archivage `heritage.fk` → procédure long terme
+- Un partenaire signataire → intelligence layer via FREKANSLA
+
+
+---
+
 ## PHASE 11 — FK Specification v1.0 (Cultural Object Container) (08/07/2026)
 
 ### Signal stratégique du fondateur — cadrage définitif
