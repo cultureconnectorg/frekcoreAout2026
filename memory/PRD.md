@@ -946,3 +946,29 @@ Première preuve
 
 **Aucun endpoint touché** — seulement `/identity/init`, `/identity/me`, `/identity/{id}/objects` déjà existants.
 
+
+
+### Cadre éthique obligatoire avant signature (08/07/2026)
+
+**Problème remonté** : "pouvoir juste signer un moment comme ça sans cadre, c'est complètement dangereux pour FREKCORE et ça décrédibilise".
+
+**Fix** : Cadre éthique explicite dans `pages/Moment.jsx` avant toute signature.
+
+**3 conditions visibles** dans `moment-frame` :
+- Signer, c'est **affirmer publiquement** l'existence de ce moment.
+- FREKCORE **atteste, ne juge pas** — la véracité vous engage.
+- La preuve est **immuable et publique**, ancrée sur Bitcoin.
+
+**2 gardes-fous techniques** :
+1. **Titre requis** (min. 3 caractères) — plus "optionnel" (`moment-title-input`). Le titre sera public et vérifiable à vie.
+2. **Checkbox d'engagement** (`moment-engagement-checkbox`) : "Je déclare que ce moment est authentique et j'accepte que sa signature soit publique et permanente."
+
+**Comportement** :
+- `canSign = title.trim().length >= 3 && engagement`
+- Bouton SIGNER visuellement grisé + `disabled` tant que `canSign === false`
+- Fonction `sign()` rejette avec message d'erreur si conditions non remplies
+- Applies aux 3 modes : SIGNER (texte seul), "Signer seul" (hash média), "Signer et conserver" (hash + fichier)
+- `reset()` remet aussi engagement à `false` — chaque nouveau moment redemande explicitement l'engagement
+
+**Preuve** : screenshot `/` montre le bouton grisé au chargement + le cadre complet + le bouton activé après remplissage.
+

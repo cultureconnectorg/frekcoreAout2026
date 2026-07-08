@@ -65,8 +65,8 @@ export default function Moment() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [localMoments, setLocalMoments] = useState(getLocalMoments());
-  const [showTitleInput, setShowTitleInput] = useState(false);
   const [title, setTitle] = useState('');
+  const [engagement, setEngagement] = useState(false);
   const [geoConsent, setGeoConsent] = useState(false);
 
   // Media v1.1
@@ -116,7 +116,13 @@ export default function Moment() {
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
+  const canSign = title.trim().length >= 3 && engagement;
+
   const sign = async ({ store = false } = {}) => {
+    if (!canSign) {
+      setError('Un titre et l\u2019engagement sont requis avant toute signature.');
+      return;
+    }
     setPhase('signing'); setError('');
     const geo = await captureGeo();
     const session_id = getSession();
@@ -156,7 +162,7 @@ export default function Moment() {
 
   const reset = () => {
     setPhase('idle'); setResult(null); setTitle('');
-    setShowTitleInput(false); setError('');
+    setEngagement(false); setError('');
     clearMedia();
   };
 
@@ -331,6 +337,46 @@ export default function Moment() {
                 />
               </motion.div>
 
+              {/* CADRE ÉTHIQUE — obligatoire avant signature */}
+              <motion.div
+                variants={item}
+                className="max-w-xl mx-auto mb-8 bg-white/70 backdrop-blur-xl border border-slate-200 rounded-2xl p-5 text-left shadow-sm"
+                data-testid="moment-frame"
+              >
+                <div className="text-xs uppercase tracking-[0.25em] text-blue-600 mb-2">Cadre de la signature</div>
+                <ul className="text-xs text-slate-600 leading-relaxed space-y-1 mb-4">
+                  <li>· Signer, c&apos;est <b className="text-slate-900">affirmer publiquement</b> l&apos;existence de ce moment.</li>
+                  <li>· FREKCORE <b className="text-slate-900">atteste, ne juge pas</b> — la véracité vous engage.</li>
+                  <li>· La preuve est <b className="text-slate-900">immuable et publique</b>, ancrée sur Bitcoin.</li>
+                </ul>
+
+                <label className="block mb-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1 block">Titre du moment · requis</span>
+                  <input
+                    type="text" value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={200}
+                    placeholder="Ex : Concert Bataclan, 12 mars 2026"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    data-testid="moment-title-input"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Minimum 3 caractères. Ce titre sera public et vérifiable à vie.</span>
+                </label>
+
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-700 leading-snug" data-testid="moment-engagement-toggle">
+                  <input
+                    type="checkbox"
+                    checked={engagement}
+                    onChange={(e) => setEngagement(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 mt-0.5 shrink-0"
+                    data-testid="moment-engagement-checkbox"
+                  />
+                  <span>
+                    Je déclare que ce moment est <b>authentique</b> et j&apos;accepte que sa signature soit <b>publique et permanente</b>.
+                  </span>
+                </label>
+              </motion.div>
+
               {/* Bouton(s) de signature */}
               <motion.div variants={item} className="relative inline-block">
                 <motion.div
@@ -348,14 +394,17 @@ export default function Moment() {
                 {!hasMedia ? (
                   <motion.button
                     onClick={() => sign({ store: false })}
-                    whileHover={{
+                    disabled={!canSign}
+                    whileHover={canSign ? {
                       scale: 1.06,
                       boxShadow: '0 40px 80px -20px rgba(15, 23, 42, 0.55), 0 0 0 8px rgba(59,130,246,0.08)',
                       y: -3,
-                    }}
-                    whileTap={{ scale: 0.94, y: 1 }}
+                    } : {}}
+                    whileTap={canSign ? { scale: 0.94, y: 1 } : {}}
                     transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.7 }}
-                    className="relative px-20 py-8 bg-slate-900 text-white text-2xl font-black tracking-[0.2em] rounded-full shadow-2xl"
+                    className={`relative px-20 py-8 text-2xl font-black tracking-[0.2em] rounded-full shadow-2xl transition-colors ${
+                      canSign ? 'bg-slate-900 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    }`}
                     data-testid="moment-sign-btn"
                   >
                     SIGNER
@@ -364,19 +413,25 @@ export default function Moment() {
                   <div className="relative flex flex-col sm:flex-row gap-3 items-center justify-center">
                     <motion.button
                       onClick={() => sign({ store: false })}
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
+                      disabled={!canSign}
+                      whileHover={canSign ? { scale: 1.05, y: -2 } : {}}
+                      whileTap={canSign ? { scale: 0.95 } : {}}
                       transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-                      className="px-7 py-4 bg-white/70 backdrop-blur border border-slate-300 text-slate-900 rounded-full font-semibold hover:bg-white transition-all"
+                      className={`px-7 py-4 rounded-full font-semibold transition-all ${
+                        canSign ? 'bg-white/70 backdrop-blur border border-slate-300 text-slate-900 hover:bg-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                      }`}
                       data-testid="moment-sign-hash-only"
                     >
                       Signer seul<span className="text-slate-500 font-normal"> · hash uniquement</span>
                     </motion.button>
                     <motion.button
                       onClick={() => sign({ store: true })}
-                      whileHover={{ scale: 1.05, boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.4)' }}
-                      whileTap={{ scale: 0.95 }}
-                      className="relative px-7 py-4 bg-slate-900 text-white rounded-full font-semibold shadow-xl"
+                      disabled={!canSign}
+                      whileHover={canSign ? { scale: 1.05, boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.4)' } : {}}
+                      whileTap={canSign ? { scale: 0.95 } : {}}
+                      className={`relative px-7 py-4 rounded-full font-semibold shadow-xl transition-colors ${
+                        canSign ? 'bg-slate-900 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      }`}
                       data-testid="moment-sign-and-keep"
                     >
                       Signer et conserver
@@ -384,6 +439,16 @@ export default function Moment() {
                   </div>
                 )}
               </motion.div>
+
+              {!canSign && (
+                <motion.p
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="text-xs text-slate-500 mt-4 max-w-md mx-auto"
+                  data-testid="moment-sign-hint"
+                >
+                  Donne un titre (min. 3 caractères) et coche l&apos;engagement pour activer la signature.
+                </motion.p>
+              )}
 
               {hasMedia && (
                 <motion.p
@@ -397,31 +462,6 @@ export default function Moment() {
               )}
 
               <motion.div variants={item} className="mt-12 flex flex-col items-center gap-3 text-sm text-slate-500">
-                <AnimatePresence mode="wait">
-                  {!showTitleInput ? (
-                    <motion.button
-                      key="add"
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      onClick={() => setShowTitleInput(true)}
-                      className="text-slate-500 hover:text-slate-900 underline underline-offset-4 transition-colors"
-                      data-testid="moment-add-title"
-                    >
-                      + Ajouter un titre (optionnel)
-                    </motion.button>
-                  ) : (
-                    <motion.input
-                      key="input"
-                      initial={{ opacity: 0, width: 200 }}
-                      animate={{ opacity: 1, width: 320 }}
-                      exit={{ opacity: 0 }}
-                      type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Ex : coucher de soleil, concert, réunion..."
-                      className="px-4 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      maxLength={200} autoFocus
-                      data-testid="moment-title-input"
-                    />
-                  )}
-                </AnimatePresence>
                 <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors" data-testid="moment-geo-toggle">
                   <input type="checkbox" checked={geoConsent} onChange={(e) => setGeoConsent(e.target.checked)} className="w-4 h-4 accent-blue-600" />
                   <span>Autoriser la localisation (H3, précision 10m)</span>
