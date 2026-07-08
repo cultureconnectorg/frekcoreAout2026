@@ -495,6 +495,74 @@ signable avec un vrai fichier (photo prioritaire, audio en secondaire).
 
 ---
 
+## PHASE 13 — Identity Engine (Passkey / WebAuthn) (08/07/2026)
+
+### Décision fondateur
+
+Diagramme validé :
+```
+FREK-ID (identité souveraine)
+   ├── Passkey (WebAuthn — preuve de contrôle)
+   ├── FK Objects (.fk)
+   └── Community Graph (futur)
+```
+
+Principe : *"FREKCORE ne crée pas des comptes. FREKCORE protège des identités culturelles."*
+
+### Livré
+
+**Backend** — module `/app/backend/identity_engine/` :
+- `models.py` — `FREKIdentity` (id `id-{12hex}-{4hex}`, type individual/professional/institution, status anonymous/protected/revoked, credentials[], linked_objects[], linked_sessions[], permissions[], metadata)
+- `service.py` — WebAuthn ceremonies (registration + authentication) via `webauthn` v3.0.0, session tokens HMAC-signés stateless (90 jours)
+- `routes.py` — 8 endpoints :
+  - `POST /identity/init` — bootstrap FREKIdentity anonyme (attache session_id existant)
+  - `POST /identity/{frek_id}/register/begin` — options Passkey (challenge, rp, user, pubKeyCredParams)
+  - `POST /identity/{frek_id}/register/complete` — verify + attach + issue session
+  - `POST /identity/authenticate/begin` — challenge username-less (discovery)
+  - `POST /identity/authenticate/complete` — verify assertion + issue session
+  - `GET /identity/me` — via header `X-FREK-Session`
+  - `GET /identity/{frek_id}` — vue publique safe (jamais de credentials en clair)
+  - `GET /identity/{frek_id}/objects` — moments + FK liés (protégé)
+  - `POST /identity/link-object` — attache un FK/moment à l'identité
+
+- Nouveau env var **`FREK_RP_ORIGIN`** — WebAuthn requiert un rpId cohérent avec l'origin. Sans ça, ceremony échoue (rpId=localhost mismatch).
+- MongoDB collections : `frek_persons`, `frek_persons_challenges` (TTL 5 min)
+
+**Frontend** — route `/identity` (blanc/bleu v1.0 minimaliste institutionnel) :
+- 3 états AnimatePresence : **anonymous** ("Votre univers existe" + bouton Associer Passkey + lien "Retrouver univers") → **ceremony** (loader biométrique) → **protected** ("Votre identité FREK est maintenant protégée" + FREK-ID + stats + CTA)
+- Helpers `b64urlToBuf`, `bufToB64url`, `serializeCredential` pour la ceremony WebAuthn côté navigateur (native `navigator.credentials.create/get`)
+- localStorage : `frek_identity_token` (session HMAC), `frek_identity_id`
+- Sign out / add multiple Passkeys / recover (auth username-less avec discovery)
+
+### Ce qui n'est PAS livré (structure prête, endpoints stubs pour plus tard)
+
+- ❌ Multi-membres organizational identity (structure `identity_type=professional` prête, pas d'endpoint /organization)
+- ❌ Institutional API keys (structure `identity_type=institution` prête, pas d'endpoint)
+- ❌ Trust Bridge externe (OAuth/DID/SSO) — architecture prévue, pas construite
+- ❌ Community Graph (relations entre FREK-IDs) — non implémenté
+
+### Compatibilité doctrine
+
+- ✅ Aucun compte email/password
+- ✅ Aucune dépendance Google
+- ✅ Aucun réseau social ni marketplace
+- ✅ Aucun stockage biométrique (uniquement credential public COSE)
+- ✅ FREK-ID reste l'identité — Passkey = mécanisme de contrôle
+- ✅ Séparation identité / objet culturel
+- ✅ Architecture multi-acteurs prête pour extensions futures
+
+### Signaux réels attendus pour la suite
+
+| Signal | Déclenchera |
+|---|---|
+| 1er label crée son identité professionnelle | Endpoints `/organization` + membres/permissions |
+| 1er musée / institution demande une clé API | Endpoints `/institution/api-keys` + gouvernance |
+| 1er cas de collaboration inter-FREK-IDs | Community Graph (relations, événements, transmissions) |
+| 1re demande d'auth externe (SSO entreprise) | Trust Bridge OAuth/DID |
+
+
+---
+
 ## PHASE 12 — FK Implementation MVP v0.1 (08/07/2026)
 
 ### Signal validé et implémentation démarrée
