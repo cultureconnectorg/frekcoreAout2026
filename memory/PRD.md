@@ -909,3 +909,40 @@ Doctrine posée par le fondateur : "ne pas vendre la technologie en premier. Le 
 
 **FK.jsx** : positionnement recadré — "FK est le format d'objet culturel de FREKCORE : un conteneur qui réunit création, contexte, droits et preuve dans un objet numérique vérifiable."
 
+
+
+### Phase Universe 2-Journeys (08/07/2026)
+
+Réorganisation de `/universe` autour de **deux journées explicites** au premier affichage :
+
+```
+NOUVEL UTILISATEUR              UTILISATEUR EXISTANT
+────────────────────            ────────────────────────
+"Créer mon univers"             "Retrouver mon univers"
+       ↓                                 ↓
+   FREK-ID                          Passkey
+       ↓                                 ↓
+Choix du rôle                   Patrimoine existant
+       ↓
+Première preuve
+```
+
+**4 modes distincts** dans la même page :
+- `loading` — spinner initial (détection token)
+- `entrance` — 2 grandes cartes contrastées (Nouveau vs Existant)
+- `create` — parcours nouveau : FREK-ID auto-créé (✓) + choix rôle (5 profils) + CTA "Signer un moment" / "Créer un objet FK" + rappel Passkey en step 4 optionnel
+- `recover` — parcours existant : bandeau iframe si nécessaire + bouton Passkey
+- `resume` — si utilisateur déjà protégé (token valide) : résumé patrimoine (compteurs moments + FK) + CTA rapides + gestion Passkey + déconnexion
+
+**Auto-détection** au boot :
+1. Token valide → `resume`
+2. Sinon → `entrance` (avec option "Continuer votre brouillon" si `frek_identity_id` local exists)
+
+**Data-testids** ajoutés :
+- `universe-cta-create`, `universe-cta-recover` (entrée)
+- `universe-create-panel`, `universe-create-step{1,2,3,4}`, `universe-role-grid`, `universe-cta-first-moment`, `universe-cta-first-fk`
+- `universe-recover-panel`, `universe-recover-passkey-btn`, `universe-open-new-tab`, `universe-iframe-warning`
+- `universe-resume-panel`, `universe-resume-card`, `universe-count-total`, `universe-manage-passkey`, `universe-signout`
+
+**Aucun endpoint touché** — seulement `/identity/init`, `/identity/me`, `/identity/{id}/objects` déjà existants.
+
