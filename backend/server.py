@@ -80,7 +80,13 @@ load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+# Sprint G P1 fix: fail-fast si Mongo indisponible (3s au lieu de 30s default)
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=3000,
+    connectTimeoutMS=3000,
+    socketTimeoutMS=10000,
+)
 db = client[os.environ['DB_NAME']]
 
 # Initialize v1 API with database

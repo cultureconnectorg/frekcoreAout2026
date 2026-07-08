@@ -60,21 +60,34 @@ async def readiness():
 
 @health_router.get("/deep")
 async def deep_health():
-    """Sante complete : Mongo, Ed25519, disk, memory, notary chain, latest backup."""
+    """Sante complete : Mongo, Ed25519, disk, memory, notary chain, latest backup.
+
+    Retourne toujours HTTP 200 (meme si degrade) avec le detail dans checks.
+    Le champ 'status' agrege : 'healthy' | 'degraded'. Un monitor externe doit
+    lire ce champ et non le code HTTP.
+    """
+    import asyncio
     checks: dict = {"at": _iso(), "checks": {}}
 
-    # 1. Mongo
+    # 1. Mongo — timeout court pour ne pas hanger le health check
     try:
-        await db.command("ping")
-        n_frek = await db.frek_identities.count_documents({})
-        n_blocks = await db.notary_blocks.count_documents({})
+        # Wrap dans wait_for pour garantir un timeout dur en 3s max
+        async def _mongo_probe():
+            await db.command("ping")
+            n_frek = await db.frek_identities.count_documents({})
+            n_blocks = await db.notary_blocks.count_documents({})
+            return n_frek, n_blocks
+
+        n_frek, n_blocks = await asyncio.wait_for(_mongo_probe(), timeout=3.0)
         checks["checks"]["mongo"] = {
             "ok": True,
             "frek_identities": n_frek,
             "notary_blocks": n_blocks,
         }
+    except asyncio.TimeoutError:
+        checks["checks"]["mongo"] = {"ok": False, "error": "timeout (>3s) — Mongo probablement down"}
     except Exception as e:
-        checks["checks"]["mongo"] = {"ok": False, "error": str(e)}
+        checks["checks"]["mongo"] = {"ok": False, "error": str(e)[:200]}
 
     # 2. Cle Ed25519 (critique !)
     try:
@@ -119,17 +132,23 @@ async def deep_health():
 
     # 5. Notary chain integrity (light check : last block prev_hash chain)
     try:
-        last3 = await db.notary_blocks.find({}, {"_id": 0, "height": 1, "prev_hash": 1, "block_hash": 1}) \
-            .sort("height", -1).limit(3).to_list(3)
-        chain_ok = True
-        for i in range(len(last3) - 1):
-            if last3[i]["prev_hash"] != last3[i + 1]["block_hash"]:
-                chain_ok = False
-                break
+        async def _chain_probe():
+            last3 = await db.notary_blocks.find({}, {"_id": 0, "height": 1, "prev_hash": 1, "block_hash": 1}) \
+                .sort("height", -1).limit(3).to_list(3)
+            chain_ok = True
+            for i in range(len(last3) - 1):
+                if last3[i]["prev_hash"] != last3[i + 1]["block_hash"]:
+                    chain_ok = False
+                    break
+            return chain_ok, last3[0]["height"] if last3 else 0
+
+        chain_ok, last_height = await asyncio.wait_for(_chain_probe(), timeout=3.0)
         checks["checks"]["notary_chain"] = {
             "ok": chain_ok,
-            "last_height": last3[0]["height"] if last3 else 0,
+            "last_height": last_height,
         }
+    except asyncio.TimeoutError:
+        checks["checks"]["notary_chain"] = {"ok": False, "error": "timeout probing chain"}
     except Exception as e:
         checks["checks"]["notary_chain"] = {"ok": False, "error": str(e)}
 
