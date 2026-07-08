@@ -98,7 +98,6 @@ function App() {
         <Route path="/admin/pdf" element={<AdminPdf />} />
         
         {/* Redirections anciennes URLs */}
-        <Route path="/certify" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
