@@ -66,8 +66,8 @@ const PROFILES = [
 
 const STEPS = [
   { id: 1, key: 'identity', title: 'Créer ou retrouver votre FREK-ID', hint: 'Une identité culturelle souveraine, à vie.' },
-  { id: 2, key: 'passkey',  title: 'Associer une Passkey',              hint: 'Touch ID, Face ID, Windows Hello — clé de contrôle.' },
-  { id: 3, key: 'create',   title: 'Créer vos premiers objets',         hint: 'Un moment signé, un objet FK culturel.' },
+  { id: 2, key: 'passkey',  title: 'Associer une Passkey',              hint: 'Optionnel — protège votre univers avec Touch ID, Face ID ou Windows Hello.' },
+  { id: 3, key: 'create',   title: 'Créer vos premiers objets',         hint: 'Un moment signé, un objet FK culturel. Anonyme ou lié à votre Passkey.' },
   { id: 4, key: 'universe', title: 'Construire votre patrimoine',       hint: 'Retrouver, vérifier, transmettre.' },
 ];
 

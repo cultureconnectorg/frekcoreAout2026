@@ -142,12 +142,14 @@ export default function MyMoments() {
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35, duration: 0.5 }}
             className="text-xs text-slate-500 mb-10 flex items-center gap-2"
-            data-testid="mine-isolation-notice"
+            data-testid="mine-identity-notice"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v3m0-3h.01M17 9V7a5 5 0 00-10 0v2M5 9h14v11a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" />
-            </svg>
-            <span>Cet espace est privé à ce navigateur. Personne d&apos;autre ne peut le voir.</span>
+            <span data-testid="mine-isolation-notice" className="flex items-center gap-2">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v3m0-3h.01M17 9V7a5 5 0 00-10 0v2M5 9h14v11a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" />
+              </svg>
+              Cet espace est privé à ce navigateur. Personne d&apos;autre ne peut le voir.
+            </span>
           </motion.p>
         )}
 
