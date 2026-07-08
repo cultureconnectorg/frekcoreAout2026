@@ -153,3 +153,5 @@ openlocationcode==1.0.1
 qrcode==8.2
 reportlab==4.4.10
 pytest-asyncio==1.4.0
+webauthn==3.0.0
+cbor2==6.1.3

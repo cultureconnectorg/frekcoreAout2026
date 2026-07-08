@@ -299,6 +299,19 @@ from fk.routes import fk_router, set_db as fk_set_db
 fk_set_db(db)
 app.include_router(fk_router, prefix="/api/v1")
 
+# Identity Engine — Passkey/WebAuthn attache aux FREK-ID
+from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
+identity_set_db(db)
+app.include_router(identity_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+async def _identity_engine_startup():
+    try:
+        await identity_ensure_indexes()
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Identity Engine indexes skipped: {_e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
