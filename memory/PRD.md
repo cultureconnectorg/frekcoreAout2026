@@ -1010,3 +1010,16 @@ Première preuve
 - `~/app/frontend/src/pages/Moment.jsx` (bandeau + engagement session)
 - `~/app/frontend/src/pages/MyMoments.jsx` (journal d'audit)
 
+
+**Iteration 24 — Fix HIGH engagement counter + retest** ✅
+- Bug identifié iter23 : `linkMomentToEngagement` jamais appelé après sign → compteur bloqué à 0.
+- Fix : 5 lignes dans `Moment.jsx sign()` après `setResult(data)` :
+  ```js
+  const updatedEng = linkMomentToEngagement({
+    frek_id: data.frek_id,
+    title: title.trim() || data.metadata?.title,
+  });
+  if (updatedEng) setActiveEngagement(updatedEng);
+  ```
+- Validation testing agent iter24 : 100% frontend, 3/3 points de régression ciblés OK. LS structure correcte, bandeau counter fonctionne, journal d'audit /mine détaillé.
+
