@@ -1,0 +1,3 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,[field] staff/scan/access,HTTPError('422 Client Error: Unprocessable Entity for url: [field] staff/scan/access'),5452,2026-07-08T11:01:13Z,2026-07-08T11:02:37Z
+POST,[field] core/count,HTTPError('422 Client Error: Unprocessable Entity for url: [field] core/count'),1366,2026-07-08T11:01:13Z,2026-07-08T11:02:37Z

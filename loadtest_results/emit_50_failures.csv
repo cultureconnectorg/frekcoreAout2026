@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,[emit] identity/emit,HTTPError('429 Client Error: Too Many Requests for url: [emit] identity/emit'),2456,2026-07-08T10:59:16Z,2026-07-08T11:00:40Z
