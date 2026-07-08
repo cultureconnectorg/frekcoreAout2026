@@ -495,6 +495,70 @@ signable avec un vrai fichier (photo prioritaire, audio en secondaire).
 
 ---
 
+## PHASE 14 — Freeze v1.0 Production (08/07/2026)
+
+### Décision fondateur
+> "Il faut tout figer sans sur-architecturer et sur-construire et rendre tout production live donc que ça fonctionne réellement."
+
+### Actions livrées
+
+**1. Deployment audit (deployment_agent)** — status WARN, aucun blocker critique :
+- ✅ Compilation OK, env files OK, CORS OK, URLs via env only, supervisor OK, no dotenv override
+- Warnings uniquement sur deps ML/PostgreSQL inutilisées → purgées
+
+**2. Purge deps inutilisées** — 11 packages retirés de requirements.txt (0 import réel confirmé) :
+- ML : `librosa`, `numba`, `llvmlite`, `scikit-learn`, `scipy`, `soundfile`, `tiktoken`, `tokenizers`, `huggingface_hub`
+- DB legacy : `psycopg2-binary`, `pgvector`, `SQLAlchemy`
+- Impact : image plus légère, boot plus rapide, plus de risque de resource limit sur Kubernetes
+
+**3. Dead code cleanup (identity_engine)** — Recommandations testing_agent iteration_21 appliquées :
+- Retrait de la classe `LinkObjectRequest` orpheline
+- Retrait de la branche unreachable `if req.identity_type not in IDENTITY_TYPES` (Pydantic Literal valide déjà avant handler)
+
+**4. Smoke health final** — 6/6 endpoints critiques HTTP 200 :
+- `/api/v1/health/deep` ✅
+- `/api/v1/moment/stats` ✅
+- `/api/v1/fk/stats` ✅
+- `/api/v1/fk/pubkey` ✅
+- `/api/v1/spec/` ✅
+- `POST /api/v1/identity/authenticate/begin` ✅
+
+### État figé v1.0 Production
+
+**Modules backend live** (11) : moment, fk, identity_engine, notary (FREK-Chain + Bitcoin OTS), passport (Ed25519), spec, health, heritage, sync, staff, event, badges, jetons, email_service, frek_v1 (Luciole)
+
+**Modules frontend live** (routes) : `/` (Moment), `/mine`, `/fk`, `/identity`, `/verify/:id`, `/spec`, `/manifeste`, `/philosophy`, `/dashboard` (ops), `/proof/:hash`, `/explorer`, `/atlas`, `/accueil`, etc.
+
+**Intégrations live** :
+- ✅ FREK-Chain notarisation (locale, souveraine)
+- ✅ Bitcoin OpenTimestamps (background daemon)
+- ✅ Object Storage Emergent (photos/audios/FK signés)
+- ✅ WebAuthn Passkey (native navigateur, aucune biométrie stockée)
+- ✅ Stripe Checkout (jetons B2B, restricted live key)
+- ✅ AWS SES (email templates ready, verification SES sandbox pending user)
+- ⚠️ Baserow (token expiré côté user)
+
+**Ce qui reste dans le backlog gouverné par signal réel** — aucun code écrit avant qu'un signal ne le déclenche :
+- Community Graph (relations FREK-ID)
+- Trust Bridge externe (OAuth/DID)
+- Organizational identity (professional multi-membres)
+- Institutional API keys
+- CLI FK autonome
+- FREKANSLA fingerprint pipeline
+- Import auto ID3/EXIF/XMP
+- Bitcoin OTS spécifique .fk (block FREK-Chain suffit)
+
+### Doctrine finale gelée
+
+> "FREKCORE crée l'infrastructure de preuve culturelle.
+> FK est le format qui permet aux créations numériques de transporter leur identité, leur histoire et leur preuve à travers le temps.
+> FREKCORE ne crée pas des comptes. FREKCORE protège des identités culturelles."
+
+**Signal → Décision → Construction.** Rien ne s'ajoute avant qu'un besoin réel ne le déclenche.
+
+
+---
+
 ## PHASE 13 — Identity Engine (Passkey / WebAuthn) (08/07/2026)
 
 ### Décision fondateur

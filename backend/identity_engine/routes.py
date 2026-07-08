@@ -92,8 +92,7 @@ async def init_identity(req: InitIdentityRequest):
     """Cree une FREKIdentity (anonyme au depart, sans credential).
     Si session_id fourni, attache les moments existants a cette identite.
     """
-    if req.identity_type not in IDENTITY_TYPES:
-        raise HTTPException(400, "identity_type invalide")
+    # Note: identity_type is validated by Pydantic Literal; invalid -> 422 auto.
 
     frek_id = service.generate_identity_id()
     now = service.now_iso()
@@ -322,10 +321,6 @@ async def get_linked_objects(frek_id: str, x_frek_session: Optional[str] = Heade
         "fk_objects": fks,
         "linked_sessions_count": len(sessions),
     }
-
-
-class LinkObjectRequest(dict):
-    pass
 
 
 @identity_router.post("/link-object")
