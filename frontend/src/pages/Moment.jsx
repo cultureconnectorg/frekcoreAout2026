@@ -157,10 +157,30 @@ export default function Moment() {
     clearMedia();
   };
 
-  const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
+  const container = { hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } } };
   const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+    hidden: { opacity: 0, y: 24, filter: 'blur(8px)' },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      transition: {
+        type: 'spring',
+        stiffness: 90,
+        damping: 18,
+        mass: 0.9,
+      },
+    },
+  };
+  const heroReveal = {
+    hidden: { opacity: 0, y: 40, filter: 'blur(14px)', letterSpacing: '0.05em' },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      letterSpacing: '-0.04em',
+      transition: { duration: 1.05, ease: [0.16, 1, 0.3, 1] },
+    },
   };
 
   const hasMedia = !!mediaFile;
@@ -202,11 +222,11 @@ export default function Moment() {
               key="idle"
               variants={container}
               initial="hidden" animate="show"
-              exit={{ opacity: 0, y: -20, transition: { duration: 0.4 } }}
+              exit={{ opacity: 0, y: -30, filter: 'blur(12px)', scale: 0.96, transition: { duration: 0.5, ease: [0.65, 0, 0.35, 1] } }}
               className="text-center max-w-2xl w-full"
             >
               <motion.h1
-                variants={item}
+                variants={heroReveal}
                 className="text-6xl md:text-8xl font-black tracking-tighter text-slate-900 mb-6"
                 data-testid="moment-headline"
               >
@@ -311,16 +331,26 @@ export default function Moment() {
               <motion.div variants={item} className="relative inline-block">
                 <motion.div
                   aria-hidden="true"
-                  className="absolute inset-0 rounded-full bg-blue-400 blur-2xl opacity-20"
-                  animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute inset-0 rounded-full bg-blue-500 blur-3xl opacity-25"
+                  animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.45, 0.2], rotate: [0, 8, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <motion.div
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-full border border-blue-300/40"
+                  animate={{ scale: [1, 1.4, 1.4], opacity: [0.6, 0, 0] }}
+                  transition={{ duration: 3.2, repeat: Infinity, ease: 'easeOut' }}
                 />
                 {!hasMedia ? (
                   <motion.button
                     onClick={() => sign({ store: false })}
-                    whileHover={{ scale: 1.05, boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.4)' }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+                    whileHover={{
+                      scale: 1.06,
+                      boxShadow: '0 40px 80px -20px rgba(15, 23, 42, 0.55), 0 0 0 8px rgba(59,130,246,0.08)',
+                      y: -3,
+                    }}
+                    whileTap={{ scale: 0.94, y: 1 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.7 }}
                     className="relative px-20 py-8 bg-slate-900 text-white text-2xl font-black tracking-[0.2em] rounded-full shadow-2xl"
                     data-testid="moment-sign-btn"
                   >
@@ -330,8 +360,9 @@ export default function Moment() {
                   <div className="relative flex flex-col sm:flex-row gap-3 items-center justify-center">
                     <motion.button
                       onClick={() => sign({ store: false })}
-                      whileHover={{ scale: 1.04 }}
-                      whileTap={{ scale: 0.96 }}
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 22 }}
                       className="px-7 py-4 bg-white/70 backdrop-blur border border-slate-300 text-slate-900 rounded-full font-semibold hover:bg-white transition-all"
                       data-testid="moment-sign-hash-only"
                     >
@@ -463,9 +494,14 @@ export default function Moment() {
             >
               <motion.div
                 variants={item}
-                className="text-7xl mb-4 inline-block"
-                animate={{ rotate: [0, -8, 8, 0] }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
+                className="text-7xl mb-4 inline-block text-blue-600"
+                initial={{ scale: 0, rotate: -180, opacity: 0 }}
+                animate={{
+                  scale: [0, 1.35, 1],
+                  rotate: [-180, 15, 0],
+                  opacity: 1,
+                }}
+                transition={{ duration: 0.9, times: [0, 0.6, 1], ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
               >
                 ✓
               </motion.div>

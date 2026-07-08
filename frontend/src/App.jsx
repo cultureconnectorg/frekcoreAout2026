@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Certify } from './pages/Certify';
 import Moment from './pages/Moment';
 import MyMoments from './pages/MyMoments';
@@ -52,58 +53,81 @@ function AboutPage() {
   );
 }
 
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, y: -8, filter: 'blur(8px)' }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        style={{ willChange: 'transform, opacity, filter' }}
+      >
+        <Routes location={location}>
+          {/* Fenetre d'acces publique #1 — le premier geste */}
+          <Route path="/" element={<Moment />} />
+          <Route path="/mine" element={<MyMoments />} />
+
+          {/* Certify = ancien landing historique. Manifeste = page v1.0 refondue. */}
+          <Route path="/certify" element={<Certify />} />
+          <Route path="/manifeste" element={<Manifeste />} />
+
+          {/* FK Cultural Object Container — creation & verification */}
+          <Route path="/fk" element={<FK />} />
+
+          {/* Vérification publique */}
+          <Route path="/verify/:frekId" element={<Verify />} />
+
+          {/* Génération attestation (ancien wizard) */}
+          <Route path="/generate" element={<Generate />} />
+
+          {/* À propos / Spec */}
+          <Route path="/about" element={<AboutPage />} />
+
+          {/* Pages de contenu */}
+          <Route path="/legal" element={<Legal />} />
+          <Route path="/spec" element={<SpecPage />} />
+          <Route path="/philosophy" element={<Philosophy />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/disclosure" element={<Disclosure />} />
+          <Route path="/imprint" element={<Imprint />} />
+          <Route path="/help" element={<Help />} />
+
+          {/* CC2026 Private Monitor (accessible only via /dashboard direct URL) */}
+          <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* PWA Staff Scanner */}
+          <Route path="/scan/*" element={<ScanApp />} />
+
+          {/* FREK v2 UX Reboot — Public routes */}
+          <Route path="/accueil" element={<Accueil />} />
+          <Route path="/profil/:frekId" element={<Profil />} />
+          <Route path="/scanner" element={<Scanner />} />
+          <Route path="/poste" element={<Poste />} />
+          <Route path="/card/:frekId" element={<Card />} />
+          <Route path="/atlas" element={<Atlas />} />
+          <Route path="/proof/:hash" element={<Proof />} />
+          <Route path="/explorer" element={<Explorer />} />
+
+          {/* Admin PDF Batch Generation */}
+          <Route path="/admin/pdf" element={<AdminPdf />} />
+
+          {/* Redirects legacy */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Fenetre d'acces publique #1 — le premier geste */}
-        <Route path="/" element={<Moment />} />
-        <Route path="/mine" element={<MyMoments />} />
-
-        {/* Certify = ancien landing historique. Manifeste = page v1.0 refondue. */}
-        <Route path="/certify" element={<Certify />} />
-        <Route path="/manifeste" element={<Manifeste />} />
-        
-        {/* FK Cultural Object Container — creation & verification */}
-        <Route path="/fk" element={<FK />} />
-
-        {/* Vérification publique */}
-        <Route path="/verify/:frekId" element={<Verify />} />
-        
-        {/* Génération attestation (ancien wizard) */}
-        <Route path="/generate" element={<Generate />} />
-        
-        {/* À propos / Spec */}
-        <Route path="/about" element={<AboutPage />} />
-        
-        {/* Pages de contenu */}
-        <Route path="/legal" element={<Legal />} />
-        <Route path="/spec" element={<SpecPage />} />
-        <Route path="/philosophy" element={<Philosophy />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/cookies" element={<Cookies />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/disclosure" element={<Disclosure />} />
-        <Route path="/imprint" element={<Imprint />} />
-        <Route path="/help" element={<Help />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-
-        {/* PWA Scanner Staff terrain */}
-        <Route path="/scan/*" element={<ScanApp />} />
-
-        {/* Nouvelles pages utilisateur — additives, aucun fichier existant modifie */}
-        <Route path="/accueil" element={<Accueil />} />
-        <Route path="/profil/:frekId" element={<Profil />} />
-        <Route path="/scanner" element={<Scanner />} />
-        <Route path="/poste" element={<Poste />} />
-        <Route path="/card/:frekId" element={<Card />} />
-        <Route path="/atlas" element={<Atlas />} />
-        <Route path="/proof/:hash" element={<Proof />} />
-        <Route path="/explorer" element={<Explorer />} />
-        <Route path="/admin/pdf" element={<AdminPdf />} />
-        
-        {/* Redirections anciennes URLs */}
-      </Routes>
+      <AnimatedRoutes />
     </BrowserRouter>
   );
 }

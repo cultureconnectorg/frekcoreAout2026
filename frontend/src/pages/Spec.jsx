@@ -95,7 +95,13 @@ export function Spec() {
             Partenaire ? <span className="text-slate-700">La documentation complète est accessible sous NDA.</span>
           </p>
           <p className="text-xs text-slate-400">
-            Développeur ? Le vérificateur standalone est <Link to="/api/v1/passport/verifier/python" className="text-blue-600 hover:underline">accessible ici</Link>.
+            Développeur ? Le vérificateur standalone est <a
+              href={`${API}/api/v1/passport/verifier/python`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+              data-testid="spec-verifier-link"
+            >accessible ici</a>.
           </p>
         </motion.div>
       </main>

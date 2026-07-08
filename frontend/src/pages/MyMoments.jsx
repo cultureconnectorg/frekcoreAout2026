@@ -52,8 +52,9 @@ export default function MyMoments() {
 
       <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
         <motion.h1
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           className="text-5xl md:text-6xl font-black tracking-tighter text-slate-900 mb-2"
           data-testid="mine-headline"
         >
@@ -61,10 +62,20 @@ export default function MyMoments() {
         </motion.h1>
         <motion.p
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-slate-600 mb-10"
+          className="text-slate-600 mb-2"
         >
           {moments.length === 0 ? 'Aucun moment signé pour l\'instant.'
             : `${moments.length} moment${moments.length > 1 ? 's' : ''} signé${moments.length > 1 ? 's' : ''} depuis ce navigateur.`}
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35, duration: 0.5 }}
+          className="text-xs text-slate-500 mb-10 flex items-center gap-2"
+          data-testid="mine-isolation-notice"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v3m0-3h.01M17 9V7a5 5 0 00-10 0v2M5 9h14v11a2 2 0 01-2 2H7a2 2 0 01-2-2V9z" />
+          </svg>
+          <span>Cet espace est privé à ce navigateur. Personne d&apos;autre ne peut le voir. Ne partage pas cette URL.</span>
         </motion.p>
 
         {moments.length >= 3 && (
