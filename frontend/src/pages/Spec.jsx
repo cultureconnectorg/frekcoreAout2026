@@ -40,7 +40,8 @@ export function Spec() {
       >
         <Link to="/" className="text-xl font-bold text-slate-900" data-testid="spec-brand">FREKCORE</Link>
         <nav className="flex gap-6 text-sm text-slate-600">
-          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign">← Signer</Link>
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="link-universe-spec">Univers</Link>
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign">Signer</Link>
           <Link to="/manifeste" className="hover:text-blue-600 transition-colors" data-testid="link-manifesto-spec">Manifeste</Link>
         </nav>
       </motion.header>

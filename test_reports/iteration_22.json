@@ -1,0 +1,34 @@
+{
+  "summary": "MISSION FREKCORE — Universe entry (/universe + /create alias) e2e validation. Backend: 9/9 pytest PASSED covering health/deep, moment/stats, fk/stats, identity/init (individual+institution+professional with frek_id shape id-XXXXXXXXXXXX-XXXX), authenticate/begin, moment/sign minimal, spec root. Frontend: Universe page renders with all required data-testids (headline, subline, 4 steps, choose-profile-btn, legal-notice), profile picker opens with all 5 profiles (artiste/institution/professionnel/organisation/personnel), profile selection persists to card with 'Changer' button reopening picker. /create route is a proper alias of /universe. Cross-page nav 'Univers' link present on /, /mine, /manifeste, /identity, /fk, /spec. /mine title = 'Mon univers.' (not 'Ton univers.'), legal notice present. /fk and /manifeste legal notices verified. No React crashes. /identity still renders 3 phases with valid frek_id.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_universe_mission.py",
+    "/app/test_reports/pytest/pytest_universe_mission.xml"
+  ],
+  "action_items": [
+    "MINOR / SPEC-INTERPRETATION: The review request describes the anonymous fallback data-testid as 'mine-identity-notice (session anonyme)'. In code, 'mine-identity-notice' is only rendered when identity is PROTECTED (Passkey-attached), while the anonymous case renders 'mine-isolation-notice' (‘Cet espace est privé à ce navigateur’). Both meet the spirit of the spec (identity status is always visible), but naming differs from the review contract. If naming alignment is important, either (a) rename anonymous fallback to 'mine-identity-notice' with a conditional variant, or (b) update the spec to reference 'mine-isolation-notice' as the anonymous indicator. Not blocking."
+  ],
+  "critical_code_review_comments": [
+    "Universe.jsx line 22 uses `import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL` — Vite build reads VITE_ prefix; process.env is only substituted at build time in CRA. Since the repo is on Vite the fallback to process.env is effectively empty at runtime. Works because REACT_APP_BACKEND_URL is defined in frontend/.env and Vite picks it up via a define/dotenv shim (confirmed by network calls succeeding). Still worth normalising to one accessor.",
+    "Universe.jsx bootstrap effect depends on `profile` (line 145) — changing profile triggers a fresh /identity/init call, which is intentional but will create a NEW anonymous FREKIdentity every time the user switches roles in the picker (since no localStorage IDENTITY_ID exists yet). Consider guarding with `!identity && (sessionId || profile)` — currently the guard `existingId` short-circuits after first init, so this is OK in practice, but the intent is subtle.",
+    "MyMoments.jsx: anonymous state renders `mine-isolation-notice` while protected renders `mine-identity-notice` — inconsistent naming (‘isolation’ vs ‘identity’). Consider unified naming: `mine-identity-notice-anon` / `mine-identity-notice-protected`.",
+    "Universe.jsx step-status logic (line 163-168): `passkey` becomes 'ready' when identity exists but not protected — correct. However `create` also becomes 'ready' when identity exists but has no objects, even if passkey is not yet attached — this contradicts the reviewed narrative of a strict 4-step gate. Consider whether create should require passkey first per the mission doctrine.",
+    "goToStep for 'identity' (line 173-176) opens the profile picker if no profile, otherwise navigates to /identity — but a user could bypass profile choice entirely by clicking directly on 'passkey' step (goToStep('passkey') → /identity), which the click-through allows once identity exists. Minor UX inconsistency."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (universe render, profile picker, cross-nav, /mine headline+legal, /manifeste legal, /fk legal, /identity still renders)"},
+  "test_credentials": "N/A — Universe/Identity endpoints are anonymous-first. No credentials required.",
+  "seed_data_creation": "Backend tests create anonymous FREKIdentity docs via /identity/init (session_id prefixed TEST_universe_sess_*). Safe to leave — no PII, unprotected.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Universe mission Phase 1-6 verified. WebAuthn ceremony (register/complete + authenticate/complete) NOT tested — requires real hardware authenticator per review instruction. Backend regression suite /app/backend/tests/test_universe_mission.py can be reused. The anonymous /mine indicator is 'mine-isolation-notice' (not 'mine-identity-notice') — this diverges from the review naming but is a spec/code semantic difference, not a functional bug. Profile picker localStorage key is 'frek_universe_profile'. /create route is a bare alias of /universe (same component).",
+  "rca of the issue": "No new issues found. Iteration 21 fix (FREK_RP_ORIGIN in backend/.env + service.py preference chain) is still in place — /identity page continues to expose FREK-ID with valid shape id-XXXXXXXXXXXX-XXXX."
+}

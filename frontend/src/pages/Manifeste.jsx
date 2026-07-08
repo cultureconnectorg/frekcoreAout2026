@@ -37,7 +37,8 @@ export function Manifeste() {
       >
         <Link to="/" className="text-xl font-bold text-slate-900" data-testid="manifeste-brand">FREKCORE</Link>
         <nav className="flex gap-6 text-sm text-slate-600">
-          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign-mf">← Signer</Link>
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="link-universe-mf">Univers</Link>
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign-mf">Signer</Link>
           <Link to="/spec" className="hover:text-blue-600 transition-colors" data-testid="link-spec-mf">Charte</Link>
           <Link to="/explorer" className="hover:text-blue-600 transition-colors" data-testid="link-explorer-mf">Explorer</Link>
         </nav>
@@ -95,6 +96,9 @@ export function Manifeste() {
       </main>
 
       <footer className="relative z-10 p-6 text-center text-xs text-slate-400">
+        <div className="mb-2 max-w-lg mx-auto leading-relaxed" data-testid="manifeste-legal-notice">
+          FREKCORE atteste l&apos;existence, l&apos;intégrité et l&apos;origine déclarée d&apos;un objet numérique. Nous ne remplaçons ni un juge ni un notaire d&apos;État.
+        </div>
         FREKCORE — Infrastructure de preuve culturelle
       </footer>
     </div>

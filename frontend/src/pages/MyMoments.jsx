@@ -78,8 +78,9 @@ export default function MyMoments() {
       >
         <Link to="/" className="text-xl font-bold text-slate-900" data-testid="mine-brand">FREKCORE</Link>
         <nav className="flex gap-6 text-sm text-slate-600">
-          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign">← Signer</Link>
-          <Link to="/identity" className="hover:text-blue-600 transition-colors" data-testid="link-identity-mine">Identity</Link>
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="link-universe-mine">Univers</Link>
+          <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="link-back-sign">Signer</Link>
+          <Link to="/identity" className="hover:text-blue-600 transition-colors" data-testid="link-identity-mine">Identité</Link>
           <Link to="/spec" className="hover:text-blue-600 transition-colors" data-testid="link-spec-mine">Charte</Link>
         </nav>
       </motion.header>
@@ -92,7 +93,7 @@ export default function MyMoments() {
           className="text-5xl md:text-6xl font-black tracking-tighter text-slate-900 mb-2"
           data-testid="mine-headline"
         >
-          Ton univers.
+          Mon univers.
         </motion.h1>
         <motion.p
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }}
@@ -101,6 +102,31 @@ export default function MyMoments() {
           {totalObjects === 0 ? 'Aucune signature pour l\'instant.'
             : `${moments.length} moment${moments.length > 1 ? 's' : ''}${fkObjects.length > 0 ? ` · ${fkObjects.length} objet${fkObjects.length > 1 ? 's' : ''} FK` : ''}`}
         </motion.p>
+
+        {protectedIdentity && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.5 }}
+            className="mb-8 bg-white/60 backdrop-blur border border-slate-200 rounded-2xl p-5"
+            data-testid="mine-identity-panel"
+          >
+            <div className="grid md:grid-cols-3 gap-4 text-center md:text-left">
+              <div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-1">FREK-ID</div>
+                <div className="font-mono text-xs text-slate-900 break-all" data-testid="mine-identity-frek-id">{protectedIdentity.frek_id}</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-1">Passkey</div>
+                <div className="text-blue-700 text-sm font-semibold flex items-center gap-1 md:justify-start justify-center">
+                  <span className="w-2 h-2 rounded-full bg-blue-600" /> {protectedIdentity.credentials_count || 1} active{(protectedIdentity.credentials_count || 1) > 1 ? 's' : ''}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] mb-1">Niveau de protection</div>
+                <div className="text-slate-900 text-sm font-semibold">Souverain · à vie</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {protectedIdentity ? (
           <motion.div
@@ -203,6 +229,9 @@ export default function MyMoments() {
       </main>
 
       <footer className="relative z-10 p-6 text-center text-xs text-slate-400">
+        <div className="mb-2 max-w-md mx-auto leading-relaxed" data-testid="mine-legal-notice">
+          FREKCORE atteste l&apos;existence, l&apos;intégrité et l&apos;origine déclarée d&apos;un objet numérique.
+        </div>
         {protectedIdentity ? 'Univers protégé' : sessionId ? <>Session anonyme : <span className="font-mono">{sessionId.slice(0, 8)}…</span></> : null}
       </footer>
     </div>

@@ -201,6 +201,7 @@ export default function Moment() {
         <div className="text-xl font-bold tracking-tight text-slate-900" data-testid="moment-brand">FREKCORE</div>
         <nav className="flex gap-6 text-sm text-slate-600">
           {[
+            { to: '/universe', label: 'Univers', tid: 'link-universe' },
             { to: '/manifeste', label: 'Manifeste', tid: 'link-manifesto' },
             { to: '/spec', label: 'Spec', tid: 'link-spec' },
             { to: '/explorer', label: 'Explorer', tid: 'link-explorer' },

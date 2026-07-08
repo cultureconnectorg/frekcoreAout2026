@@ -11,6 +11,7 @@ import { Philosophy } from './pages/Philosophy';
 import { Manifeste } from './pages/Manifeste';
 import FK from './pages/FK';
 import Identity from './pages/Identity';
+import Universe from './pages/Universe';
 import { Privacy } from './pages/Privacy';
 import { Cookies } from './pages/Cookies';
 import { Terms } from './pages/Terms';
@@ -80,6 +81,10 @@ function AnimatedRoutes() {
 
           {/* FREK Identity — Passkey attache */}
           <Route path="/identity" element={<Identity />} />
+
+          {/* Univers FREKCORE — la porte d'entree unifiee */}
+          <Route path="/universe" element={<Universe />} />
+          <Route path="/create" element={<Universe />} />
 
           {/* Vérification publique */}
           <Route path="/verify/:frekId" element={<Verify />} />

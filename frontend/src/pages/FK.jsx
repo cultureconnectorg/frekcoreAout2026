@@ -36,6 +36,7 @@ export default function FK() {
       >
         <Link to="/" className="text-xl font-bold text-slate-900" data-testid="fk-brand">FREKCORE</Link>
         <nav className="flex gap-6 text-sm text-slate-600">
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="fk-link-universe">Univers</Link>
           <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="fk-link-home">Signer</Link>
           <Link to="/spec" className="hover:text-blue-600 transition-colors" data-testid="fk-link-spec">Charte</Link>
           <Link to="/manifeste" className="hover:text-blue-600 transition-colors" data-testid="fk-link-manifeste">Manifeste</Link>
@@ -86,6 +87,9 @@ export default function FK() {
       </main>
 
       <footer className="relative z-10 p-6 text-center text-xs text-slate-400">
+        <div className="mb-2 max-w-lg mx-auto leading-relaxed" data-testid="fk-legal-notice">
+          FREKCORE atteste l&apos;existence, l&apos;intégrité et l&apos;origine déclarée d&apos;un objet numérique.
+        </div>
         FREKCORE — Infrastructure de preuve culturelle • FK v0.1
       </footer>
     </div>
@@ -178,8 +182,11 @@ function CreateFK() {
       >
         <div className="text-center mb-6">
           <div className="text-6xl mb-3">✓</div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Objet culturel FK créé.</h2>
-          <p className="text-xs text-slate-400 font-mono mt-1" data-testid="fk-result-id">{result.frek_id}</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Objet culturel vérifiable.</h2>
+          <p className="text-sm text-slate-600 mt-2 max-w-md mx-auto" data-testid="fk-result-tagline">
+            Un objet FK — pas une archive technique. Il transporte son identité, son histoire et sa preuve à travers le temps.
+          </p>
+          <p className="text-xs text-slate-400 font-mono mt-3" data-testid="fk-result-id">{result.frek_id}</p>
         </div>
         <dl className="space-y-3 text-sm">
           <MetaRow label="Titre" value={result.title} />

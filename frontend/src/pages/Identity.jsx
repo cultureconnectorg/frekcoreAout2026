@@ -210,8 +210,9 @@ export default function Identity() {
       >
         <Link to="/" className="text-xl font-bold text-slate-900" data-testid="identity-brand">FREKCORE</Link>
         <nav className="flex gap-6 text-sm text-slate-600">
+          <Link to="/universe" className="hover:text-blue-600 transition-colors" data-testid="identity-link-universe">Univers</Link>
           <Link to="/" className="hover:text-blue-600 transition-colors" data-testid="identity-link-sign">Signer</Link>
-          <Link to="/mine" className="hover:text-blue-600 transition-colors" data-testid="identity-link-mine">Ton univers</Link>
+          <Link to="/mine" className="hover:text-blue-600 transition-colors" data-testid="identity-link-mine">Mon univers</Link>
           <Link to="/spec" className="hover:text-blue-600 transition-colors" data-testid="identity-link-spec">Charte</Link>
         </nav>
       </motion.header>
