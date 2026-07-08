@@ -491,3 +491,82 @@ signable avec un vrai fichier (photo prioritaire, audio en secondaire).
 - Fix du 500 legacy `/api/frek/certify` (route audio ancienne page `/certify`, indépendante du nouveau flow)
 - Passkey / WebAuthn (Palier 2 identité) — bloqué sur signal réel
 - Multi-tenant B2B (Sprint M') — bloqué sur signal partenaire
+
+
+---
+
+## PHASE 11 — FK Specification v1.0 (Cultural Object Container) (08/07/2026)
+
+### Signal stratégique du fondateur — cadrage définitif
+
+Discussion en session : FK **n'est pas un format audio**. FK = **Cultural Object Container** — un conteneur narratif et probatoire léger, qui ajoute la couche de mémoire et d'identité autour de médias existants sans les remplacer.
+
+### Phrase de positionnement officielle (RDV investisseurs / partenaires)
+
+> "FREKCORE crée l'infrastructure de preuve culturelle. FK est le format qui permet aux créations numériques de transporter leur identité, leur histoire et leur preuve à travers le temps."
+
+### Principe fondateur
+
+> Les formats existants transportent les médias. FK transporte leur sens.
+> FK doit fonctionner comme Markdown : petit fichier, grande capacité de narration.
+
+### Livrables (documents — pas de code)
+
+- **`/app/memory/FK_CULTURE_SPEC_v1.0.md`** — Spec technique complète (15 sections + 2 annexes)
+  - Extension `.fk` — MIME `application/vnd.frek.culture+zip`
+  - Conteneur ZIP-based (précédents EPUB, USDZ, OOXML)
+  - 7 couches : `manifest.fk.json` + `metadata/` (identity, creators, timeline) + `media/` + `intelligence/` (fingerprints, analysis, signatures) + `rights/` + `proof/`
+  - Deux modes : FK léger (~1-50 Ko, médias référencés) et FK autonome (embarque tout)
+  - Bidirectionnel : import (WAV, MP4, PDF, IMAGE, DATA → FK) et export (FK → WAV, MP3, STEMS, VIDEO, ARCHIVE)
+  - Vérification offline (recalcul hashes + signature Ed25519 avec clé `.well-known`)
+- **`/app/memory/FK_CULTURE_PUBLIC_CHARTER.md`** — Charte publique (~2 pages) pour publication `/spec/fk` et distribution en RDV
+
+### Répartition FREKANSLA / FREKCORE clarifiée
+
+- **FREKANSLA** = laboratoire créatif → produit du FK (couche `intelligence/`)
+- **FREKCORE** = infrastructure de preuve → signe (couche `proof/` + FREK-Chain + BTC optionnel)
+
+### 4 cas d'usage prioritaires (produits FK cibles)
+
+- **Musique** : `song.fk` = œuvre + auteurs + versions + preuve
+- **Label** : `album.fk` = masters + crédits + droits + évolutions
+- **Festival** : `event.fk` = performances + artistes + médias + témoignages
+- **Patrimoine** : `heritage.fk` = origine + histoire + transmission
+
+### Roadmap technique (aucun code écrit avant signal réel)
+
+Ordre d'implémentation quand un signal déclenchera :
+1. Modèle FK JSON (JSON Schema draft 2020-12)
+2. Générateur FK (Python/JS)
+3. Validateur FK
+4. Import média existant (WAV/MP4/PDF/IMAGE)
+5. Génération fingerprint (chromaprint / spectral / BPM)
+6. Connexion API FREKCORE (signature + block)
+7. Export `.fk`
+
+### Ce qui ne sera **pas** construit
+
+- ❌ Codec audio
+- ❌ Lecteur média
+- ❌ Blockchain complète (FREK-Chain souverain existant suffit)
+- ❌ Stockage massif (Object Storage existant + références externes suffisent)
+
+### Politique de diffusion (aligné IP Protection Strategy)
+
+- **Public** : vision, définition, cas d'usage → charte téléchargeable + page `/spec/fk`
+- **NDA partenaire** : structure conteneur, schémas JSON, roadmap technique
+- **Vault interne** : clés Ed25519, seeds, procédures de rotation
+
+### Signaux réels qui déclencheront l'implémentation
+
+| Signal | Déclenchera |
+|---|---|
+| 1er artiste demande export `song.fk` | Générateur FK v0.1 + CLI Python |
+| 1re institution demande vérification | Endpoint `/api/v1/fk/verify` + page publique |
+| 1er DAW accepte l'intégration | SDK Python/JavaScript |
+| 1er musée demande archivage | Procédure long terme + audit |
+| 1er label demande `album.fk` | Schéma multi-pistes + interface batch |
+
+### Impact stratégique
+
+FK élargit le marché adressable de FREKCORE de "notaire audio" à **notaire culturel universel**. Le vecteur d'adoption devient un **format qui circule**, pas une infrastructure à convaincre à chaque fois. Publics touchés : artistes, labels, musées, archives, institutions, ayants droit, notaires, distributeurs, chercheurs.
