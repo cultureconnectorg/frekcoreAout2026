@@ -10,6 +10,7 @@ import { Spec as SpecPage } from './pages/Spec';
 import { Philosophy } from './pages/Philosophy';
 import { Manifeste } from './pages/Manifeste';
 import FK from './pages/FK';
+import FKView from './pages/FKView';
 import Identity from './pages/Identity';
 import Universe from './pages/Universe';
 import Verifier from './pages/Verifier';
@@ -89,6 +90,10 @@ function AnimatedRoutes() {
 
           {/* Verificateur offline — page interne (evite le blanc du raw text/x-python) */}
           <Route path="/verifier" element={<Verifier />} />
+
+          {/* Lecteur FK en navigateur — iOS/mobile-friendly */}
+          <Route path="/fk/view/:id" element={<FKView />} />
+          <Route path="/fk/view" element={<FKView />} />
 
           {/* Vérification publique */}
           <Route path="/verify/:frekId" element={<Verify />} />

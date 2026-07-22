@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 25 — validation des 2 fix fondateur : (1) Passkey iPhone bloquée à tort par isUVPAA → CONFIRMÉ FIXÉ (bouton register atteint bien phase 'ceremony', pas de blocage isUVPAA immédiat). (2) FK illisible sur iPhone → CONFIRMÉ FIXÉ côté backend (?compat=zip renvoie application/zip + filename .fk.zip) et côté frontend (routes /fk/view et /fk/view/:id opérationnelles, JSZip décode le ZIP, testids présents, download-zip pointe vers ?compat=zip). Non-régression OK sur /universe, /mine, /moment, /verifier, /manifeste, /spec (BrandLogo cliquable partout, 0 erreur console). 8/8 tests backend passent. UN BUG D'AFFICHAGE HAUT PRIORITÉ trouvé sur /fk/view/:id : le parser JSZip cherche 'manifest.json' mais le fichier réel dans le ZIP s'appelle 'manifest.fk.json' → titre/type/créateur/FREK-ID/date affichent tous '—' pour un FK valide, ce qui casse l'objectif du lecteur iPhone.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FKView.jsx (readFK parser)",
+        "issue": "Le parser cherche 'manifest.json' via `lower === 'manifest.json' || lower.endsWith('/manifest.json')`, mais le fichier réel embarqué dans les .fk générés par le backend s'appelle 'manifest.fk.json' (racine du ZIP). Résultat : manifest === null, donc [data-testid='fkview-title'] affiche 'Objet FK sans titre' et Type/Créateur/FREK-ID/Créé le montrent tous '—' — même quand la signature est vérifiée par le nœud FREKCORE. Le lecteur iPhone (raison d'être de ce fix) ne montre donc rien d'utile. De plus, la signature/preuve sont dans 'proof/frekcore-attestation.json' (endsWith 'attestation.json') qui ne matche ni 'signature.json' ni 'proof.json' du parser.",
+        "selector": "[data-testid='fkview-title'], [data-testid='fkview-signature'], [data-testid='fkview-manifest']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "FKView.jsx manifest schema",
+        "issue": "Même si manifest.fk.json est correctement chargé, il ne contient PAS de champ 'title' ni 'creator' directs. Ces infos sont dans les layers imbriqués (metadata/identity.json, metadata/creators.json). Le composant doit soit (a) charger aussi ces layers, soit (b) le backend doit inliner title+creator dans manifest.fk.json. Voir contenu réel du manifest ci-dessous dans RCA.",
+        "selector": "[data-testid='fkview-title']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter25.py",
+    "/app/test_reports/pytest/pytest_iter25.xml"
+  ],
+  "action_items": [
+    "FKView.jsx readFK() : matcher 'manifest.fk.json' (ligne 31) — remplacer par `lower === 'manifest.json' || lower.endsWith('manifest.fk.json') || lower.endsWith('/manifest.json')`.",
+    "FKView.jsx readFK() : matcher 'attestation.json' pour signature/proof — le fichier réel est 'proof/frekcore-attestation.json'. Adapter la ligne 33-35.",
+    "Charger les layers metadata/identity.json + metadata/creators.json + metadata/timeline.json pour peupler title + creator + description dans l'UI (sinon le lecteur iPhone reste vide malgré le fix)."
+  ],
+  "critical_code_review_comments": [
+    "FKView.jsx : le parser fonctionne mais son schéma de fichiers ne correspond pas au packager backend (packager.py émet manifest.fk.json, pas manifest.json). Bug de non-alignement entre create_fk et readFK.",
+    "Bonne pratique du fix iter25 sur Identity.jsx : isUVPAA devient non-bloquant, uvpaaHint stocké en state, phase='ceremony' déclenchée quand même. errorDetail correctement stocké dans un <details> collapsible avec data-testid='identity-error-detail'.",
+    "Backend fk/routes.py : le param ?compat=zip est propre, media_type='application/zip' + filename '.fk.zip' → iOS reconnaîtra bien.",
+    "Point mineur : dans FK.jsx ligne 209, `download=${title}.fk.zip` mais le href pointe vers un blob issu de fk_base64 avec media_type application/vnd.frek.culture+zip — cohérent car le download attr force le nom, l'extension .zip côté OS."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter25.py (créé — 8 tests backend, 100% passent)"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8)",
+    "frontend": "85% — Passkey iPhone regression fix OK, FK /fk/view routes OK structurellement, mais manifest display cassé (parser mismatch)"
+  },
+  "test_credentials": "N/A — endpoints publics anonymes.",
+  "seed_data_creation": "1 FK 'TEST_iter25_seed_fk_viewer' (frek_id=fk-620181462096-b72d) créé via POST /api/v1/fk/create avec keep=true pour tester /fk/view/:id valide. 1 FK 'TEST_iter25_success_screen' (fk-222268218908-282e) créé via l'UI /fk pour tester le success screen. Aucun cleanup nécessaire (données publiques).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fix Passkey iPhone (bug #1) : VÉRIFIÉ OK — /identity register button clique → phase 'ceremony' atteinte (screenshot /tmp/identity_after_click.png montre 'Autorise sur ton appareil…' + spinner). Aucun message 'Aucun authentificateur biométrique détecté' bloquant. Fix FK iPhone (bug #2) : partiellement OK — backend ?compat=zip parfait, routes /fk/view et /fk/view/:id existent avec bons testids, download-zip pointe bien vers ?compat=zip. MAIS le parser JSZip côté client ne matche pas les vrais noms de fichiers dans le .fk (manifest.fk.json vs manifest.json), donc le contenu affiché est vide. Après fix du parser, retester avec le FK seed fk-620181462096-b72d. Non-régression : /universe (h1 'Bienvenue dans votre univers FREKCORE.'), /mine ('Mon univers.'), / ('Signe ce moment.'), /verifier ('Vérifiez un passport FREKCORE sans nous.'), /manifeste, /spec — tous chargent OK, BrandLogo→/universe partout, 0 erreur console.",
+  "rca of the issue": "Bug FKView manifest vide — RCA : le backend packager (backend/fk/packager.py) génère un ZIP avec cette structure : manifest.fk.json (racine, contient frek_id/object_type/created_at/attestation_ref/layers), metadata/identity.json, metadata/creators.json (contient les créateurs), metadata/timeline.json, media/media.json, intelligence/intelligence.json, rights/ownership.json, proof/frekcore-attestation.json (contient signature+block). Le manifest de haut niveau ne contient PAS title ni creator — ces champs sont dans les layers. Le parser FKView.jsx (lignes 27-42) ne connaît que 'manifest.json' / 'signature.json' / '.sig.json' / 'root.json' / 'proof.json' — aucun de ces patterns ne matche les vrais fichiers 'manifest.fk.json' ni 'frekcore-attestation.json'. Résultat : manifest=null, signature=null, root=null, et tous les fichiers (y compris ceux qui devraient être du manifest) sont classés en 'files' → affichés dans le bloc Contenu. L'utilisateur voit '10 médias' incluant les JSON de métadonnées, sans titre ni créateur.\n\nReproduction : curl -o test.fk.zip 'https://culture-chain.preview.emergentagent.com/api/v1/fk/fk-620181462096-b72d/download?compat=zip' puis unzip -l test.fk.zip → confirme la structure ci-dessus. Ouvrir https://culture-chain.preview.emergentagent.com/fk/view/fk-620181462096-b72d → titre affiche 'Objet FK sans titre', type/créateur/FREK-ID/date tous '—', mais 'Signature vérifiée par le nœud FREKCORE' apparaît (car la vérif backend passe).\n\nMitigation : Dans FKView.jsx readFK(), (1) ajouter le pattern 'manifest.fk.json', (2) après avoir chargé manifest.fk.json, suivre manifest.layers.creators/identity pour charger metadata/creators.json et metadata/identity.json (parsés déjà comme 'files' — il faut les extraire au bon endroit), (3) matcher 'frekcore-attestation.json' pour signature/proof. Alternative : demander au backend d'inliner title/creator_name dans manifest.fk.json.\n\nUne autre issue mineure : Identity.jsx ligne 214 — `authenticate()` reset errorDetail mais `register()` (ligne 140) ne le reset PAS. Après une première ceremony ratée en register puis une deuxième tentative réussie, le vieux errorDetail reste dans le DOM potentiellement. À corriger par cohérence."
+}

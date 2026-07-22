@@ -206,12 +206,19 @@ function CreateFK() {
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a
             href={downloadUrl}
-            download={`${result.title.replace(/\s+/g, '_').slice(0, 40) || 'creation'}.fk`}
+            download={`${result.title.replace(/\s+/g, '_').slice(0, 40) || 'creation'}.fk.zip`}
             className="px-6 py-3 bg-slate-900 text-white rounded-full font-semibold shadow-lg hover:bg-slate-700 transition-colors"
             data-testid="fk-export-btn"
           >
-            Exporter votre objet culturel FK
+            Télécharger (.fk.zip)
           </a>
+          <Link
+            to={`/fk/view/${result.frek_id}`}
+            className="px-6 py-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-full font-semibold hover:bg-blue-100 transition-colors"
+            data-testid="fk-open-viewer"
+          >
+            Ouvrir dans le lecteur
+          </Link>
           <button
             onClick={reset}
             className="px-6 py-3 bg-white/70 border border-slate-300 text-slate-900 rounded-full font-semibold hover:bg-white transition-colors"

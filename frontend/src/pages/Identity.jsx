@@ -75,6 +75,8 @@ export default function Identity() {
   const [identity, setIdentity] = useState(null);
   const [phase, setPhase] = useState('loading'); // loading | anonymous | ceremony | protected | error
   const [error, setError] = useState('');
+  const [errorDetail, setErrorDetail] = useState('');
+  const [uvpaaHint, setUvpaaHint] = useState('');
   const [linkedMoments, setLinkedMoments] = useState(0);
   const webauthnSupported = typeof window !== 'undefined' &&
     window.PublicKeyCredential !== undefined;
@@ -148,14 +150,13 @@ export default function Identity() {
       setError(`Domaine incohérent (${currentOrigin} vs ${backendOrigin}). Ouvrez FREKCORE dans un nouvel onglet sur le bon domaine.`);
       return;
     }
-    // Verif pre-ceremony : le device a-t-il un authenticator utilisable ?
+    // Sonde non bloquante : certains devices (iPhone Safari, cross-device
+    // hybrid) reportent isUVPAA=false alors que la ceremony fonctionne via
+    // iCloud Keychain ou clef roaming. On log un hint mais on laisse tenter.
     try {
       if (typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
         const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        if (!available) {
-          setError('Aucun authentificateur biométrique détecté sur ce device. Activez Touch ID / Face ID / Windows Hello, ou utilisez une clé de sécurité USB, puis réessayez.');
-          return;
-        }
+        setUvpaaHint(available ? '' : 'Aucun authentificateur biométrique détecté localement — la ceremony va tenter iCloud Keychain / clé USB / QR cross-device.');
       }
     } catch { /* isUVPAA optional */ }
     if (!identity?.frek_id) {
@@ -175,16 +176,16 @@ export default function Identity() {
       try {
         cred = await navigator.credentials.create({ publicKey: toPubKeyOptions(opts) });
       } catch (err) {
-        // Message dedie selon la cause reelle du NotAllowedError
         const name = err?.name || 'Error';
+        setErrorDetail(`${name}: ${err?.message || ''}`.trim());
         if (name === 'NotAllowedError') {
-          throw new Error('Passkey refusée par le device — soit annulée, soit le navigateur n\u2019a pas trouvé d\u2019authentificateur utilisable. Vérifiez que Touch ID / Face ID / Windows Hello est actif, puis relancez.');
+          throw new Error('La ceremony a été refusée. Causes possibles : (a) iCloud Keychain désactivé sur iOS · Réglages → Apple ID → iCloud → Mots de passe et trousseau doit être activé. (b) Touch ID/Face ID non configuré. (c) Vous avez annulé le prompt. Réessayez ou utilisez une clé USB de sécurité.');
         }
         if (name === 'InvalidStateError') {
           throw new Error('Une Passkey existe déjà pour ce FREK-ID sur ce device. Utilisez "Retrouver votre univers" à la place.');
         }
         if (name === 'SecurityError') {
-          throw new Error(`Erreur de sécurité WebAuthn — domaine ou origine incompatible (rpId doit correspondre à ${backendOrigin}).`);
+          throw new Error(`Erreur de sécurité WebAuthn — l\u2019URL de cet onglet doit correspondre à ${backendOrigin}.`);
         }
         throw new Error(`${name}: ${err?.message || 'erreur ceremony inconnue'}`);
       }
@@ -210,7 +211,7 @@ export default function Identity() {
   };
 
   const authenticate = async () => {
-    setError('');
+    setError(''); setErrorDetail('');
     if (!webauthnSupported) {
       setError('Ce navigateur ne supporte pas WebAuthn.');
       return;
@@ -237,8 +238,9 @@ export default function Identity() {
         cred = await navigator.credentials.get({ publicKey: toPubKeyOptions(opts) });
       } catch (err) {
         const name = err?.name || 'Error';
+        setErrorDetail(`${name}: ${err?.message || ''}`.trim());
         if (name === 'NotAllowedError') {
-          throw new Error('Aucune Passkey FREK trouvée sur ce device, ou requête annulée. Créez d\u2019abord votre univers depuis un appareil où la Passkey est enregistrée.');
+          throw new Error('Aucune Passkey FREK trouvée sur ce device, ou requête annulée. Si vous avez créé votre Passkey sur un autre appareil et qu\u2019iCloud Keychain / Google Password Manager est activé, la sync peut prendre quelques secondes.');
         }
         throw new Error(`${name}: ${err?.message || 'erreur ceremony inconnue'}`);
       }
@@ -380,8 +382,19 @@ export default function Identity() {
                 </button>
               </div>
 
+              {uvpaaHint && !error && (
+                <p className="text-amber-700 text-xs mt-4 text-center max-w-md mx-auto" data-testid="identity-uvpaa-hint">{uvpaaHint}</p>
+              )}
               {error && (
-                <p className="text-red-600 text-sm mt-4 text-center" data-testid="identity-error">{error}</p>
+                <>
+                  <p className="text-red-600 text-sm mt-4 text-center max-w-md mx-auto" data-testid="identity-error">{error}</p>
+                  {errorDetail && (
+                    <details className="text-[10px] text-slate-500 mt-2 text-center" data-testid="identity-error-detail">
+                      <summary className="cursor-pointer hover:text-slate-900">Détail technique</summary>
+                      <code className="block mt-1 font-mono">{errorDetail}</code>
+                    </details>
+                  )}
+                </>
               )}
             </motion.div>
           )}

@@ -219,8 +219,15 @@ async def get_fk_detail(frek_id: str):
 # ---------- DOWNLOAD ----------
 
 @fk_router.get("/{frek_id}/download")
-async def download_fk(frek_id: str):
-    """Re-telecharge un .fk conserve cote serveur (si keep=true a la creation)."""
+async def download_fk(frek_id: str, compat: str | None = None):
+    """Re-telecharge un .fk conserve cote serveur (si keep=true a la creation).
+
+    Query params :
+    - compat=zip : renomme en .fk.zip (iOS / Safari mobile reconnaissent le zip
+      et permettent d'ouvrir le contenu dans Fichiers). Le fichier est identique,
+      seul le nom change pour que le systeme d'exploitation propose une
+      action correcte.
+    """
     doc = await db.fk_objects.find_one({"frek_id": frek_id}, {"storage_path": 1, "title": 1})
     if not doc:
         raise HTTPException(404, "FK introuvable")
@@ -234,10 +241,16 @@ async def download_fk(frek_id: str):
         logger.error(f"FK download failed for {frek_id}: {e}")
         raise HTTPException(502, "FK indisponible temporairement")
 
-    filename = f"{(doc.get('title') or 'creation').replace(' ', '_')[:40]}.fk"
+    base_name = (doc.get('title') or 'creation').replace(' ', '_')[:40]
+    if compat == "zip":
+        filename = f"{base_name}.fk.zip"
+        media_type = "application/zip"
+    else:
+        filename = f"{base_name}.fk"
+        media_type = "application/vnd.frek.culture+zip"
     return Response(
         content=data,
-        media_type="application/vnd.frek.culture+zip",
+        media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 

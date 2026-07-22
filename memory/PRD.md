@@ -1023,3 +1023,21 @@ Première preuve
   ```
 - Validation testing agent iter24 : 100% frontend, 3/3 points de régression ciblés OK. LS structure correcte, bandeau counter fonctionne, journal d'audit /mine détaillé.
 
+
+**Iteration 25 — Fix Passkey iPhone (blocage isUVPAA supprimé)** 🔧
+- Bug remonté : "Aucun authentificateur biométrique détecté sur ce device" affiché sur iPhone alors que Touch ID/Face ID actifs.
+- Root cause : `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()` retourne parfois `false` sur iPhone Safari alors que la ceremony fonctionne via iCloud Keychain (hybrid / roaming).
+- Fix appliqué (`pages/Identity.jsx`) :
+  - Pré-check isUVPAA n'est plus bloquant → devient un `uvpaaHint` amber non-bloquant ("Aucun authentificateur biométrique détecté localement — la ceremony va tenter iCloud Keychain / clé USB / QR cross-device.")
+  - NotAllowedError message enrichi avec 3 causes iOS-specific : (a) iCloud Keychain désactivé (b) Touch ID/Face ID non configuré (c) prompt annulé
+  - Nouveau `errorDetail` (`<details>` collapsible) qui montre `errorName: errorMessage` brut pour debugging
+- Data-testids : `identity-uvpaa-hint`, `identity-error`, `identity-error-detail`
+
+**Iteration 25 — Fix FK iPhone illisible** 📱
+- Bug remonté : "Le format FK est pas lisible sur mon iPhone".
+- Root cause : `.fk` extension inconnue → iOS Safari refuse d'ouvrir.
+- Fixes :
+  - Backend `GET /api/v1/fk/{id}/download?compat=zip` → renomme en `.fk.zip` avec media_type `application/zip` reconnu par iOS.
+  - Nouvelle page `/fk/view/:id` (et `/fk/view` en upload local) — lecteur FK 100% navigateur avec JSZip : manifest lisible, previews images/audio/vidéo, signature + vérif backend en parallèle, download `.fk.zip`.
+  - Écran succès `/fk` : ajout bouton "Ouvrir dans le lecteur" (`fk-open-viewer`) et export téléchargement en `.fk.zip`.
+
