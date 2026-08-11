@@ -1,0 +1,32 @@
+{
+  "summary": "Retest ciblé FKView.jsx readFK() sur /fk/view/fk-620181462096-b72d. Titre, créateur, FREK-ID, Créé le, Médias, Taille, Description : tous affichés avec valeurs réelles non-vides. Verify status affiche '✓ Signature vérifiée par le nœud FREKCORE'. Route /fk/view sans id affiche bien l'uploader. Un bug résiduel MINEUR détecté sur le bloc signature : root_hash et clé publique ne sont pas affichés car le parser ne lit pas ces champs depuis proof/frekcore-attestation.json (mapping incorrect).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FKView.jsx readFK()",
+        "issue": "Le bloc signature n'affiche QUE 'Signature Ed25519'. Manquent 'Empreinte racine' et 'Clé publique' (le review request demande explicitement ces 3 lignes non-vides). Cause racine : proof/frekcore-attestation.json est un JSON PLAT contenant les champs top-level {root_hash, signature, public_key_pem, public_key_raw_b64, signature_algo, layer_hashes, block, ...}. Or FKView cherche state.report.root?.root_hash (root reste null car aucun fichier root.json/proof.json séparé) et state.report.signature?.pubkey (le vrai champ est public_key_raw_b64, pas pubkey). Fix suggéré : dans readFK() après avoir chargé l'attestation dans `signature`, dériver root = { root_hash: signature.root_hash } et normaliser signature.pubkey = signature.public_key_raw_b64 || signature.public_key_pem.",
+        "selector": "[data-testid='fkview-signature']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Dans /app/frontend/src/pages/FKView.jsx readFK(), après le parse de proof/frekcore-attestation.json : ajouter `if (signature && signature.root_hash) root = { root_hash: signature.root_hash };` et normaliser la clé publique : `if (signature && !signature.pubkey) signature.pubkey = signature.public_key_raw_b64 || signature.public_key_pem;`. Cela rendra 'Empreinte racine' et 'Clé publique' non-vides dans le bloc signature."
+  ],
+  "critical_code_review_comments": [
+    "readFK() suppose deux fichiers séparés (proof.json + signature.json) alors que la structure réelle FREKCORE stocke tout dans un seul proof/frekcore-attestation.json plat. Le mapping devrait être explicite pour ce format canonique.",
+    "Meta component affiche '—' quand value est falsy — pas de data-testid distinct pour differencier valeur absente d'une valeur vide, ce qui complique le test automatique."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "80%"},
+  "test_credentials": "Aucune",
+  "seed_data_creation": "Aucune (seed fk-620181462096-b72d fourni par main agent, présent et servi correctement)",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 26 : bug HIGH parser FKView corrigé pour titre/créateur/FREK-ID/date — tous OK. Reste UN gap MEDIUM : root_hash + clé publique manquants dans bloc signature car le parser ne dérive pas ces champs depuis proof/frekcore-attestation.json (JSON plat). Fix trivial dans readFK() décrit ci-dessus. Seed toujours utilisable : fk-620181462096-b72d.",
+  "rca of the issue": "readFK() cherche state.report.root?.root_hash mais aucun fichier root.json/proof.json n'existe dans le .fk (l'attestation FREKCORE est mono-fichier). Idem pour state.report.signature?.pubkey qui devrait être public_key_raw_b64. Il faut dériver ces alias après avoir chargé l'attestation."
+}

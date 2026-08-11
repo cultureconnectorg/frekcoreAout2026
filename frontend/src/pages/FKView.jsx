@@ -24,22 +24,58 @@ async function readFK(bytes) {
   let manifest = null;
   let signature = null;
   let root = null;
+  let identity = null;
+  let creators = null;
+  let timeline = null;
   for (const name of Object.keys(zip.files)) {
     const entry = zip.files[name];
     if (entry.dir) continue;
     const lower = name.toLowerCase();
-    if (lower === 'manifest.json' || lower.endsWith('/manifest.json')) {
+    // Manifest racine (FREKCORE FK v0.1 : manifest.fk.json)
+    if (lower === 'manifest.fk.json' || lower === 'manifest.json') {
       manifest = JSON.parse(await entry.async('string'));
-    } else if (lower.endsWith('signature.json') || lower.endsWith('.sig.json')) {
+    } else if (lower === 'metadata/identity.json') {
+      identity = JSON.parse(await entry.async('string'));
+    } else if (lower === 'metadata/creators.json') {
+      creators = JSON.parse(await entry.async('string'));
+    } else if (lower === 'metadata/timeline.json') {
+      timeline = JSON.parse(await entry.async('string'));
+    } else if (lower === 'proof/frekcore-attestation.json' || lower.endsWith('/signature.json')) {
       signature = JSON.parse(await entry.async('string'));
+      // Normalisation : le fichier proof FREKCORE est un JSON plat qui contient
+      // root_hash + public_key_* directement. On dérive root et alias pubkey pour
+      // rester compatible avec les FK d'autres implémentations.
+      if (signature && signature.root_hash && !root) {
+        root = { root_hash: signature.root_hash };
+      }
+      if (signature && !signature.pubkey) {
+        signature.pubkey = signature.public_key_raw_b64 || signature.public_key_pem;
+      }
     } else if (lower.endsWith('root.json') || lower.endsWith('proof.json')) {
       root = JSON.parse(await entry.async('string'));
+    } else if (lower === 'media/media.json' || lower.endsWith('/media.json')) {
+      // Media manifest ignored — vrais medias listés via files[]
+    } else if (lower === 'readme.txt' || lower === 'intelligence/intelligence.json' || lower === 'rights/ownership.json') {
+      // Skip meta layers, non pertinents pour affichage
+    } else if (lower.startsWith('media/')) {
+      const blob = await entry.async('blob');
+      files.push({ name, size: blob.size, type: blob.type || guessType(name), blob });
     } else {
       const blob = await entry.async('blob');
       files.push({ name, size: blob.size, type: blob.type || guessType(name), blob });
     }
   }
-  return { manifest, signature, root, files };
+  // Compose une vue enrichie du manifest avec les layers metadata
+  const merged = manifest ? {
+    ...manifest,
+    title: identity?.title || manifest.title,
+    description: identity?.description || manifest.description,
+    creator: creators?.primary_creator?.name || creators?.primary_creator_name || creators?.primary_creator || manifest.creator,
+    creators_list: creators?.contributors || creators?.list || [],
+    created_at: manifest.created_at || timeline?.created_at,
+    timeline,
+  } : null;
+  return { manifest: merged, signature, root, files, identity, creators };
 }
 
 function guessType(name) {

@@ -1,0 +1,29 @@
+{
+  "summary": "Retest FINAL FKView signature block on /fk/view/fk-620181462096-b72d with cache-bust (?_=timestamp) and cleared cookies. Fresh Vite bundle loaded. The 3 signature lines are now correctly displayed with non-empty values.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified": {
+    "fkview_signature_block": {
+      "empreinte_racine": "a5a7bb8a3163196363eb0fb4365a5333a7c9953e23daab3238c746a20289c25b",
+      "signature_ed25519": "eqAEkdTKNSCSPPKf4qkLkOTZxchckRR7… (truncated, non-empty)",
+      "cle_publique": "CrgwxpFRyASkNqSNeQhdzdaAVtawxU3P… (truncated, non-empty)",
+      "verify_status": "✓ Signature vérifiée par le nœud FREKCORE"
+    }
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FKView.jsx normalisation (lignes 48-52) fonctionne correctement : root est bien dérivé de signature.root_hash quand aucun root.json séparé n'existe, et signature.pubkey est aliasé sur public_key_raw_b64/public_key_pem. Fix confirmé opérationnel en production preview."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "Aucune (utilise FK seed existant fk-620181462096-b72d)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Le bloc signature FKView est confirmé fonctionnel. Iteration 27 a effectivement chargé un bundle Vite en cache — cache-busting via ?_=timestamp et clear_cookies() ont résolu le problème d'observation. Aucune régression à surveiller.",
+  "rca of the issue": "Iter27 a rapporté un rendu vide car un bundle Vite obsolète (pré-fix normalisation) était chargé par le navigateur/CDN. Le code source contenait déjà le fix committé aux lignes 48-52 (dérivation root_hash + normalisation pubkey). Mitigation appliquée iter28 : page.context.clear_cookies() + navigation avec query string cache-bust ?_=Date.now() forçant un fresh fetch. Résultat : les 3 champs signature s'affichent correctement."
+}

@@ -1,0 +1,31 @@
+{
+  "summary": "Retest ciblé du bloc signature sur /fk/view/fk-620181462096-b72d. Le fix décrit dans la review request N'A PAS été appliqué dans FKView.jsx. Le bloc [data-testid='fkview-signature'] affiche uniquement 'Signature Ed25519' (1 ligne). Les lignes 'Empreinte racine' (root_hash) et 'Clé publique' (pubkey) sont TOUJOURS ABSENTES.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FKView.jsx (readFK, lignes 43-45 et 60-69)",
+        "issue": "Fix non appliqué: après JSON.parse de proof/frekcore-attestation.json, aucune dérivation de root = {root_hash: signature.root_hash} ni normalisation signature.pubkey = signature.public_key_raw_b64 || signature.public_key_pem. Résultat: state.report.root reste undefined (Empreinte racine masquée par le guard `state.report.root?.root_hash &&`) et state.report.signature.pubkey reste undefined (Clé publique masquée). Seule la ligne 'Signature Ed25519' s'affiche.",
+        "selector": "[data-testid='fkview-signature']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Dans /app/frontend/src/pages/FKView.jsx, après le parse de proof/frekcore-attestation.json (ligne 44), ajouter la dérivation manquante: `if (signature?.root_hash && !root) root = { root_hash: signature.root_hash };` et `if (signature && !signature.pubkey) signature.pubkey = signature.public_key_raw_b64 || signature.public_key_pem;`. Alternativement placer cette logique juste avant le return line 69.",
+    "Vérifier que le champ contenant la signature Ed25519 (state.report.signature.signature ou .sig_b64) est bien celui utilisé ligne 232, sinon aligner aussi le nom du champ."
+  ],
+  "critical_code_review_comments": [
+    "Le bloc actuel n'a que 3 Meta guards conditionnels; sans normalisation post-parse, deux d'entre eux ne s'afficheront jamais pour les FK attestés par frekcore. Il faut absolument dériver root+pubkey depuis l'attestation avant de composer merged."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "33% (1/3 lignes attendues)"},
+  "seed_data_creation": "",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bug MEDIUM iter26 non résolu. Le fix décrit dans la review request n'a jamais été committé dans FKView.jsx. Contenu observé du bloc signature: 'SIGNATURE & PREUVE / ✓ Signature vérifiée par le nœud FREKCORE / SIGNATURE ED25519 / eqAEkdTKNSCSPPKf4qkLkOTZxchckRR7…'. Manquent 'Empreinte racine' + 'Clé publique'. Après application réelle du fix par le main agent, relancer test sur cette même URL.",
+  "rca of the issue": "readFK (FKView.jsx) parse proof/frekcore-attestation.json en assignant l'objet à `signature`, mais ne remplit ni `root` (utilisé pour root_hash) ni `signature.pubkey` (l'attestation FREKCORE expose public_key_raw_b64 / public_key_pem, pas `pubkey`). Les guards conditionnels `state.report.root?.root_hash &&` et `state.report.signature?.pubkey &&` masquent donc les deux lignes. Fix: ajouter la dérivation avant de retourner {manifest: merged, signature, root, ...}."
+}
