@@ -232,6 +232,10 @@ app.include_router(eudi_router, prefix="/api/v1")
 # Note prod : configurer le CDN/edge pour proxifier `.well-known/*` -> `/api/.well-known/*`
 app.include_router(eudi_wellknown_router, prefix="/api")
 
+# --- Ecosystem awareness (registry + capabilities + integrations) ---
+from ecosystem import ecosystem_router  # noqa: E402
+app.include_router(ecosystem_router, prefix="/api/v1")
+
 # FREK Standards — manifest universel + JWKS + DID Configuration (W3C / ID4Africa / ITU)
 app.include_router(standards_router, prefix="/api/v1")
 app.include_router(standards_wellknown_router, prefix="/api")

@@ -1,0 +1,83 @@
+{
+  "capability_registry_version": "1.0.0",
+  "capabilities": {
+    "identity": {
+      "provider": "frek_id",
+      "state": "active",
+      "endpoints": ["/api/v1/identity/init", "/api/v1/identity/me"],
+      "external": false
+    },
+    "passkey": {
+      "provider": "frek_id",
+      "state": "active",
+      "endpoints": ["/api/v1/identity/{id}/register/begin", "/api/v1/identity/authenticate/begin"],
+      "external": false
+    },
+    "moment_signing": {
+      "provider": "frekcore",
+      "state": "active",
+      "endpoints": ["/api/v1/moment/sign", "/api/v1/moment/sign-media"],
+      "external": false
+    },
+    "fk_container": {
+      "provider": "fk",
+      "state": "active",
+      "endpoints": ["/api/v1/fk/create", "/api/v1/fk/verify", "/api/v1/fk/{id}/download"],
+      "external": false
+    },
+    "attestation_chain": {
+      "provider": "frek_chain",
+      "state": "active",
+      "endpoints": ["/api/v1/notary/*"],
+      "external": false
+    },
+    "offline_verification": {
+      "provider": "passport",
+      "state": "active",
+      "endpoints": ["/api/v1/passport/verifier/python", "/api/v1/passport/verifier/js"],
+      "external": false
+    },
+    "heritage_preservation": {
+      "provider": "heritage",
+      "state": "active",
+      "endpoints": ["/api/v1/heritage/*"],
+      "external": false
+    },
+    "decentralized_identity": {
+      "provider": "did",
+      "state": "active",
+      "endpoints": ["/api/v1/did/*", "/api/v1/vc/*"],
+      "external": false
+    },
+    "hardware_attestation": {
+      "provider": "frek_v3",
+      "state": "specified_isolated",
+      "endpoints": [],
+      "external": false,
+      "note": "Reference verifier at /app/frek_v3/. No backend endpoint. Rust/FPGA/ASIC future phases."
+    },
+    "record_certification": {
+      "provider": "frekraw",
+      "state": "not_installed",
+      "endpoints": [],
+      "external": true,
+      "note": "Specialized external branch, contract only."
+    },
+    "audio_fingerprint": {
+      "provider": "frekansla",
+      "state": "not_installed",
+      "endpoints": [],
+      "external": true,
+      "note": "Specialized external branch, contract only."
+    }
+  },
+  "states_semantics": {
+    "active": "Implemented, tested, endpoint responds 200",
+    "available": "Implemented but not activated (requires config)",
+    "specified_isolated": "Specified with reference implementation, isolated from backend",
+    "not_installed": "Only contract exists, no implementation in this repository",
+    "not_configured": "Present but missing credentials/config to run",
+    "not_available": "Temporarily disabled or offline",
+    "external": "Managed by another team/system, adapter only"
+  }
+}
