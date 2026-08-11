@@ -1,0 +1,56 @@
+"""
+FREK Attestation Protocol — Constants
+Reference Implementation v0.1
+"""
+
+# Protocol
+FREK_MAGIC = 0x46
+FREK_VERSION = 0x01
+FREK_DOMAIN = b"FREK-ATTESTATION-V1"
+
+# Levels
+LEVEL_L0_SOFTWARE = 0x00
+LEVEL_L1_DEVICE = 0x01
+LEVEL_L2_HARDWARE = 0x02
+
+# Sizes (bytes)
+SIZE_MAGIC = 1
+SIZE_VERSION = 1
+SIZE_LEVEL = 1
+SIZE_RESERVED = 1
+SIZE_DEVICE_ID = 16
+SIZE_COUNTER = 8
+SIZE_NONCE = 16
+SIZE_DEVICE_TIME = 24
+SIZE_HASH = 32
+SIZE_PUBKEY_COMPRESSED = 33
+SIZE_SIGNATURE = 64
+
+# Total proof size for L2
+SIZE_PROOF_L2 = (
+    SIZE_MAGIC +
+    SIZE_VERSION +
+    SIZE_LEVEL +
+    SIZE_RESERVED +
+    SIZE_DEVICE_ID +
+    SIZE_COUNTER +
+    SIZE_NONCE +
+    SIZE_DEVICE_TIME +
+    SIZE_HASH +      # audio_hash
+    SIZE_HASH +      # fingerprint_hash
+    SIZE_HASH +      # context_hash
+    SIZE_HASH +      # firmware_hash
+    SIZE_PUBKEY_COMPRESSED +
+    SIZE_SIGNATURE
+)
+
+# ECDSA
+ECDSA_CURVE = "secp256r1"
+ECDSA_HASH_ALGO = "sha256"
+
+# Counter
+MAX_COUNTER = 2**64 - 1
+MAX_COUNTER_WINDOW = 1000
+
+# Nonce
+NONCE_SIZE = 16
