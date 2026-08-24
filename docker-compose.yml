@@ -1,0 +1,26 @@
+services:
+  mongo:
+    image: mongo:7.0
+    restart: unless-stopped
+    volumes:
+      - frekcore_mongo:/data/db
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ${DB_NAME:-frekcore}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the environment}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      FREK_ENV: ${FREK_ENV:-development}
+      FREK_CLIENT_KILTIKONET_SECRET: ${FREK_CLIENT_KILTIKONET_SECRET:?Set FREK_CLIENT_KILTIKONET_SECRET}
+      FREK_CLIENT_CVLBRAIN_SECRET: ${FREK_CLIENT_CVLBRAIN_SECRET:?Set FREK_CLIENT_CVLBRAIN_SECRET}
+    ports:
+      - "8001:8001"
+
+volumes:
+  frekcore_mongo:

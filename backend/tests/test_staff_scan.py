@@ -15,7 +15,7 @@ API = f"{BASE_URL}/api"
 V1 = f"{BASE_URL}/api/v1"
 
 CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
-CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k")
+CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
 DEFAULT_AGENTS = {
     "SUPERVISEUR-01": "9999",

@@ -6,17 +6,22 @@ import { openDB } from 'idb';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || '';
 const DB_NAME = 'frek-scan';
+const DB_VERSION = 2;
 const STORE_QUEUE = 'queue';
 const STORE_LOG = 'log';
 const TOKEN_KEY = 'frek-staff-token';
 const STAFF_KEY = 'frek-staff-info';
+export const MAX_RETRY_ATTEMPTS = 5;
+const RETRYABLE_STATUSES = new Set([0, 401, 408, 429, 500, 502, 503, 504]);
 
 export async function getDB() {
-  return openDB(DB_NAME, 1, {
+  return openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(STORE_QUEUE)) {
         db.createObjectStore(STORE_QUEUE, { keyPath: 'client_uuid' });
       }
+      // v2 adds an explicit durable state machine. Existing v1 records remain
+      // readable and are normalized when they are first processed.
       if (!db.objectStoreNames.contains(STORE_LOG)) {
         const s = db.createObjectStore(STORE_LOG, { keyPath: 'id', autoIncrement: true });
         s.createIndex('ts', 'ts');
@@ -78,7 +83,15 @@ export const api = {
 
 // --- Offline queue ---
 function uuid() {
-  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  if (crypto.randomUUID) return crypto.randomUUID();
+  if (crypto.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  throw new Error('Web Crypto est requis pour creer une operation hors ligne idempotente.');
 }
 
 export async function queueAll() {
@@ -88,7 +101,8 @@ export async function queueAll() {
 
 export async function queueCount() {
   const db = await getDB();
-  return db.count(STORE_QUEUE);
+  const all = await db.getAll(STORE_QUEUE);
+  return all.filter((item) => !['succeeded', 'dead_letter', 'cancelled'].includes(item.status || 'queued')).length;
 }
 
 export async function queueRemove(client_uuid) {
@@ -101,6 +115,21 @@ export async function queueClear() {
   const tx = db.transaction(STORE_QUEUE, 'readwrite');
   await tx.objectStore(STORE_QUEUE).clear();
   await tx.done;
+}
+
+export function classifyFailure(status) {
+  return RETRYABLE_STATUSES.has(status || 0) ? 'temporary' : 'permanent';
+}
+
+export function retryDelayMs(attempts) {
+  // Bounded deterministic exponential backoff: 5s, 10s, 20s, …, max 5 min.
+  return Math.min(5_000 * (2 ** Math.max(0, attempts - 1)), 300_000);
+}
+
+export function isEligibleForRetry(item, now = Date.now()) {
+  const status = item.status || 'queued';
+  return ['queued', 'retrying', 'processing'].includes(status)
+    && (!item.next_retry_at || Date.parse(item.next_retry_at) <= now);
 }
 
 export async function logAdd(entry) {
@@ -152,11 +181,23 @@ export async function tryOrQueue(kind, payload, onlineFn) {
 
 async function queuePushItem(item) {
   const db = await getDB();
-  await db.add(STORE_QUEUE, {
+  const now = new Date().toISOString();
+  const existing = await db.get(STORE_QUEUE, item.client_uuid);
+  if (existing) return existing;
+  const queued = {
     ...item,
-    queued_at: new Date().toISOString(),
+    correlation_id: item.correlation_id || item.client_uuid,
+    status: 'queued',
+    queued_at: now,
+    created_at: now,
+    updated_at: now,
     attempts: 0,
-  });
+    next_retry_at: now,
+    last_error: null,
+    last_error_kind: null,
+  };
+  await db.add(STORE_QUEUE, queued);
+  return queued;
 }
 
 function summarize(kind, r) {
@@ -167,12 +208,69 @@ function summarize(kind, r) {
 }
 
 export async function flushQueue() {
-  const all = await queueAll();
-  if (!all.length) return { total: 0, success: 0, failed: 0 };
-  const actions = all.map((a) => ({ kind: a.kind, payload: a.payload, client_uuid: a.client_uuid }));
-  const res = await api.sync(actions);
-  const ok = new Set(res.results.filter((r) => r.ok).map((r) => r.client_uuid));
-  for (const u of ok) await queueRemove(u);
-  await logAdd({ kind: 'sync', status: 'flushed', summary: `${res.success}/${res.total}` });
-  return res;
+  const db = await getDB();
+  const all = await db.getAll(STORE_QUEUE);
+  const eligible = all.filter((item) => isEligibleForRetry(item));
+  if (!eligible.length) return { total: 0, success: 0, failed: 0, deferred: all.length };
+
+  const processingAt = new Date().toISOString();
+  const tx = db.transaction(STORE_QUEUE, 'readwrite');
+  for (const item of eligible) {
+    await tx.store.put({ ...item, status: 'processing', updated_at: processingAt });
+  }
+  await tx.done;
+
+  let response;
+  try {
+    response = await api.sync(eligible.map((item) => ({
+      kind: item.kind,
+      payload: item.payload,
+      client_uuid: item.client_uuid,
+      correlation_id: item.correlation_id,
+    })));
+  } catch (error) {
+    const status = error.status || 0;
+    await Promise.all(eligible.map((item) => updateFailedItem(item, status, error.body?.detail || error.message)));
+    await logAdd({ kind: 'sync', status: 'retrying', error: String(error.message || 'network error') });
+    return { total: eligible.length, success: 0, failed: eligible.length, deferred: all.length - eligible.length };
+  }
+
+  const results = new Map((response.results || []).map((result) => [result.client_uuid, result]));
+  let success = 0;
+  for (const item of eligible) {
+    const result = results.get(item.client_uuid) || { ok: false, status: 0, error: 'Reponse de synchronisation incomplete' };
+    if (result.ok) {
+      success += 1;
+      await db.put(STORE_QUEUE, {
+        ...item,
+        status: 'succeeded',
+        succeeded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_error: null,
+        last_error_kind: null,
+      });
+    } else {
+      await updateFailedItem(item, result.status || 0, result.error || 'Synchronisation refusee');
+    }
+  }
+  const failed = eligible.length - success;
+  await logAdd({ kind: 'sync', status: failed ? 'partial' : 'succeeded', summary: `${success}/${eligible.length}` });
+  return { total: eligible.length, success, failed, deferred: all.length - eligible.length, results: response.results || [] };
+}
+
+async function updateFailedItem(item, status, message) {
+  const db = await getDB();
+  const attempts = (item.attempts || 0) + 1;
+  const failureKind = classifyFailure(status);
+  const deadLetter = failureKind === 'permanent' || attempts >= MAX_RETRY_ATTEMPTS;
+  const now = new Date();
+  await db.put(STORE_QUEUE, {
+    ...item,
+    attempts,
+    status: deadLetter ? 'dead_letter' : 'retrying',
+    updated_at: now.toISOString(),
+    next_retry_at: deadLetter ? null : new Date(now.getTime() + retryDelayMs(attempts)).toISOString(),
+    last_error: String(message),
+    last_error_kind: deadLetter && failureKind !== 'permanent' ? 'retry_exhausted' : failureKind,
+  });
 }

@@ -77,13 +77,15 @@ export default function ScanQueue({ online }) {
             <div key={it.client_uuid} data-testid={`queue-item-${it.kind}`} className="rounded-xl border border-white/15 bg-white/5 p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-mono text-xs text-[#f7931a] uppercase tracking-wider">{KIND_LABEL[it.kind] || it.kind}</span>
-                <span className="font-mono text-[10px] text-white/40">{it.queued_at?.slice(11, 19)}</span>
+                <span className="font-mono text-[10px] text-white/40">{it.status || 'queued'} · {it.queued_at?.slice(11, 19)}</span>
               </div>
               <div className="font-mono text-[11px] text-white/60 break-all">
                 {it.kind === 'access' && `${it.payload?.zone} · ${it.payload?.code}`}
                 {it.kind === 'cashless' && `${it.payload?.montant_jetons} J · ${it.payload?.marchand_id}`}
                 {it.kind === 'emit' && `${it.payload?.prenom} ${it.payload?.nom} · ${it.payload?.type_badge}`}
               </div>
+              {it.last_error && <div className="font-mono text-[10px] text-red-300 mt-1">{it.last_error_kind} · {it.last_error}</div>}
+              {it.next_retry_at && it.status === 'retrying' && <div className="font-mono text-[10px] text-amber-300 mt-1">Prochain essai : {new Date(it.next_retry_at).toLocaleTimeString()}</div>}
             </div>
           ))
         )}

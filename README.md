@@ -1,5 +1,17 @@
 # FREK v0.4 — Musical Proof Standard
 
+## FREKCORE backend verification
+
+The FastAPI/MongoDB backend uses the exact dependency set in `backend/requirements.txt`.
+For a reproducible local service, copy `backend/.env.example` to private `backend/.env`,
+replace its placeholders with secret-manager values, and run `docker compose up --build`.
+The container uses Python 3.12 and starts MongoDB plus the backend on port 8001.
+
+Backend tests target `TEST_BACKEND_URL` (default `http://localhost:8001`) and require Mongo
+plus explicit client secrets. After dependencies are installed, generate and verify the
+versioned FastAPI contract with `python scripts/export_openapi.py` and
+`python scripts/export_openapi.py --check`. The exporter does not enable public docs.
+
 ## Overview
 
 FREK is an open protocol for verifying DJ mixes and musical performances. Cryptographic proof without surveillance.

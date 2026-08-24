@@ -31,7 +31,7 @@ BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "").rstrip("/")
 assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
 CLIENT_SECRET = os.environ.get(
-    "FREK_CLIENT_KILTIKONET_SECRET", "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k"
+    "FREK_CLIENT_KILTIKONET_SECRET", ""
 )
 
 
