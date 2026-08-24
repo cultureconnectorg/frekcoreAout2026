@@ -78,6 +78,31 @@ from pdf_batch.routes import pdf_batch_router, set_db as pdf_batch_set_db
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+
+def cors_origins_from_env() -> list[str]:
+    """Return a credential-safe CORS allowlist.
+
+    Wildcard origins cannot safely be combined with credentialed browser requests.
+    Local origins are available by default for the supported development servers; a
+    production deployment must set ``CORS_ORIGINS`` explicitly.
+    """
+    configured = os.environ.get("CORS_ORIGINS")
+    if not configured:
+        if os.environ.get("FREK_ENV", "development").lower() == "production":
+            raise RuntimeError("CORS_ORIGINS must be configured in production")
+        return ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+    if not origins or "*" in origins:
+        raise RuntimeError("CORS_ORIGINS must be a non-empty explicit allowlist when credentials are enabled")
+    return origins
+
+
+def configured_client_secret(env_name: str) -> str | None:
+    """Read a bootstrap secret without turning a missing value into credentials."""
+    value = os.environ.get(env_name, "").strip()
+    return value or None
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 # Sprint G P1 fix: fail-fast si Mongo indisponible (3s au lieu de 30s default)
@@ -337,7 +362,7 @@ async def _identity_engine_startup():
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins_from_env(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -351,35 +376,47 @@ logger = logging.getLogger(__name__)
 
 
 async def _ensure_unique_sparse_index(collection, field: str):
-    """Cree un index unique partiel sur `field` (uniquement quand non-null/present).
+    """Create a unique partial index without destructive startup repair.
 
-    Utilise partialFilterExpression au lieu de sparse pour eviter les conflits sur null.
-    Resout IndexKeySpecsConflict + DuplicateKeyError sur valeurs null pre-existantes.
+    Existing production data is never changed here. A duplicate report or incompatible
+    index is an explicit migration concern, not something startup may drop/recreate.
     """
     name = f"{field}_1"
     partial = {field: {"$type": "string"}}
-    try:
-        await collection.create_index(
-            field,
-            unique=True,
-            partialFilterExpression=partial,
-            name=name,
+    duplicates = await collection.aggregate([
+        {"$match": partial},
+        {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
+        {"$match": {"count": {"$gt": 1}}},
+        {"$limit": 20},
+    ]).to_list(20)
+    if duplicates:
+        raise RuntimeError(
+            f"Cannot create unique index {collection.name}.{name}: duplicate values detected. "
+            "Run backend/migrations/20260824_unique_index_preflight.py and resolve them with a documented business migration."
         )
-    except Exception as e:
-        msg = str(e)
-        if any(s in msg for s in ["IndexKeySpecsConflict", "already exists with different options", "'code': 86", "code\": 86"]):
-            try:
-                await collection.drop_index(name)
-            except Exception:
-                pass
-            await collection.create_index(
-                field,
-                unique=True,
-                partialFilterExpression=partial,
-                name=name,
+
+    indexes = await collection.index_information()
+    existing = indexes.get(name)
+    if existing:
+        expected = [(field, 1)]
+        is_expected = (
+            existing.get("key") == expected
+            and existing.get("unique") is True
+            and existing.get("partialFilterExpression") == partial
+        )
+        if not is_expected:
+            raise RuntimeError(
+                f"Index {collection.name}.{name} has incompatible options; startup will not drop it. "
+                "Run the documented preflight migration and apply a reviewed index change."
             )
-        else:
-            raise
+        return
+
+    await collection.create_index(
+        field,
+        unique=True,
+        partialFilterExpression=partial,
+        name=name,
+    )
 
 @app.on_event("startup")
 async def warmup_infrastructure():
@@ -406,8 +443,8 @@ async def warmup_infrastructure():
         # 4. Warm notary chain — creation index cle
         try:
             await db.notary_blocks.create_index([("height", -1)])
-        except Exception:
-            pass
+        except Exception as exc:
+            log.warning("notary block warmup index unavailable; continuing without warm index: %s", exc)
         log.info("FREK warmup complete — indexes, mongo pool, passport key preloaded")
     except Exception as e:
         log.warning(f"Warmup skipped: {e}")
@@ -420,19 +457,31 @@ async def seed_clients():
         {
             "client_id": os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026"),
             "name": "Culture Connect 2026",
-            "secret_hash": hash_secret(os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")),
+            "secret": configured_client_secret("FREK_CLIENT_KILTIKONET_SECRET"),
+            "secret_env": "FREK_CLIENT_KILTIKONET_SECRET",
             "permissions": ["emit", "stage", "stats"],
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {
             "client_id": os.environ.get("FREK_CLIENT_CVLBRAIN_ID", "cvl-brain"),
             "name": "CVL Brain Analytics",
-            "secret_hash": hash_secret(os.environ.get("FREK_CLIENT_CVLBRAIN_SECRET", "")),
+            "secret": configured_client_secret("FREK_CLIENT_CVLBRAIN_SECRET"),
+            "secret_env": "FREK_CLIENT_CVLBRAIN_SECRET",
             "permissions": ["stats"],
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
     ]
     for c in clients_to_seed:
+        secret = c.pop("secret")
+        secret_env = c.pop("secret_env")
+        if not secret:
+            logger.error(
+                "Client API non initialise: %s requires non-empty %s",
+                c["client_id"],
+                secret_env,
+            )
+            continue
+        c["secret_hash"] = hash_secret(secret)
         existing = await db.frek_clients.find_one({"client_id": c["client_id"]})
         if not existing:
             await db.frek_clients.insert_one(c)
@@ -475,8 +524,7 @@ async def seed_clients():
 
     # FREK Staff PWA — seed comptes terrain + indexes
     await db.staff.create_index("agent_id", unique=True)
-    # client_uuid: index pre-existant peut avoir ete cree sans unique=True ;
-    # on le drop si les specs different pour eviter IndexKeySpecsConflict
+    # client_uuid idempotency indexes are preflighted and never replaced at startup.
     await _ensure_unique_sparse_index(db.scans, "client_uuid")
     await _ensure_unique_sparse_index(db.transactions, "client_uuid")
     await db.frek_identities.create_index("revoked", sparse=True)

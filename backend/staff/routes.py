@@ -248,7 +248,12 @@ async def staff_list(staff: dict = Depends(require_staff_perm("view_stats"))):
 
 # --- Seeding ---
 async def seed_default_staff():
-    """Cree les comptes staff CC2026 par defaut s'ils n'existent pas."""
+    """Seed staff accounts only when each bootstrap PIN is explicitly configured.
+
+    Development may opt into the historical sample PINs with
+    ``FREK_ALLOW_INSECURE_DEV_STAFF_PINS=true``. Production never creates a
+    privileged account with a published/default credential.
+    """
     defaults = [
         {
             "agent_id": "SUPERVISEUR-01",
@@ -287,7 +292,17 @@ async def seed_default_staff():
         existing = await db.staff.find_one({"agent_id": d["agent_id"]})
         if existing:
             continue
-        pin = os.environ.get(d["pin_env"], d["default_pin"])
+        pin = os.environ.get(d["pin_env"], "").strip()
+        allow_insecure_dev_pin = (
+            os.environ.get("FREK_ENV", "development").lower() != "production"
+            and os.environ.get("FREK_ALLOW_INSECURE_DEV_STAFF_PINS", "false").lower() == "true"
+        )
+        if not pin and allow_insecure_dev_pin:
+            pin = d["default_pin"]
+            logger.warning("Using explicitly enabled insecure development PIN for %s", d["agent_id"])
+        if not pin:
+            logger.error("Staff account %s not seeded: configure %s", d["agent_id"], d["pin_env"])
+            continue
         await db.staff.insert_one({
             "agent_id": d["agent_id"],
             "nom": d["nom"],

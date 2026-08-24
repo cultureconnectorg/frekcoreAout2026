@@ -31,7 +31,7 @@ KILTIKONET_SECRET = os.environ.get("FREKCORE_SECRET_KILTIKONET")
 FMS_SECRET = os.environ.get("FREKCORE_SECRET_FMS")
 
 CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
-CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k")
+CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
 
 def H(secret: str):

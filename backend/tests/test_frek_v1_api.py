@@ -13,11 +13,11 @@ if not BASE_URL:
     BASE_URL = "https://culture-chain.preview.emergentagent.com"
 
 # Client credentials from .env
-KILTIKONET_CLIENT_ID = "kiltikonet-cc2026"
-KILTIKONET_SECRET = "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k"
+KILTIKONET_CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
+KILTIKONET_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
-CVL_BRAIN_CLIENT_ID = "cvl-brain"
-CVL_BRAIN_SECRET = "S0ivsEJHw6AsnKh7_2C0qGh12-nuTaGkQPzOdVCTdv8"
+CVL_BRAIN_CLIENT_ID = os.environ.get("FREK_CLIENT_CVLBRAIN_ID", "cvl-brain")
+CVL_BRAIN_SECRET = os.environ.get("FREK_CLIENT_CVLBRAIN_SECRET", "")
 
 
 class TestHealthEndpoint:

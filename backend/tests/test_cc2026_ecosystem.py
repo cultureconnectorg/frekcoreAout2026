@@ -18,8 +18,8 @@ if BASE_URL:
     BASE_URL = BASE_URL.rstrip('/')
 
 # Client credentials for kiltikonet-cc2026
-CLIENT_ID = "kiltikonet-cc2026"
-CLIENT_SECRET = "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k"
+CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
+CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
 
 @pytest.fixture(scope="module")

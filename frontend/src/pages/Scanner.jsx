@@ -28,12 +28,15 @@ function writeQueue(q) {
 }
 function nowIso() { return new Date().toISOString(); }
 function newUuid() {
-  // RFC4122 v4 light
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  if (crypto.randomUUID) return crypto.randomUUID();
+  if (crypto.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  throw new Error('Web Crypto est requis pour creer une operation hors ligne idempotente.');
 }
 function fmtTime(iso) {
   try { return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
@@ -252,7 +255,6 @@ export default function Scanner() {
       setMode('hid'); return;
     }
     try {
-      // eslint-disable-next-line no-undef
       const reader = new NDEFReader();
       nfcReaderRef.current = reader;
       await reader.scan();

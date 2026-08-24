@@ -12,11 +12,11 @@ if not BASE_URL:
     BASE_URL = "https://culture-chain.preview.emergentagent.com"
 
 # Admin key from .env - must be passed as X-Admin-Key header
-ADMIN_KEY = "36100d549163aff036e0eb50c114161ae2da7a4dffcf816c40e99935b9d04c88"
+ADMIN_KEY = os.environ.get("SECRET_KEY", "")
 
 # Client credentials for creating test identities
-KILTIKONET_CLIENT_ID = "kiltikonet-cc2026"
-KILTIKONET_SECRET = "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k"
+KILTIKONET_CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
+KILTIKONET_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
 
 class TestDashboardCC2026:

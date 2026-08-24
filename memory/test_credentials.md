@@ -14,14 +14,18 @@ Valeurs depuis `/app/backend/.env` :
 
 `POST /api/v1/staff/login` avec `{"agent_id":"...","pin":"...."}`
 
-Comptes seedes au demarrage (override possible via env `FREK_STAFF_*_PIN`) :
+Comptes seedes au demarrage seulement lorsque chaque variable `FREK_STAFF_*_PIN`
+est configuree. Aucun PIN par defaut n'est accepte en production. Les PINs de
+demonstration historiques ne peuvent etre actives qu'en developpement avec
+`FREK_ALLOW_INSECURE_DEV_STAFF_PINS=true`; ils ne doivent jamais etre utilises
+hors environnement local :
 
 | agent_id        | PIN  | role             | permissions                                              | zones                  |
 |-----------------|------|------------------|----------------------------------------------------------|------------------------|
-| SUPERVISEUR-01  | 9999 | superviseur      | scan_access, scan_cashless, emit_walkin, view_stats      | toutes                 |
-| EMISSION-01     | 1111 | agent_emission   | scan_access, scan_cashless, emit_walkin                  | ENTREE                 |
-| ACCES-01        | 2222 | agent_acces      | scan_access                                              | ENTREE, SCENE          |
-| CASHLESS-01     | 3333 | agent_cashless   | scan_access, scan_cashless                               | EXPOSANTS              |
+| SUPERVISEUR-01  | `$FREK_STAFF_SUPERVISEUR_PIN` | superviseur      | scan_access, scan_cashless, emit_walkin, view_stats      | toutes                 |
+| EMISSION-01     | `$FREK_STAFF_EMISSION_PIN`    | agent_emission   | scan_access, scan_cashless, emit_walkin                  | ENTREE                 |
+| ACCES-01        | `$FREK_STAFF_ACCES_PIN`       | agent_acces      | scan_access                                              | ENTREE, SCENE          |
+| CASHLESS-01     | `$FREK_STAFF_CASHLESS_PIN`    | agent_cashless   | scan_access, scan_cashless                               | EXPOSANTS              |
 
 ## Recuperer un token rapidement (bash)
 
@@ -36,10 +40,10 @@ KTOKEN=$(curl -s -X POST "$API_URL/api/v1/auth/token" \
   -d "{\"client_id\":\"$CID\",\"client_secret\":\"$CSEC\",\"grant_type\":\"client_credentials\"}" \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-# Staff superviseur
+# Staff superviseur (la valeur du PIN doit provenir d'un gestionnaire de secrets)
 STOKEN=$(curl -s -X POST "$API_URL/api/v1/staff/login" \
   -H "Content-Type: application/json" \
-  -d '{"agent_id":"SUPERVISEUR-01","pin":"9999"}' \
+  -d "{\"agent_id\":\"SUPERVISEUR-01\",\"pin\":\"$FREK_STAFF_SUPERVISEUR_PIN\"}" \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 ```
 

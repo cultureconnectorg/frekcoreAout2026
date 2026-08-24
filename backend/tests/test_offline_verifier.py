@@ -22,7 +22,7 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstr
 API = f"{BASE_URL}/api/v1"
 
 CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
-CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "pczBP49crCXSSSwSOShsXClzs9srhKe5S-xnraMPn-k")
+CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
 VERIFIER_PATH = Path("/app/verifier/python/verify_passport.py")
 
