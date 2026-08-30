@@ -333,6 +333,10 @@ from identity_engine.routes import identity_router, set_db as identity_set_db, e
 identity_set_db(db)
 app.include_router(identity_router, prefix="/api/v1")
 
+# FREK Registry — catalogue des namespaces culturels CVLN (Bloc 1, additif, sans etat)
+from registry.routes import registry_router
+app.include_router(registry_router, prefix="/api/v1")
+
 
 @app.on_event("startup")
 async def _identity_engine_startup():

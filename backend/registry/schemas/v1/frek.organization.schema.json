@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.organization.schema.json",
+  "title": "FREK Organization",
+  "description": "Entite organisationnelle (FMS, CVLN Group, label, academie...) — Bloc 1.",
+  "x-frek-namespace": "frek.organization",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "legal_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "org_type": {
+          "type": "string",
+          "enum": [
+            "label",
+            "academy",
+            "foundation",
+            "studio",
+            "group",
+            "collective",
+            "other"
+          ],
+          "default": "other"
+        },
+        "member_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "FREK-ID reference to another registry object.",
+            "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+          },
+          "default": []
+        },
+        "parent_organization_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "FREK-ID reference to another registry object.",
+              "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "legal_name",
+        "org_type"
+      ]
+    }
+  ]
+}

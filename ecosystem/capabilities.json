@@ -56,6 +56,13 @@
       "external": false,
       "note": "Reference verifier at /app/frek_v3/. No backend endpoint. Rust/FPGA/ASIC future phases."
     },
+    "cultural_object_registry": {
+      "provider": "frek_registry",
+      "state": "active",
+      "endpoints": ["/api/v1/registry/namespaces", "/api/v1/registry/validate", "/api/v1/registry/events"],
+      "external": false,
+      "note": "Schema catalog only (Bloc 1). No persisted instance store yet — see reports/02_GAP_ANALYSIS.md."
+    },
     "record_certification": {
       "provider": "frekraw",
       "state": "not_installed",

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.work.schema.json",
+  "title": "FREK Work",
+  "description": "Oeuvre culturelle generique (superset de track/album/artwork/document) — miroir registry de backend/fk/models.py OBJECT_TYPES.",
+  "x-frek-namespace": "frek.work",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "work_type": {
+          "type": "string",
+          "enum": [
+            "song",
+            "album",
+            "event",
+            "heritage",
+            "photo",
+            "captation",
+            "document",
+            "artwork",
+            "other"
+          ],
+          "default": "other"
+        },
+        "creator_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "FREK-ID reference to another registry object.",
+            "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+          },
+          "default": []
+        },
+        "fk_object_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reference to the FK container (.fk) proving this work, if any."
+        }
+      },
+      "required": [
+        "title",
+        "work_type"
+      ]
+    }
+  ]
+}

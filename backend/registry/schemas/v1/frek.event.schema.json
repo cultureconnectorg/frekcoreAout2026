@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.event.schema.json",
+  "title": "FREK Event",
+  "description": "Evenement culturel (Good Mood / Culture Connect) — Bloc 1. Distinct de l'Event Bus (Bloc 7, voir backend/registry/events/).",
+  "x-frek-namespace": "frek.event",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "default": "culture_connect"
+        },
+        "starts_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "ends_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "location": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "organizer_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "FREK-ID reference to another registry object.",
+              "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "title"
+      ]
+    }
+  ]
+}

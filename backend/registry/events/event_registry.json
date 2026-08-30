@@ -1,0 +1,121 @@
+{
+  "event_registry_version": "1.0.0",
+  "generated_at": "2026-08-30T00:00:00Z",
+  "doctrine": "Catalogue versionne des evenements FREKCORE (Bloc 7). Chaque entree distingue le contrat specifie de son etat d'implementation reel — Evidence First (voir reports/02_GAP_ANALYSIS.md).",
+  "envelope_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.frekcore.dev/registry/v1/event.envelope.schema.json",
+    "title": "FREK Event Envelope",
+    "description": "Enveloppe generique attendue pour tout evenement FREKCORE v1 (specifiee ici ; aucun event bus generique ne l'emet encore, voir status ci-dessous).",
+    "type": "object",
+    "properties": {
+      "event_id": {"type": "string", "description": "Identifiant unique de l'evenement (uuid4)."},
+      "event_type": {"type": "string", "description": "Nom canonique, ex: 'identity.created'."},
+      "event_version": {"type": "string", "default": "v1"},
+      "occurred_at": {"type": "string", "format": "date-time"},
+      "frek_id": {"type": ["string", "null"]},
+      "correlation_id": {"type": ["string", "null"]},
+      "data": {"type": "object", "additionalProperties": true}
+    },
+    "required": ["event_id", "event_type", "event_version", "occurred_at", "data"]
+  },
+  "catalog": [
+    {
+      "event_type": "identity.created",
+      "version": "v1",
+      "description": "Nouveau FREK-ID cree.",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "backend/identity_engine/routes.py expose POST /identity/init et cree un document frek_identities, mais n'emet aucun evenement versionne (pas de bus, pas d'envelope). Aucune trace dans le code."
+    },
+    {
+      "event_type": "identity.updated",
+      "version": "v1",
+      "description": "Modification d'une identite (display_name, metadata, credentials...).",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Aucune emission d'evenement trouvee dans backend/identity_engine/routes.py ou service.py."
+    },
+    {
+      "event_type": "identity.merged",
+      "version": "v1",
+      "description": "Fusion de deux identites (Bloc 2 — Identity Engine: Merge).",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Aucune route ou fonction de merge trouvee sous backend/identity_engine/ (grep: pas de 'merge')."
+    },
+    {
+      "event_type": "identity.revoked",
+      "version": "v1",
+      "description": "Revocation d'une identite.",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "PARTIAL",
+      "evidence": "Le champ frek_identities.revoked existe (backend/server.py:530 cree un index sparse dessus) mais aucune route dediee ni evenement emis n'a ete trouve dans identity_engine/routes.py."
+    },
+    {
+      "event_type": "object.created",
+      "version": "v1",
+      "description": "Creation d'un objet culturel (FK Cultural Object Container).",
+      "producer": "fk",
+      "implemented": false,
+      "status": "PARTIAL",
+      "evidence": "backend/fk/routes.py POST /fk/create persiste l'objet et son attestation mais ne publie aucun evenement versionne consommable par un tiers."
+    },
+    {
+      "event_type": "object.verified",
+      "version": "v1",
+      "description": "Verification d'un objet culturel (proof valide).",
+      "producer": "fk",
+      "implemented": false,
+      "status": "PARTIAL",
+      "evidence": "backend/fk/routes.py POST /fk/verify retourne un resultat synchrone au caller mais n'emet pas d'evenement persistant/diffuse."
+    },
+    {
+      "event_type": "proof.generated",
+      "version": "v1",
+      "description": "Nouvelle preuve emise par le Proof Engine (notary block / passport).",
+      "producer": "notary",
+      "implemented": true,
+      "status": "PARTIAL",
+      "evidence": "backend/notary/service.py:notarize_event() cree un bloc signe et l'ecrit dans notary_blocks (voir backend/notary/routes.py POST /notary/notarize). C'est un log append-only interne, pas un evenement publie/versionne au sens Event Bus (pas de souscription possible)."
+    },
+    {
+      "event_type": "certificate.issued",
+      "version": "v1",
+      "description": "Emission d'un certificat Academy / Culture Connect.",
+      "producer": "certificate_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Aucun module 'certificate' ou 'academy' trouve sous backend/. badges/ gere des badges evenementiels CC2026, pas des certificats Academy avec JCC credits."
+    },
+    {
+      "event_type": "wallet.linked",
+      "version": "v1",
+      "description": "Un Wallet CVLN externe est rattache a une identite FREK.",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Aucune route ou modele 'wallet' trouve sous backend/ (le module jetons/ gere des jetons evenementiels internes CC2026, distinct du CVLN Wallet vise par le Bloc 7)."
+    },
+    {
+      "event_type": "artist.verified",
+      "version": "v1",
+      "description": "Un artiste est verifie par LabelOS/KORA.",
+      "producer": "registry",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Le champ frek.artist.verified existe desormais dans backend/registry/schemas/v1/frek.artist.schema.json (cette livraison) mais aucun producteur d'evenement ne l'emet encore."
+    }
+  ],
+  "legacy_stage_log": {
+    "description": "Journal d'etapes append-only reellement implemente aujourd'hui (distinct du catalogue d'evenements ci-dessus). Ordre fixe: GENESIS -> WORKSHOP -> METAMORPHOSE -> EMISSION -> LEGACY.",
+    "evidence": "backend/frek_v1/stages.py POST /identity/{frek_id}/stage ecrit dans db.frek_stages et appelle notary.service.notarize_event(); backend/frek_v1/models.py:STAGE_ORDER definit la sequence.",
+    "implemented": true,
+    "status": "EXISTS",
+    "gap_vs_bloc7": "Pas de schema d'enveloppe versionne, pas de mecanisme de souscription (pub/sub), consommateurs actuels = lecture directe MongoDB uniquement."
+  }
+}

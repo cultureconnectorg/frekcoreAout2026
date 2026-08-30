@@ -109,6 +109,20 @@
       "note": "Isolated from /app/backend/. Phase 2 = Rust re-implementation. Phase 3 = FPGA. Phase 4 = ASIC. NO backend endpoint yet."
     },
     {
+      "id": "frek_registry",
+      "name": "FREK Registry",
+      "role": "cultural_object_schema_catalog",
+      "status": "active",
+      "version": "1.0",
+      "protocol": "REST/HTTPS + JSON Schema (draft 2020-12)",
+      "location": "/app/backend/registry/",
+      "capabilities": ["namespace_catalog", "schema_serving", "payload_validation", "event_registry_catalog"],
+      "integration_points": ["/api/v1/registry/versions", "/api/v1/registry/namespaces", "/api/v1/registry/namespaces/{namespace}", "/api/v1/registry/validate", "/api/v1/registry/events"],
+      "dependencies": [],
+      "verification_method": "GET /api/v1/registry/namespaces",
+      "note": "Bloc 1 (FREK Registry) of the FREKCORE v1.0 Master Prompt. Schema catalog only: no persisted instance store yet (see reports/02_GAP_ANALYSIS.md). Namespaces: frek.artist, frek.track, frek.album, frek.work, frek.certificate, frek.organization, frek.wallet, frek.event."
+    },
+    {
       "id": "frekraw",
       "name": "FREKRAW",
       "role": "record_certification",

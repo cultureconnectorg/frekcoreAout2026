@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.artist.schema.json",
+  "title": "FREK Artist",
+  "description": "Identite artiste — consommee par KORA / LabelOS / Wallet (Bloc 1).",
+  "x-frek-namespace": "frek.artist",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "legal_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "isni": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "International Standard Name Identifier."
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "primary_role": {
+          "type": "string",
+          "enum": [
+            "musician",
+            "producer",
+            "songwriter",
+            "label",
+            "performer",
+            "other"
+          ],
+          "default": "musician"
+        },
+        "verified": {
+          "type": "boolean",
+          "default": false
+        },
+        "verified_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Issuer FREK-ID or organization that verified this artist (e.g. LabelOS/KORA — interface only, see docs/interfaces/KORA.md)."
+        },
+        "organization_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "FREK-ID reference to another registry object.",
+            "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+          },
+          "default": []
+        },
+        "links": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        }
+      },
+      "required": [
+        "display_name"
+      ]
+    }
+  ]
+}

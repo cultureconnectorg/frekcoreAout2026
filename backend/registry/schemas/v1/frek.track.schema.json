@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.track.schema.json",
+  "title": "FREK Track",
+  "description": "Morceau — unite catalogue KORA, rattache a un ou plusieurs frek.artist (Bloc 1).",
+  "x-frek-namespace": "frek.track",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artist_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "FREK-ID reference to another registry object.",
+            "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+          },
+          "minItems": 1
+        },
+        "album_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "FREK-ID reference to another registry object.",
+              "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "isrc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "iswc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "duration_seconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "release_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "fk_object_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reference to the underlying FK Cultural Object container (backend/fk/models.py) carrying the audio + proof layers."
+        }
+      },
+      "required": [
+        "title",
+        "artist_ids"
+      ]
+    }
+  ]
+}
