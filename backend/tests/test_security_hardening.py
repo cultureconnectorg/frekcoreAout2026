@@ -15,32 +15,48 @@ import os
 import secrets
 import time
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import pytest
 import requests
 from pymongo import MongoClient
 
+# Phase 2 (reports/10_TEST_INFRASTRUCTURE.md): these paths used to be hardcoded
+# to /app/{backend,frontend}/.env, which only exists inside the original
+# Emergent container layout (Dockerfile: WORKDIR /app/backend). Resolving
+# relative to this file's location makes collection portable across any
+# checkout path (local sandbox, CI runner, ...) while still finding the same
+# files when the repo genuinely is mounted at /app.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
 if not BASE_URL:
     # Fallback read frontend .env
-    with open("/app/frontend/.env") as f:
-        for line in f:
+    frontend_env = REPO_ROOT / "frontend" / ".env"
+    if frontend_env.exists():
+        for line in frontend_env.read_text().splitlines():
             if line.startswith("REACT_APP_BACKEND_URL="):
                 BASE_URL = line.strip().split("=", 1)[1]
                 break
-BASE_URL = BASE_URL.rstrip("/")
+BASE_URL = (BASE_URL or "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api/v1"
 
 # Read backend env
 def _env(key):
-    with open("/app/backend/.env") as f:
-        for line in f:
-            if line.startswith(f"{key}="):
-                v = line.strip().split("=", 1)[1]
-                # strip surrounding quotes
-                if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
-                    v = v[1:-1]
-                return v
+    backend_env = REPO_ROOT / "backend" / ".env"
+    if not backend_env.exists():
+        # No .env in this checkout (e.g. CI without secrets provisioned) —
+        # degrade to None rather than crashing collection. Tests that need
+        # this value will fail explicitly at call time with a clear reason,
+        # never silently pass.
+        return None
+    for line in backend_env.read_text().splitlines():
+        if line.startswith(f"{key}="):
+            v = line.strip().split("=", 1)[1]
+            # strip surrounding quotes
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
+                v = v[1:-1]
+            return v
     return None
 
 ADMIN_KEY = _env("SECRET_KEY")

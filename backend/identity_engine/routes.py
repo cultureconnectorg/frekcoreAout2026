@@ -32,6 +32,16 @@ from .models import (
 )
 from . import service
 
+try:
+    # Phase 2 Priorite 6 (Event Producers) — additive, best-effort. A publish
+    # failure must never break identity creation itself, matching the
+    # existing defensive import pattern in backend/frek_v1/stages.py:10-14.
+    from eventbus.bus import default_bus as _event_bus
+    from eventbus.producers import build_identity_created_event as _build_identity_created_event
+except Exception:  # pragma: no cover - defensive, see comment above
+    _event_bus = None
+    _build_identity_created_event = None
+
 logger = logging.getLogger("frek.identity_engine.routes")
 
 identity_router = APIRouter(prefix="/identity", tags=["Identity Engine"])
@@ -110,6 +120,14 @@ async def init_identity(req: InitIdentityRequest):
         "metadata": {},
     }
     await db.frek_persons.insert_one(identity)
+
+    # Phase 2 Priorite 6 (Event Producers) — publish identity.created.
+    # Best-effort: never allowed to fail the identity-creation response.
+    if _event_bus is not None and _build_identity_created_event is not None:
+        try:
+            _event_bus.publish(_build_identity_created_event(identity))
+        except Exception:
+            logger.warning("identity.created event publish failed (non-blocking)", exc_info=True)
 
     # Compte les moments deja signes sous cette session (pour affichage UI)
     linked_moments_count = 0

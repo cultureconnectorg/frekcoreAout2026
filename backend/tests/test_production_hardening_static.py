@@ -5,6 +5,11 @@ security defaults reviewable even when the integration suite is not configured l
 """
 from pathlib import Path
 
+import pytest
+
+# Bloc "unit" (Phase 2, reports/10_TEST_INFRASTRUCTURE.md) : deja documente
+# ci-dessus comme n'exigeant ni MongoDB ni deploiement externe.
+pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

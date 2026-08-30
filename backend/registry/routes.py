@@ -3,6 +3,7 @@
 Routeur additif, sans etat, sans dependance MongoDB : aucun `set_db` requis,
 contrairement aux autres modules du backend.
 """
+
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
@@ -22,9 +23,13 @@ class NamespaceSummary(BaseModel):
 
 
 class ValidateRequest(BaseModel):
-    namespace: str = Field(..., description="Namespace FREK Registry, ex: 'frek.artist'.")
+    namespace: str = Field(
+        ..., description="Namespace FREK Registry, ex: 'frek.artist'."
+    )
     payload: Dict[str, Any]
-    schema_version: str = Field(default=service.DEFAULT_VERSION, description="Version du schema, ex: 'v1'.")
+    schema_version: str = Field(
+        default=service.DEFAULT_VERSION, description="Version du schema, ex: 'v1'."
+    )
 
 
 class ValidateResponse(BaseModel):
@@ -36,7 +41,10 @@ class ValidateResponse(BaseModel):
 
 @registry_router.get("/versions")
 async def list_versions():
-    return {"versions": service.available_schema_versions(), "default": service.DEFAULT_VERSION}
+    return {
+        "versions": service.available_schema_versions(),
+        "default": service.DEFAULT_VERSION,
+    }
 
 
 @registry_router.get("/namespaces", response_model=List[NamespaceSummary])
@@ -44,7 +52,10 @@ async def list_namespaces(schema_version: str = service.DEFAULT_VERSION):
     try:
         entries = service.list_namespaces(schema_version)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"unknown registry schema version '{schema_version}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"unknown registry schema version '{schema_version}'",
+        )
     return [
         NamespaceSummary(
             namespace=e.namespace,
@@ -58,19 +69,27 @@ async def list_namespaces(schema_version: str = service.DEFAULT_VERSION):
 
 
 @registry_router.get("/namespaces/{namespace}")
-async def get_namespace_schema(namespace: str, schema_version: str = service.DEFAULT_VERSION):
+async def get_namespace_schema(
+    namespace: str, schema_version: str = service.DEFAULT_VERSION
+):
     entry = service.get_namespace(namespace, schema_version)
     if entry is None:
-        raise HTTPException(status_code=404, detail=f"unknown registry namespace '{namespace}'")
+        raise HTTPException(
+            status_code=404, detail=f"unknown registry namespace '{namespace}'"
+        )
     return entry.schema
 
 
 @registry_router.post("/validate", response_model=ValidateResponse)
 async def validate(request: ValidateRequest):
     try:
-        errors = service.validate_payload(request.namespace, request.payload, request.schema_version)
+        errors = service.validate_payload(
+            request.namespace, request.payload, request.schema_version
+        )
     except service.UnknownNamespaceError:
-        raise HTTPException(status_code=404, detail=f"unknown registry namespace '{request.namespace}'")
+        raise HTTPException(
+            status_code=404, detail=f"unknown registry namespace '{request.namespace}'"
+        )
     return ValidateResponse(
         valid=not errors,
         namespace=request.namespace,

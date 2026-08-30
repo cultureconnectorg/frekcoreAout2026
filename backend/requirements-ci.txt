@@ -1,0 +1,61 @@
+# CI-only dependency set (Phase 2 — see reports/10_TEST_INFRASTRUCTURE.md).
+#
+# This is deliberately NOT `pip install -r backend/requirements.txt`. Two real,
+# reproduced blockers make the full file uninstallable on a clean environment
+# (verified with a single `pip install -r requirements.txt` on 2026-08-30):
+#
+#   1. `emergentintegrations==0.1.0` (requirements.txt:26) is a private package,
+#      not published on PyPI ("No matching distribution found"). It is a real
+#      runtime dependency of backend/services/webhook.py:8 (Stripe checkout
+#      integration) — not dead code — so it cannot simply be deleted from
+#      requirements.txt without breaking that feature.
+#   2. `cryptography==46.0.4` (requirements.txt:20) conflicts with
+#      `webauthn==3.0.0` (requirements.txt:144), which requires
+#      `cryptography>=49.0.0`. pip's resolver reports this directly:
+#        "webauthn 3.0.0 depends on cryptography>=49.0.0"
+#      This is an internal inconsistency in requirements.txt itself, not an
+#      artifact of this file — it reproduces on a clean resolver.
+#
+# Neither is fixed in backend/requirements.txt by this session (a crypto
+# version bump and an internal-package removal both need a human decision,
+# not a silent CI-driven change — see reports/10_TEST_INFRASTRUCTURE.md and
+# reports/07_DEPLOYMENT_REPORT.md for the recommended remediation).
+#
+# This file instead pins the exact set proven (by running the real test
+# suite in this repo) to be necessary and sufficient to:
+#   - collect all of backend/tests/ EXCEPT tests/test_ecosystem.py (the one
+#     module that imports server.py -> services/webhook.py -> emergentintegrations,
+#     see backend/pytest.ini's --ignore for the same reason)
+#   - run every `unit`-marked test (21/21 passing as of this writing)
+#   - run flake8 / black --check / mypy against backend/registry/
+#
+# It is NOT a replacement for backend/requirements.txt and must never be used
+# to run the actual FREKCORE service.
+
+fastapi==0.110.1
+pydantic==2.12.5
+starlette==0.37.2
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+httpx==0.28.1
+python-multipart==0.0.22
+python-dotenv==1.2.1
+pymongo==4.5.0
+motor==3.3.1
+PyJWT==2.7.0
+qrcode==8.2
+stripe==14.3.0
+boto3==1.42.42
+numpy
+bcrypt==4.1.3
+cryptography==41.0.7
+
+pytest==9.0.2
+pytest-asyncio==1.4.0
+pytest-cov
+prometheus_client==0.26.0
+
+flake8==7.3.0
+black==26.1.0
+mypy==1.19.1
+pip-audit

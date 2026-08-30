@@ -6,6 +6,7 @@ backend/registry/schemas/<version>/ et expose list / get / validate.
 Aucune base de donnees requise : le Registry est un catalogue de contrats
 (Registry family, Bloc 8 / Phase 7), pas un store d'instances.
 """
+
 from __future__ import annotations
 
 import copy
@@ -49,7 +50,9 @@ def _load_raw(version: str, filename: str) -> Dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _resolve_base_refs(schema: Dict[str, Any], base_schema: Dict[str, Any]) -> Dict[str, Any]:
+def _resolve_base_refs(
+    schema: Dict[str, Any], base_schema: Dict[str, Any]
+) -> Dict[str, Any]:
     """Inline the shared `_base.schema.json` $ref.
 
     Every namespace schema declares `allOf: [{"$ref": "_base.schema.json"}, {...}]`.
@@ -59,7 +62,11 @@ def _resolve_base_refs(schema: Dict[str, Any], base_schema: Dict[str, Any]) -> D
     all_of = resolved.get("allOf")
     if isinstance(all_of, list):
         resolved["allOf"] = [
-            copy.deepcopy(base_schema) if item.get("$ref") == BASE_SCHEMA_FILENAME else item
+            (
+                copy.deepcopy(base_schema)
+                if item.get("$ref") == BASE_SCHEMA_FILENAME
+                else item
+            )
             for item in all_of
         ]
     return resolved
@@ -91,11 +98,15 @@ def list_namespaces(version: str = DEFAULT_VERSION) -> List[RegistryEntry]:
     return sorted(_namespaces_for_version(version).values(), key=lambda e: e.namespace)
 
 
-def get_namespace(namespace: str, version: str = DEFAULT_VERSION) -> Optional[RegistryEntry]:
+def get_namespace(
+    namespace: str, version: str = DEFAULT_VERSION
+) -> Optional[RegistryEntry]:
     return _namespaces_for_version(version).get(namespace)
 
 
-def validate_payload(namespace: str, payload: Dict[str, Any], version: str = DEFAULT_VERSION) -> List[str]:
+def validate_payload(
+    namespace: str, payload: Dict[str, Any], version: str = DEFAULT_VERSION
+) -> List[str]:
     """Valide `payload` contre le schema du namespace.
 
     Retourne une liste d'erreurs lisibles (vide = valide).
@@ -103,10 +114,15 @@ def validate_payload(namespace: str, payload: Dict[str, Any], version: str = DEF
     """
     entry = get_namespace(namespace, version)
     if entry is None:
-        raise UnknownNamespaceError(f"unknown registry namespace '{namespace}' (version={version})")
+        raise UnknownNamespaceError(
+            f"unknown registry namespace '{namespace}' (version={version})"
+        )
     validator = Draft202012Validator(entry.schema)
     errors = sorted(validator.iter_errors(payload), key=lambda e: list(e.path))
-    return [f"{'/'.join(str(p) for p in err.path) or '<root>'}: {err.message}" for err in errors]
+    return [
+        f"{'/'.join(str(p) for p in err.path) or '<root>'}: {err.message}"
+        for err in errors
+    ]
 
 
 @lru_cache(maxsize=1)

@@ -4,6 +4,7 @@ Contrairement au reste de la suite backend (integration via serveur live,
 voir tests/conftest.py), ce module est sans etat (pas de MongoDB) : on peut
 donc le tester directement via TestClient sur une app FastAPI isolee.
 """
+
 import sys
 from pathlib import Path
 
@@ -17,6 +18,10 @@ if str(BACKEND_DIR) not in sys.path:
 
 from registry import service  # noqa: E402
 from registry.routes import registry_router  # noqa: E402
+
+# Bloc "unit" (Phase 2, reports/10_TEST_INFRASTRUCTURE.md) : pas de MongoDB,
+# pas de backend live (TestClient isole).
+pytestmark = pytest.mark.unit
 
 EXPECTED_NAMESPACES = {
     "frek.artist",

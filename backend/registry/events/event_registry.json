@@ -6,18 +6,21 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://schemas.frekcore.dev/registry/v1/event.envelope.schema.json",
     "title": "FREK Event Envelope",
-    "description": "Enveloppe generique attendue pour tout evenement FREKCORE v1 (specifiee ici ; aucun event bus generique ne l'emet encore, voir status ci-dessous).",
+    "description": "Enveloppe generique pour tout evenement FREKCORE v1. Implementee par backend/eventbus/envelope.py:EventEnvelope (Phase 2, Priorite 5) et emise par de vrais producteurs a partir de Phase 2 Priorite 6 (voir 'implemented' par entree du catalogue ci-dessous).",
     "type": "object",
     "properties": {
       "event_id": {"type": "string", "description": "Identifiant unique de l'evenement (uuid4)."},
       "event_type": {"type": "string", "description": "Nom canonique, ex: 'identity.created'."},
       "event_version": {"type": "string", "default": "v1"},
       "occurred_at": {"type": "string", "format": "date-time"},
-      "frek_id": {"type": ["string", "null"]},
-      "correlation_id": {"type": ["string", "null"]},
-      "data": {"type": "object", "additionalProperties": true}
+      "producer": {"type": "string", "description": "Module qui a emis l'evenement, ex: 'identity_engine'."},
+      "subject": {"type": ["string", "null"], "description": "FREK-ID principal concerne par l'evenement, si applicable."},
+      "correlation_id": {"type": ["string", "null"], "description": "Identifiant reliant plusieurs evenements d'une meme requete/flux."},
+      "causation_id": {"type": ["string", "null"], "description": "event_id de l'evenement qui a directement cause celui-ci, si applicable."},
+      "payload": {"type": "object", "additionalProperties": true},
+      "schema_version": {"type": "string", "default": "1.0.0", "description": "Version du schema du payload (pas de l'enveloppe)."}
     },
-    "required": ["event_id", "event_type", "event_version", "occurred_at", "data"]
+    "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload", "schema_version"]
   },
   "catalog": [
     {
@@ -25,9 +28,9 @@
       "version": "v1",
       "description": "Nouveau FREK-ID cree.",
       "producer": "identity_engine",
-      "implemented": false,
-      "status": "MISSING",
-      "evidence": "backend/identity_engine/routes.py expose POST /identity/init et cree un document frek_identities, mais n'emet aucun evenement versionne (pas de bus, pas d'envelope). Aucune trace dans le code."
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Phase 2 Priorite 6: backend/identity_engine/routes.py:126-130 (POST /identity/init) publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_identity_created_event(). Publish is best-effort (wrapped in try/except, never blocks identity creation — see routes.py:39-43,124-130). Verified by backend/tests/test_eventbus.py::test_build_identity_created_event_matches_envelope_contract and test_identity_engine_wires_eventbus_without_raising_on_publish_failure (unit, no live server/Mongo needed). NOT yet verified end-to-end against a live server + MongoDB in this sandbox (see reports/10_TEST_INFRASTRUCTURE.md) — the wiring itself is real code, not aspirational, but full integration coverage remains a gap."
     },
     {
       "event_type": "identity.updated",
