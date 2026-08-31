@@ -32,6 +32,73 @@ Every item traces to a specific finding in `reports/FREKCORE_MASTER_REQUIREMENTS
 7. **PARTIALLY DONE (2026-08-31)**: wired the 3 real event producers added during P1 (`identity.updated`, `identity.revoked`, `object.created`) into the Audit Trail, alongside the pre-existing `identity.created` subscription — `backend/server.py`'s `_AUDIT_TRAIL_EVENT_TYPES`. Zero route changes: `event_envelope_to_audit_event()` (`backend/audit_trail/subscribers.py`) is a fully generic mapping, so this was purely additive. Directly improves `reports/21_FREEZE_ASSESSMENT.md`'s "Audit trail active for sensitive mutations" criterion from 1/6 to 4/6 named categories. Verified: 5 new unit tests (mapping-correctness for each new event shape, an end-to-end subscriber-writes-to-recorder test, and a static server.py source check), a live dev-server smoke test confirming the exact startup log line, and the full local unit suite (128/128). Still open: the 3 newly-wired categories are unit-verified only (fake Mongo collection), not yet independently live-Mongo-verified (blocked on `reports/23_REAL_MONGODB_VALIDATION_PLAN.md`); `identity.merged` and `certificate.issued` remain the 2 of 6 categories with no producer at all, both gated on work not yet built (merge — founder decision pending; Academy Certificate Engine — doesn't exist).
 8. **DONE (2026-08-31)**: extended both SDKs beyond the Registry API to `identity_engine`'s **public-read** surface (`FrekcoreIdentityClient`/`identityClient.ts`: `get_identity`/`getIdentity`, `get_me`/`getMe`, `get_linked_objects`/`getLinkedObjects`, `search_identities`/`searchIdentities`) — the exact "natural next candidate" item 6 above named, now that this module's read endpoints have the same live-tested evidence the Registry API has (P1's real per-holder auth work, `search`'s own regression tests). Python 18/18 tests (up from 10/10, re-verified in a fresh venv/install matching CI's `sdk-python` job exactly), TypeScript 13/13 + typecheck (up from 7/7). Deliberately still NOT wrapped: the write/lifecycle surface (`init`, `register/*`, `authenticate/*`, `revocation`, `update`, `archive`, `link-object`) — the WebAuthn-ceremony ones need a browser/authenticator context no SDK test environment here has, and merge/renew/recovery, though now implemented server-side (`docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md`), are not yet SDK-wrapped — a real next candidate for a future pass, not a semantics question anymore. Independent, additive, no existing method's behavior changed, no route touched.
 
+## P1.5 — Historical FREK capability reconciliation (D1–D6, founder-required, 2026-08-31)
+
+Founder decision (`reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md`):
+the 19 `backend/frek/` routes previously `NEEDS_FOUNDER_DECISION`
+(`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`) map to 5 historical
+capabilities, all of which the founder requires preserved. This is no
+longer a founder blocker — it is ordered technical work. Per the
+reconciliation report's §T (evaluated against §D's dependency evidence,
+no reordering needed):
+
+0. **Evidence semantics foundation (D6)** — add CLAIM/EVIDENCE as named,
+   first-class concepts alongside the existing `proof_engine.ProofState`
+   ladder (reused unmodified) and `eventbus`/`registry`/`permissions`
+   primitives (§E, §N of the reconciliation report). Blocks 2–6 below.
+1. **Canonical bindings/object model** — separate FREK-ID (canonical
+   object identity) from Signal Fingerprint (content/signal binding) as
+   distinct, explicit concepts — resolves the historical conflation
+   `node02_identity.py` created by naming a hash-derived ID "FREK-ID".
+2. **Fingerprint integration (D1)** — reuse `node01_extraction.py`'s DSP
+   pipeline; needs 0 and 1 first. Requires resolving the storage-shape
+   question (§M: vector similarity — MongoDB's own capability vs. a
+   dedicated store, not decided, not forced to either) before real use.
+   No "infalsifiable"/"irréfutable" claim without matching evidence
+   (golden vectors + measured false-positive/negative rates, same bar as
+   FAP's 16 golden vectors).
+3. **Creative Lifecycle (D2)** — Event/Claim records reusing the
+   GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY vocabulary (already
+   identical to `frek_v1`'s) and `notary.chain.append_block` for
+   durability. Can run in parallel with 4/5.
+4. **Relationship/Provenance Graph (D3)** — split into D3-A (Trust/
+   Provenance, near-core) and D3-B (Cultural/Inferred, derived-
+   intelligence, never auto-promoted to D3-A). Reuse
+   `permissions.ScopeType` for relation visibility instead of a new
+   visibility system. The 7 read routes' current zero-auth exposure is
+   the single most acute security gap among all five capabilities
+   (reconciliation report §P) — priority within this item once started.
+5. **Offline transport envelope + sync (D4)** — a core envelope
+   (signature, replay/nonce protection reusing FAP's existing concept,
+   reconciliation state) with every transport (BLE/NFC/WiFi/ultrasound/
+   cellular) as a pluggable adapter, never a kernel dependency. No
+   robustness/inaudibility claim for the ultrasonic watermark without
+   experimental validation (none exists today).
+6. **Technical evidence report (D5)** — full rewrite of
+   `create_attestation`'s behavior: look up and verify referenced
+   evidence/proof/credential IDs against actual FREKCORE state (reusing
+   `notary`/`proof_engine`/`registry`), never format caller-supplied,
+   unverified claims as if verified. Preserves the historical legal
+   doctrine's wording (NEVER/ALWAYS lists); does not preserve the
+   historical route's behavior. Depends on 0–5 existing in verifiable
+   form — correctly last.
+7. **Compatibility adapters for the 19 historical routes** — low
+   priority: no confirmed external caller found (`memory/INVENTORY.md`'s
+   "current production core" list does not name `backend/frek/`).
+8. **Migration/persistence** — near-empty scope: nothing durable exists
+   to migrate (everything is in-process memory today, confirmed).
+   Reduces to "wire the actual storage engine" once 4 (graph) and 2
+   (vector) resolve their storage-shape questions.
+9. **SDK integration** — net-new surface for all five capabilities;
+   neither SDK wraps any `backend/frek/` route today.
+10. **Regression/evidence tests** — per capability, ideally alongside
+    implementation, not deferred (§R of the reconciliation report).
+11. **Freeze reassessment** — after this item's subset the founder
+    prioritizes is closed; see `reports/21_FREEZE_ASSESSMENT.md`.
+
+**Not started this pass** — pure documentation/architectural
+reconciliation only, per explicit instruction. No runtime code changed.
+
 ## P3 — Future / optional / research
 
 1. **Trust anchors / trust lists** for VC verification — no current use case identified; MISSING is not necessarily wrong yet.

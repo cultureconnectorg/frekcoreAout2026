@@ -117,6 +117,28 @@ Fully covered in `reports/18_RUNTIME_VALIDATION.md` Priority 8 — summary: hash
 - Permissions: `docs/PERMISSION_MATRIX.md`.
 - Audit/traceability reconciliation: **business events** (`backend/core/`, `backend/counter/` — CC2026 scoring), **provenance events** (`backend/heritage/`, `.fk`'s `TimelineLayer`), and **security audit** (`backend/audit_trail/`, Phase 2/3, append-only actor-attributed) are three genuinely distinct concerns in this codebase today, but only `audit_trail` was *designed* with that distinction explicit from the start — `backend/audit/` (Phase 1, human timeline) mixes stage/scan/transaction history without a formal category field. Not collapsed further this phase; not yet fully separated either — flagged in the backlog.
 
+## Historical FREK Capabilities (`backend/frek/`, founder decisions D1–D6, 2026-08-31)
+
+Full reconciliation: `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md`.
+The founder has decided all 6 items below are **required** capabilities
+FREKCORE must eventually carry. None is marked IMPLEMENTED here merely
+because a historical `backend/frek/` prototype exists for it — per the
+reconciliation report's own evidence, none of the five persists data
+durably, none is authenticated, and none has been demonstrated (not
+merely asserted) to have the properties its own historical docstrings
+claim (e.g. "infalsifiable" fingerprint robustness — unproven; IVFFlat-
+accelerated similarity search — the code always falls back to a linear
+in-Python scan regardless of backend, contradicting its own docstring).
+
+| Capability | Status | Evidence |
+|---|---|---|
+| Signal / Audio Fingerprinting (D1) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node01_extraction.py`/`node02_identity.py` — real DSP extraction code, no durable storage, no auth, fingerprint-vs-identity conflation not yet resolved in code. Not IMPLEMENTED against the target model (§D1 of the reconciliation report) |
+| Creative Lifecycle (D2) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node03_cycle.py` — real 5-stage vocabulary (matches `frek_v1`'s exactly), in-memory only, no auth, no idempotency |
+| Relationship / Provenance Graph (D3) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node06_reseau.py` — real 17-relation taxonomy, in-memory only, all 7 read routes unauthenticated (the most acute privacy gap of the five per the reconciliation report §P) |
+| Offline Proof Transport (D4) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node07_transmission.py` — real packet wire format and protocol registry, transports simulated in-memory only (no actual BLE/NFC/etc. I/O), watermark encoding unvalidated experimentally |
+| Human-Readable Technical Evidence (D5) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node09_juridique.py:create_attestation` — formats caller-supplied, unverified data as an official-sounding document; verifies nothing against actual FREKCORE state. `backend/notary/` remains the real, modern attestation mechanism this route does not use |
+| Evidence Semantics (D6) | **GAP, cross-cutting rule, FOUNDER-REQUIRED** | Not a capability with its own routes — a rule needed so D1–D5 (and everything else) never silently promote a CLAIM to a VERIFIED fact. `proof_engine.ProofState` already covers "how strong is this proof"; CLAIM/EVIDENCE as named concepts is the one genuinely new primitive the evolved canonical model (§E of the reconciliation report) requires |
+
 ## Scope note
 
 This matrix covers every domain the directive named. It does not enumerate every individual historical document line-by-line into a numbered `requirement_id` table — with 30+ backend modules, a decade of `memory/` and `frek_v3/docs/` documents, and this session's remaining budget, that would either take many more hours of reading or produce a table padded with low-information entries. What is here is real: every row was checked against actual code (`grep`, direct file reads, or live requests against the real server this session booted), not inferred from a document's claim alone. Continuing this matrix to full per-document coverage is `reports/FREKCORE_COMPLETION_BACKLOG.md`'s P2 item "Complete exhaustive documentation reconciliation."

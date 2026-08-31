@@ -18,13 +18,59 @@
 
 Every item above is independent, additive, reversible, and individually pushed + confirmed CI-green before the next started (this pass's two notary/docs commits: full unit suite 171/171 passing, coverage gate 96.34% against the 90% requirement, all 4 blocking CI jobs green — Lint/Format/Typecheck, Unit tests + coverage, Python SDK, TypeScript SDK — with only the 3 pre-documented informational jobs red as expected). None claims any real-Mongo guarantee VERIFIED, and none proceeds into Production Readiness, Red/Blue/Purple, or CVLN ecosystem wiring — all three explicitly out of scope for this pass per instruction.
 
+**Update (2026-08-31, D1–D6 historical capability reconciliation — FREEZE REOPENED)**:
+the `FREEZE READY` verdict below (reached at HEAD `ce12398`) is
+**reopened**, not withdrawn as an error. A founder-facing explanation of
+the 19 `backend/frek/` `NEEDS_FOUNDER_DECISION` routes (grouped by
+underlying concept rather than route-by-route) led the founder to
+identify 5 historical FREK capabilities across those 19 routes — Signal/
+Audio Fingerprint, Creative Lifecycle, Relationship/Provenance Graph,
+Offline Proof Transport, Human-Readable Technical Evidence — and to
+explicitly decide **all five must be preserved** in modern FREKCORE, not
+left behind with `backend/frek/`. Full reconciliation:
+`reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` (founder
+decisions D1–D6). This is **not a regression**: the earlier `FREEZE READY`
+verdict was correct under its own scope, where these 19 routes were
+genuinely founder-blocked and therefore correctly excluded from "what
+remains." The founder has now resolved that block — which legitimately
+*expands* the target scope of "what FREKCORE must contain before freeze,"
+through the founder's own governance, before any final freeze. Nothing
+about this update touches real-Mongo verification, `backend/frek/`'s
+remaining 24 non-`NEEDS_FOUNDER_DECISION` routes, or any of the 4 items
+already in the blocker list below — this is additive scope, not a
+reopening of previously-closed items.
+
+Per explicit instruction accompanying this founder decision: this update
+is documentation/architectural reconciliation only. No runtime code was
+changed. No implementation of D1–D6 has started. This pass does not
+proceed into Production Readiness, Red/Blue/Purple, or CVLN ecosystem
+wiring.
+
 ## Verdict
 
-# FREEZE READY
+# NOT READY FOR FINAL FREEZE — D1–D6 RECONCILIATION REQUIRED
 
-Every item in this phase's backlog (`reports/FREKCORE_COMPLETION_BACKLOG.md` P0–P2) that is closable without a founder decision or real infrastructure this sandbox cannot reach is now closed. "FREEZE READY" is a distinct, narrower claim than "FROZEN": it means the remaining gap between here and a declared freeze baseline is now *exactly* the blocker list below — nothing is being left on the table that this pass could have closed itself. It is not a declaration that FREKCORE is frozen, and this pass does not declare that: freezing is a founder call (it fixes a baseline other work then builds against), and per explicit instruction this pass stops here rather than proceeding into Production Readiness, Red/Blue/Purple, or CVLN ecosystem wiring.
+The prior verdict on this line was `FREEZE READY` (superseded by the
+update above, kept below for the historical record of what was true at
+HEAD `ce12398`). The current verdict reflects the founder's expanded
+scope decision: FREEZE READY meant "every item this pass could close
+without a founder decision or real infrastructure is closed"; the founder
+has since decided 5 additional capabilities are required, with technical
+reconciliation work ordered in `reports/FREKCORE_COMPLETION_BACKLOG.md`'s
+new P1.5 section. Final freeze now additionally requires that ordered
+work (or an explicit founder decision to freeze without it) — see
+`reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` §T for the
+sequencing and §U for why this is legitimate scope evolution, not a
+walked-back verdict.
 
-The evidence in `reports/15`–`24`, `docs/PERMISSION_MATRIX.md`, and this report supports every freeze criterion this environment can independently verify. What it cannot yet support — real-MongoDB-backed guarantees, two founder-decision-gated items, and Docker Compose — is named precisely below, not hedged around.
+**Historical record — the verdict as it stood at HEAD `ce12398`, before this reopening:**
+
+> # FREEZE READY
+>
+> Every item in this phase's backlog (`reports/FREKCORE_COMPLETION_BACKLOG.md` P0–P2) that is closable without a founder decision or real infrastructure this sandbox cannot reach is now closed. "FREEZE READY" is a distinct, narrower claim than "FROZEN": it means the remaining gap between here and a declared freeze baseline is now *exactly* the blocker list below — nothing is being left on the table that this pass could have closed itself. It is not a declaration that FREKCORE is frozen, and this pass does not declare that: freezing is a founder call (it fixes a baseline other work then builds against), and per explicit instruction this pass stops here rather than proceeding into Production Readiness, Red/Blue/Purple, or CVLN ecosystem wiring.
+>
+> The evidence in `reports/15`–`24`, `docs/PERMISSION_MATRIX.md`, and this report supports every freeze criterion this environment can independently verify. What it cannot yet support — real-MongoDB-backed guarantees, two founder-decision-gated items, and Docker Compose — is named precisely below, not hedged around.
+
 
 ## Criterion-by-criterion
 
@@ -59,12 +105,13 @@ The evidence in `reports/15`–`24`, `docs/PERMISSION_MATRIX.md`, and this repor
 
 ## The exact remaining blockers (only these)
 
-All items previously listed here that this session could close without a founder decision or real infrastructure are now closed (unauthenticated mutations, C1's system-authority question, `identity_engine` MERGE/RENEW/RECOVERY, the FAP/documentation contradictions, the Sprint G resilience gaps) — see the update paragraph above and `reports/FREKCORE_COMPLETION_BACKLOG.md` for the full record. What remains is **exactly** four items, each blocked by environment or by a decision only the founder can make — none is something this pass declined to do; each is something this pass cannot do here:
+Items previously listed here that this session could close without a founder decision or real infrastructure are closed (unauthenticated mutations, C1's system-authority question, `identity_engine` MERGE/RENEW/RECOVERY, the FAP/documentation contradictions, the Sprint G resilience gaps) — see the earlier update paragraphs and `reports/FREKCORE_COMPLETION_BACKLOG.md` for the full record. What remains, as of this reopening, is **five** items — three still environment- or founder-decision-blocked exactly as before, one narrowed by the founder's own decision, and one new item the founder's decision itself created:
 
 1. **No real-MongoDB validation of anything in any Phase 3 report — ENVIRONMENT-BLOCKED.** Everything runs through a documented `mongomock_motor` substitute (`docker pull mongo:7` → `403 Forbidden`, reconfirmed throughout this session). Gates confident answers on indexes/uniqueness/atomicity/concurrency/transactions and on bumping the 4 reachable dependency CVEs (item 3 below). **Execution-ready plan prepared, not yet run**: `reports/23_REAL_MONGODB_VALIDATION_PLAN.md` — environment requirements, exact commands, expected test set, specific checks, rollback/cleanup steps. Per founder directive §18, these guarantees stay classified `BLOCKED / UNVERIFIED_REAL_MONGO` — not claimed proven-correct, not assumed broken — until that plan actually runs against real infrastructure and its results are recorded back into that report. Per this pass's own explicit instruction: documented here, not blocking any of the independent work above.
-2. **`backend/frek/`'s 19 (of 43) NEEDS_FOUNDER_DECISION routes — FOUNDER-DECISION-BLOCKED.** All 43 routes are individually classified (`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`); 20 PRESERVE, 3 ABSORB candidate, 1 ADAPTER candidate are settled. The remaining 19 (every mutating route) share one root cause: `backend/frek/`'s NODE04/06 pipeline is built for PostgreSQL+`pgvector` and only activates that backend when `MONGO_URL` starts with `postgres`, which it structurally never does in this deployment — so every write silently falls back to non-persistent in-process memory. This is simultaneously an infrastructure gap (no Postgres access in this sandbox to even prototype against) and a real architectural tradeoff this session should not decide unilaterally: `pgvector`'s IVFFlat cosine-similarity index has no drop-in MongoDB equivalent, so "just point it at Mongo" is a functional-loss decision, not a config change. That audit's own closing line still holds: "No route in this audit was found safe to authenticate, harden, or modify in-place this session... this stops for founder input rather than guessing."
+2. **`backend/frek/`'s remaining founder-undecided routes — NARROWED to 0 by this reopening's founder decision, technical reconciliation now the open item (see item 5).** All 43 routes are individually classified (`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`); 20 PRESERVE, 3 ABSORB candidate, 1 ADAPTER candidate were already settled. The remaining 19 were `NEEDS_FOUNDER_DECISION`, sharing one root cause (non-persistent in-memory storage, `docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`'s central finding) — the founder has now explicitly decided the 5 capabilities those 19 routes express are all required, resolving the *decision* (see item 5 for the resulting *technical* work, which is not a blocker in the same sense — it is ordered, founder-approved backlog).
 3. **115 known dependency vulnerabilities — classified, not yet bumped, transitively blocked by item 1.** `reports/24_DEPENDENCY_SECURITY_CLASSIFICATION.md` sorts all 115 findings/20 packages into 5 evidence-based buckets (26 exploitable/reachable across `starlette`/`cryptography`/`pyjwt`/`python-multipart`; 12 potentially reachable; 30 transitive/unreachable; 41 blocked by the `emergentintegrations` private-dependency chain; 6 false-positive dev-tooling). Bumping the 4 reachable packages safely needs the real integration suite (item 1) to verify against, not just `mongomock`.
 4. **Docker Compose / container build never executed end-to-end — ENVIRONMENT-BLOCKED** (network-policy blocked, reconfirmed throughout this session).
+5. **D1–D6 historical capability reconciliation — FOUNDER-DECIDED, TECHNICAL WORK REQUIRED, not yet started.** `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` records the founder's decision that Signal/Audio Fingerprint (D1), Creative Lifecycle (D2), Relationship/Provenance Graph (D3), Offline Proof Transport (D4), and Human-Readable Technical Evidence (D5) must all be preserved and correctly reconciled into modern FREKCORE, governed by a sixth cross-cutting rule (D6, Evidence Semantics — CLAIM vs. EVIDENCE vs. PROOF vs. VERIFIED, so none of the five can silently overclaim). This is not environment-blocked and not founder-blocked (the founder decision is made) — it is ordered implementation work (`reports/FREKCORE_COMPLETION_BACKLOG.md` P1.5, 12 steps, §T of the reconciliation report) that has not started, per explicit instruction that this reconciliation pass is documentation-only.
 
 **Explicitly not blockers, recorded so they aren't mistaken for open work**: Contradiction C6 (typed DID subjects) is DOCUMENTED_ONLY with no current consumer — not urgent, does not block freeze, should be resolved before hardware-capture (Luciole/FAP) work begins. The two large mission briefs (Red/Blue/Purple Team security assessment; UI/UX/SPA/Motion/3D/Accessibility overhaul) are explicitly out of scope for this pass by instruction, not blocked — they start only after a founder freeze decision, per the same instruction that ends this pass here.
 
@@ -80,8 +127,8 @@ All items previously listed here that this session could close without a founder
 8. SDK contracts: **Validated, extended twice this pass** (Python 18/18, up from 5/5; TypeScript 13/13 + typecheck, up from 3/3) — Registry API's instance-store endpoints (P1) closed the schema-catalog-only gap; a new `FrekcoreIdentityClient`/`identityClient.ts` (P2) now wraps `identity_engine`'s public-read surface in both languages. The write/lifecycle surface (init, register, revoke/update/archive, reconcile/recover) remains deliberately unwrapped — the WebAuthn ceremony ones need a browser/authenticator context this SDK doesn't have; merge/renew/recovery are now implemented server-side (`docs/decisions/0003-...md`) but not yet SDK-wrapped, a real next candidate for a future pass
 9. Security findings: **0 Critical / 0 High individually CVSS-scored** (115 dependency advisories, all classified into 5 evidence-based buckets per `reports/24_DEPENDENCY_SECURITY_CLASSIFICATION.md`, not yet individually per-CVE severity-scored or bumped — blocker #3); the previously-highest open item (unauthenticated mutations) is closed and hardened to real per-holder auth
 10. Breaking changes: **NONE**
-11. Freeze decision: **FREEZE READY** — every independently-closable item is closed; what remains is exactly the 4 environment/founder-decision-blocked items below. This is not a FROZEN declaration and this pass does not proceed past it into Production Readiness, Red/Blue/Purple, or CVLN ecosystem wiring, per explicit instruction
-12. Remaining blockers: the 4 items listed above, exactly (real-MongoDB validation; `backend/frek/`'s 19 founder-decision routes; the 4 reachable dependency CVEs, transitively blocked by the first; Docker Compose end-to-end) — plus 2 explicitly non-blocking items recorded so they aren't mistaken for open work (Contradiction C6; the two deferred mission briefs)
+11. Freeze decision: **NOT READY FOR FINAL FREEZE — D1–D6 RECONCILIATION REQUIRED** (superseding the `FREEZE READY` verdict reached at HEAD `ce12398`, reopened by the founder's own decision that 5 historical `backend/frek/` capabilities must be preserved — not a regression, see the update paragraph above and `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` §U). This pass does not proceed into Production Readiness, Red/Blue/Purple, or CVLN ecosystem wiring, per explicit instruction, and has not started implementing D1–D6
+12. Remaining blockers: the 5 items listed above, exactly (real-MongoDB validation; `backend/frek/`'s technical-reconciliation work now that the founder decision is made; the 4 reachable dependency CVEs, transitively blocked by the first; Docker Compose end-to-end; D1–D6 implementation, ordered but not started) — plus 2 explicitly non-blocking items recorded so they aren't mistaken for open work (Contradiction C6; the two deferred mission briefs)
 13. Commit hash: see this session's final message for the commit(s) accompanying this report
 
 ## Closing note on the two mission briefs received mid-session
