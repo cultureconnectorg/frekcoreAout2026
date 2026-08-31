@@ -42,7 +42,7 @@ This is a first-pass matrix built from real code, not a claim of formal security
 | `fk` (`fk_router`) | 6 | PUBLIC | Documented doctrine (`memory/INVENTORY.md:176`): "Endpoints tierces... publique dès aujourd'hui" |
 | `passport` (`passport_router`) | 5 | PUBLIC | Offline-verifiable-by-design doctrine (Phase 1 audit) |
 | `registry` (`registry_router`) | 5 | PUBLIC | Stateless schema catalog, no side effects (Phase 1) |
-| `notary` (`notary_router`) | 13 | mixed | `/notarize`, `/anchor/*` are internal-trigger routes with **no auth found** — see FLAG below; read routes (`/block/{h}`, `/chain/status`, `/chain/verify`) are intentionally public (offline-verifiable proof doctrine) |
+| `notary` (`notary_router`) | 13 | mixed | `/notarize`, `/anchor/sweep`, `/anchor/upgrade`, `/anchor/{height}` require `Depends(require_permission("emit"))` (`backend/notary/routes.py:69,190,199,208` — **corrected**, see note below); read routes (`/block/{h}`, `/chain/status`, `/chain/verify`) are intentionally public (offline-verifiable proof doctrine) |
 | `badges` (`badge_router`) | 11 | AUTHENTICATED (client API key) | `require_permission` |
 | `jetons` (`jetons_router`) | 9 | AUTHENTICATED (client API key) | `require_permission` |
 | `event` (`event_router`) | 5 | mixed | `/scan`, `/nfc/tap` require `require_permission("stage")`; `/zones`, `/stats/*` are PUBLIC (read-only) |
@@ -52,8 +52,8 @@ This is a first-pass matrix built from real code, not a claim of formal security
 | `email_service` (`email_router`) | 4 | AUTHENTICATED (client API key) | `require_permission` |
 | `services` (`stripe_router`) | 3 | **FLAG** (see below) | No auth detected on `/checkout` |
 | `services` (`webhook_router`) | 1 | INTERNAL / PUBLIC-SECRET | Stripe signature verification inside the handler (`backend/services/webhook.py`, not a FastAPI dependency) |
-| `sync` (`sync_router`) | 6 | mixed | `/baserow/webhook` is PUBLIC-SECRET (HMAC, `backend/sync/routes.py:276-277`); other routes need per-route check (not fully audited this pass — see backlog) |
-| `heritage` (`heritage_router`) | 6 | mixed | `/claim` is PUBLIC-SECRET (documented: "Public (pas d'auth): la preuve repose sur le secret partagé hors-bande", `backend/heritage/routes.py:216`); other routes not fully audited this pass |
+| `sync` (`sync_router`) | 6 | mixed — **corrected** | `/baserow/webhook` is PUBLIC-SECRET (HMAC, `backend/sync/routes.py:276-277`); `/status`, `/push/{frek_id}`, `/push`, `/pull`, `/log` all call `_require_admin(x_admin_key)` in-body (`backend/sync/routes.py:35`, an admin-key check not expressed as a `Depends(...)`, which is why the first pass missed it) — ADMIN, real |
+| `heritage` (`heritage_router`) | 6 | mixed — **corrected** | `/claim` is PUBLIC-SECRET (documented: "Public (pas d'auth): la preuve repose sur le secret partagé hors-bande", `backend/heritage/routes.py:216`); `/{frek_id}/declare`, `/{frek_id}` GET/DELETE, `/{frek_id}/transfer` all require `Depends(_auth_require_permission(...))` (`backend/heritage/routes.py:56-58,98,170,184,298` — a locally-wrapped `frek_v1.auth.require_permission`, also missed by the first pass) — AUTHENTICATED, real; `/lineage/{frek_id}` is intentionally PUBLIC (own docstring: "Lignee complete et publique", excludes `claim_secret_hash`) |
 | `fingerprint` (`fp_router`) | 8 | **FLAG** (see below) | `/consent/{frek_id}` writer comment admits intended-owner-scope, not enforced |
 | `geo` (`geo_router`) | 9 | **FLAG** (see below) | Same pattern as `fingerprint` — consent-gated but not owner-authenticated |
 | `did`/`vc` (`did_router`, `vc_router`) | 4 | PUBLIC | DID/VC resolution and verification are meant to be publicly verifiable (W3C DID/VC design intent) |
@@ -64,8 +64,27 @@ This is a first-pass matrix built from real code, not a claim of formal security
 | `core` (`core_router`) | 5 | AUTHENTICATED | Live-traffic evidence: `POST /api/core/ingest` returned `403 Forbidden` against the mongomock run without credentials (`reports/16_INTEGRATION_TEST_BASELINE.md`) — real protection exists even though the automated scanner didn't attribute it to a named dependency in this pass |
 | `standards`, `ecosystem`, `spec`, `seal` | 12 | PUBLIC | Documentation/manifest endpoints, intentionally public |
 | `server` (`api_router`) | 3 | PUBLIC, **dead code** | `GET /`, `POST /status`, `GET /status` are the unmodified FastAPI project-template scaffold (`StatusCheck`/`StatusCheckCreate`, `backend/server.py:175-212`) — not a FREKCORE product route, see `reports/FREKCORE_COMPLETION_BACKLOG.md` |
-| `investor` (`investor_router`) | 2 | not audited this pass | — |
-| `pdf_batch` (`pdf_batch_router`) | 4 | not audited this pass | — |
+| `investor` (`investor_router`) | 2 | PUBLIC (read-only) — **corrected** | `/pulse`, `/sources-stats` are GET-only, no `Depends(...)` found; low severity (no mutation), not re-classified as a FLAG, but genuinely unauthenticated dashboard reads — see backlog if this data is sensitive |
+| `pdf_batch` (`pdf_batch_router`) | 4 | mixed — **corrected** | `/template` (GET) is PUBLIC; the 3 POST/GET generation routes all carry `dependencies=[Depends(require_staff_perm("view_stats"))]` (`backend/pdf_batch/routes.py:51,74,93`) — SYSTEM/AGENT, real |
+
+## Correction (Phase "CLOSE THE LOOP" pass) — notary/anchor were false positives
+
+`reports/FREKCORE_COMPLETION_BACKLOG.md`'s P0 #1 named `POST /api/v1/notary/notarize` and `/anchor/*` as this matrix's highest-severity finding, based on this file's original claim of "no `Depends(...)` found." That claim was **wrong** — re-read directly against `backend/notary/routes.py` while investigating an unrelated task found:
+
+```python
+@notary_router.post("/notarize", response_model=BlockResponse)
+async def notarize(..., client: dict = Depends(require_permission("emit"))):
+@notary_router.post("/anchor/sweep")
+async def anchor_sweep(..., client: dict = Depends(require_permission("emit"))):
+@notary_router.post("/anchor/upgrade")
+async def anchor_upgrade(..., client: dict = Depends(require_permission("emit"))):
+@notary_router.post("/anchor/{height}")
+async def anchor_block_now(..., client: dict = Depends(require_permission("emit"))):
+```
+
+`require_permission(...)` (`backend/frek_v1/auth.py:50-58`) wraps `get_current_client` (Bearer-token verification, client-active check, per-token revocation check, `frek_v1/auth.py:22-47`) and additionally checks the resolved client carries the named permission scope, raising `403` if not. This is real, working, live-tested enforcement — `backend/tests/test_notary.py::TestOTSAndAnchor::test_anchor_sweep_requires_auth` asserts a `401`/`403` for an unauthenticated call and **passed** in every integration run this phase (`reports/16_INTEGRATION_TEST_BASELINE.md`).
+
+**Root cause of the original miss**: the automated extraction pass's regex/keyword scan for auth patterns looked for a fixed set of literal dependency names and a bounded forward-window from the route decorator; `Depends(require_permission("emit"))` — a call that *returns* a dependency, rather than a bare dependency reference — was not in that pattern set. The manual spot-check pass also missed it (documented as auditing "43 unattributed mutating routes"; `notary_router`'s specific routes were not among the ones re-read by hand). Corrected here by direct code inspection prompted by an unrelated fix in the same file this session. **`notary`/`anchor` routes are removed from the FLAG table and P0 #1 below — they were never a real gap.** This is exactly the kind of audit-tooling limitation the mission's own methodology warns about; recorded here rather than silently amended.
 
 ## FLAG — genuine findings (mutation with no confirmed protection)
 
@@ -73,8 +92,6 @@ These are the routes this pass could not attribute to any real auth mechanism af
 
 | Route | Evidence | Risk assessment |
 |---|---|---|
-| `POST /api/v1/notary/notarize` | `backend/notary/routes.py:65` — no `Depends(...)` found | Anyone who can reach the network can write an arbitrary notarized block. Notarization is meant to be triggered by other trusted server-side modules (`notary.service.notarize_event`, called internally) — this HTTP route may be intended as an internal/service-to-service call, but nothing in the code enforces that. **Highest-severity finding in this matrix.** |
-| `POST /api/v1/notary/anchor/sweep`, `/anchor/upgrade`, `/anchor/{height}` | `backend/notary/routes.py:187,196,205` | Same pattern — anchoring operations triggerable by anyone |
 | `POST /api/v1/core/fingerprint/consent/{frek_id}` | `backend/fingerprint/routes.py:57`, docstring literally says "Le porteur (ou un client autorisé mandaté par lui)" with no code enforcing that claim | Anyone can flip another FREK-ID's consent flags |
 | `POST /api/v1/core/fingerprint/observe/*`, `/match` | `backend/fingerprint/routes.py:82,96,108,175` | Anyone can submit fingerprint observations against any FREK-ID |
 | `POST /api/geo/consent/{frek_id}`, `/observe`, `/notarize`, `/encode` | `backend/geo/routes.py:26,42,60,131` | Same pattern as fingerprint — consent is checked, but nothing authenticates the caller as the consent-setter |
@@ -94,8 +111,10 @@ These are the routes this pass could not attribute to any real auth mechanism af
 
 **Wired**: nothing new was added to any of the FLAG routes above. Given this sandbox's Docker/MongoDB access is blocked at the network-policy level (`reports/16_INTEGRATION_TEST_BASELINE.md` §1) for anything beyond the `mongomock`-substitute run, and every one of these routes is exercised by the pre-existing 335-test integration suite in ways this session cannot fully regression-test against real MongoDB semantics, adding enforcement blind would risk exactly the outcome Priority 3's rules forbid ("no weakening security to make tests pass" cuts both ways — it also means not adding security that might silently break a legitimate existing caller without being able to prove it doesn't).
 
-**What this phase does instead**: this matrix itself, handed to whoever wires enforcement next with `backend/permissions/` (Phase 2, still not wired into any route) as the mechanism. The `notary/notarize` and `notary/anchor/*` findings are the clear P0 items — see `reports/FREKCORE_COMPLETION_BACKLOG.md`.
+**What this phase does instead**: this matrix itself, handed to whoever wires enforcement next with `backend/permissions/` (Phase 2, still not wired into any route) as the mechanism. `fingerprint/*` and `geo/*`'s consent/observe/match routes are the clear P0 items now that `notary`/`anchor` are confirmed already enforced (see the correction note above) — see `reports/FREKCORE_COMPLETION_BACKLOG.md`.
 
 ## Routes not fully audited this pass
 
-`sync_router` (beyond `/baserow/webhook`), `heritage_router` (beyond `/claim`), `investor_router`, `pdf_batch_router`, and the 33 `frek`/`frek_router_advanced` legacy routes were classified at the module level from partial evidence (docstrings, prior-phase audits) rather than individually read line-by-line in this pass, given the scope of 239 total routes and this phase's remaining budget. This is stated explicitly rather than implied to be exhaustive — see `reports/FREKCORE_COMPLETION_BACKLOG.md` P1 for "complete the permission matrix" as a named follow-up item.
+`sync_router`, `heritage_router`, `investor_router`, and `pdf_batch_router` were individually re-read line-by-line in the "CLOSE THE LOOP" pass (see the correction note above) after that pass's investigation of `notary_router` surfaced two more auth patterns (`Depends(require_permission(...))`-style wrapper calls, and an in-body `_require_admin(...)` check never expressed as a `Depends(...)`) that the original automated scan did not recognize. All four are now corrected in the table above. The 33 `frek`/`frek_router_advanced` legacy routes remain genuinely unaudited beyond a module-level pass — larger surface, and its architectural fate is Contradiction C4 (founder decision required) rather than a pure permission-labeling question — see `reports/FREKCORE_COMPLETION_BACKLOG.md` P1.
+
+**Methodology lesson recorded**: an automated `Depends(...)`-literal scan under-detects real auth in a codebase with multiple auth-wrapper conventions (`require_permission(perm)` returning a dependency, a locally-aliased wrapper like `heritage/routes.py`'s `_auth_require_permission`, or a plain in-body function call like `sync/routes.py`'s `_require_admin`). Every remaining "not audited" or "FLAG" claim in this file has now been confirmed by direct line-by-line reading, not by the automated scan alone.
