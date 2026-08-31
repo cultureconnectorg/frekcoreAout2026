@@ -1,5 +1,7 @@
 # 21 — Freeze Assessment (Phase 3 close, "CLOSE THE LOOP" pass)
 
+**Update** (`docs/decisions/0001-founder-decisions-2026-08-31.md`, `reports/22_P0_SECURITY_CLOSURE.md`): after this report was first written, the founder directive's P0 security closure was completed — the real unauthenticated-mutation surface was narrower than first documented (`notary`/`anchor` and `fingerprint`'s `/match` were false positives in the original scan) and is now closed for `fingerprint`, `geo`, `POST /api/core/count` (corrected path), and a reviewed-and-accepted-public `POST /api/payments/checkout` (corrected path). The 33-route `backend/frek/` audit also surfaced a real, previously-undocumented finding (`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`): that module's core storage is architecturally PostgreSQL/pgvector, structurally unreachable under this deployment's `MONGO_URL` convention, so its writes are non-persistent in-memory state — this **adds** a blocker (below), it does not remove one. The verdict is unchanged.
+
 ## Verdict
 
 # NOT READY FOR FREEZE
@@ -39,12 +41,14 @@ FREKCORE may not be called "FREKCORE v1.0 Freeze Candidate" or "FROZEN — VERIF
 
 ## The exact remaining blockers (only these)
 
-1. **No real-MongoDB validation of anything in any Phase 3 report.** Everything runs through a documented `mongomock_motor` substitute. Gates confident answers on almost every other row above.
-2. **Unauthenticated mutating routes**: `fingerprint/*` (consent/observe/match), `geo/*` (consent/observe/notarize/encode), `POST /api/count`, `POST /api/v1/checkout` — narrower list than previously reported (notary/anchor/sync/heritage/pdf_batch are confirmed protected, corrected this pass).
-3. **Dual identity system (C1)** and **`backend/frek/`'s fate (C4)** — both need a founder decision.
-4. **115 known dependency vulnerabilities**, not bumped beyond the one required to fix the install blocker (needs green integration suite against real MongoDB first to bump safely).
-5. **Docker Compose / container build never executed end-to-end** in this environment (network-policy blocked).
-6. **Two mission briefs received but not executed**: Red/Blue/Purple Team security assessment, UI/UX/SPA/Motion/3D/Accessibility overhaul — both independently multi-week-scale (see closing note).
+1. **No real-MongoDB validation of anything in any Phase 3 report.** Everything runs through a documented `mongomock_motor` substitute. Gates confident answers on almost every other row above. Per founder directive §18, classify the specific guarantees this blocks (indexes, uniqueness, atomicity, concurrency, transactions) as `BLOCKED / UNVERIFIED_REAL_MONGO`, not as either proven-correct or proven-broken.
+2. **CLOSED this pass** (`reports/22_P0_SECURITY_CLOSURE.md`): the unauthenticated-mutation blocker is resolved — `fingerprint/consent`, `geo/consent|notarize|trail`, and `POST /api/core/count` (corrected path) are now ADMIN-gated; `fingerprint/observe/*` and `geo/observe` are rate-limited (auth would break their real device-originated callers); `POST /api/payments/checkout` (corrected path) was reviewed and left public by design, hardened with a rate limit. Real remaining gap, narrower still: true per-holder (not admin-key) authorization for fingerprint/geo consent, which needs the identity reconciliation below to land first.
+3. **Dual identity system (C1)** — founder-resolved as "reconcile, don't replace" (`docs/decisions/0001-...`), capability-ownership mapped (`docs/architecture/FREK_ID_RECONCILIATION.md`); the specific question of permanent-separation-vs-eventual-merge remains open, deferred with the map in hand, not blocking further work. **`backend/frek/`'s fate (C4)** — founder-resolved as "not deletable, not globally deprecated, under reconciliation"; all 42 routes now individually classified (`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`, corrected route count from the previously-stated 33) — 22 of 42 still need founder input on a route-by-route basis (mostly because the module's real storage backend is structurally non-persistent — a new finding, see below).
+4. **NEW FINDING this pass**: `backend/frek/`'s core storage (NODE04 Memory, NODE06 Réseau) is built for PostgreSQL+`pgvector` and reads `MONGO_URL` to decide whether to activate it — a MongoDB-named variable that never starts with `postgres` anywhere in this codebase's actual configuration, so the real backend is structurally unreachable and every write silently falls back to non-persistent in-process memory (`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`). This is a genuine capability gap, not a security issue: a client calling `POST /frek/certify` reasonably expects the result to be retrievable later, and today it is not, past a restart.
+5. **NEW FINDING this pass (Contradiction C6)**: the canonical architecture spec (`frek_v3/docs/FREK_Architecture_Integree_v0.2.md`) calls for typed `did:frek:{person,org,device,app}-<uuid>` identifiers; `backend/did/document.py` implements an untyped `did:frek:{frek_id}` — no code consumes type discrimination today, so this is not urgent, but should be resolved before any hardware-capture (Luciole/FAP) work begins, since that work's own spec assumes it. See `docs/architecture/FREK_ID_CANONICAL_MODEL.md` §4.
+6. **115 known dependency vulnerabilities**, not bumped beyond the one required to fix the install blocker (needs green integration suite against real MongoDB first to bump safely).
+7. **Docker Compose / container build never executed end-to-end** in this environment (network-policy blocked).
+8. **Two mission briefs received but not executed**: Red/Blue/Purple Team security assessment, UI/UX/SPA/Motion/3D/Accessibility overhaul — both independently multi-week-scale (see closing note). Per founder directive §26-27, both are scheduled *after* the P0/P1 trust baseline is stable, which is directionally where this pass leaves things, not yet fully there.
 
 ## Required final output (13 items)
 
@@ -52,14 +56,14 @@ FREKCORE may not be called "FREKCORE v1.0 Freeze Candidate" or "FROZEN — VERIF
 2. Backend boot: **PASS** against `mongomock`; **NOT verified** against real MongoDB
 3. Unit tests: **74 passed / 0 failed** (`cd backend && pytest`, 335 integration items deselected)
 4. Integration tests: **254 passed / 29 failed / 13 skipped / 39 errored** (definitive Run 4, `reports/16_INTEGRATION_TEST_BASELINE.md` §7) — every non-pass item classified, none an unfixed proven application bug
-5. Permissions: **Partial** — narrower gap than previously reported after this pass's correction (see above)
+5. Permissions: **Partial, improved this pass** — the P0 unauthenticated-mutation blocker is closed (`reports/22_P0_SECURITY_CLOSURE.md`); real remaining gap is true per-holder (not admin-key) authorization, which needs identity reconciliation first
 6. Audit Trail: **Partial** (1 of 6 required event categories, real and live-verified)
 7. Event producers: **`identity.created` only** — exact list, no others exist in code
 8. SDK contracts: **Validated** (Python 5/5 + live socket; TypeScript 3/3 + typecheck + live socket)
-9. Security findings: **0 Critical / 0 High individually CVSS-scored** (115 dependency advisories counted but not per-CVE severity-scored); highest real open item is the 4 unauthenticated route groups in blocker #2
+9. Security findings: **0 Critical / 0 High individually CVSS-scored** (115 dependency advisories counted but not per-CVE severity-scored); the previously-highest open item (unauthenticated mutations) is now closed — see blocker #2
 10. Breaking changes: **NONE**
 11. Freeze decision: **NOT READY FOR FREEZE**
-12. Remaining blockers: the 6 items listed above, exactly
+12. Remaining blockers: the 8 items listed above, exactly
 13. Commit hash: see this session's final message for the commit(s) accompanying this report
 
 ## Closing note on the two mission briefs received mid-session

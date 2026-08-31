@@ -6,6 +6,8 @@ Status values used: `IMPLEMENTED`, `VERIFIED` (implemented + exercised with real
 
 ## Identity
 
+**Founder directive update** (`docs/decisions/0001-founder-decisions-2026-08-31.md`): the table below predates the founder's explicit resolution of C1 ("reconcile, don't replace" — `identity_engine` is a modern *authentication* engine, not a redefinition of FREK-ID itself) and the deeper reconstruction in `docs/architecture/FREK_ID_CANONICAL_MODEL.md` and `docs/architecture/FREK_ID_RECONCILIATION.md`, including a new finding (Contradiction C6): the canonical architecture spec (`frek_v3/docs/FREK_Architecture_Integree_v0.2.md`) calls for **typed** DIDs (`did:frek:person-`, `org-`, `device-`, `app-`), but `backend/did/document.py` implements an untyped `did:frek:{frek_id}` — reclassify "typed DID subjects" as **DOCUMENTED_ONLY**, distinct from the `did:frek` method row below (which is real and untyped).
+
 | Capability | Status | Evidence |
 |---|---|---|
 | FREK-ID (generic identifier concept) | **IMPLEMENTED** — but by **two non-interoperating systems** | See `reports/FREKCORE_CONTRADICTIONS.md` C1: `backend/frek_v1/` and `backend/identity_engine/` both mint "FREK-ID"-shaped identifiers into different collections |
@@ -57,6 +59,7 @@ Status values used: `IMPLEMENTED`, `VERIFIED` (implemented + exercised with real
 |---|---|---|
 | FAP specification (DEVICE_ID, COUNTER, NONCE, DEVICE_TIME, fixed receipt structure) | **DOCUMENTED_ONLY, isolated reference implementation** | `frek_v3/reference_verifier/frek_constants.py`, `frek_types.py`, `frek_verifier.py` — a real, tested (16 golden test vectors per `ecosystem/registry.json`) reference implementation exists, but it is **explicitly isolated from `backend/`** — no HTTP endpoint, no integration with `backend/proof_engine/` or `backend/notary/` |
 | Reconciliation with current Proof Engine | **NOT DONE — explicitly flagged, not duplicated** | `backend/proof_engine/` (Phase 2/3) does not reference FAP concepts at all; this matrix does not recommend merging them blind — see `reports/FREKCORE_COMPLETION_BACKLOG.md` P2 |
+| Hardware capture credential (Luciole device, PUF key, `FREKCaptureCredential`) | **DOCUMENTED_ONLY** | `frek_v3/docs/FREK_Architecture_Integree_v0.2.md` §3.7 specifies a full pipeline (PUF-derived Ed25519 signing key → hardware-signed `FREKCaptureCredential` issued by `did:frek:device-<id>`); no corresponding backend module or route found anywhere in `backend/`. See `docs/architecture/FREK_ID_CANONICAL_MODEL.md` §3 |
 
 ## Proof / Notarial Layer
 
