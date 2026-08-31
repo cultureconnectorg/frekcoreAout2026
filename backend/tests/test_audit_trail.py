@@ -83,6 +83,8 @@ from audit_trail.subscribers import (  # noqa: E402
 from eventbus.producers import (  # noqa: E402
     build_identity_revoked_event,
     build_identity_updated_event,
+    build_identity_recovered_event,
+    build_identity_reconciled_event,
     build_object_created_event,
 )
 
@@ -130,6 +132,34 @@ def test_identity_revoked_event_maps_to_a_correct_audit_event():
     assert audit_event.metadata["payload"]["revoked_by"] == "holder"
 
 
+def test_identity_recovered_event_maps_to_a_correct_audit_event():
+    envelope = build_identity_recovered_event(
+        frek_id="id-abcdef012345-ab12",
+        recovered_at="t",
+        new_credential_label="recovery-device",
+    )
+    audit_event = event_envelope_to_audit_event(envelope)
+    assert audit_event.action == "identity.recovered"
+    assert audit_event.actor_frek_id == "id-abcdef012345-ab12"
+    assert audit_event.metadata["payload"]["new_credential_label"] == "recovery-device"
+
+
+def test_identity_reconciled_event_maps_to_a_correct_audit_event():
+    envelope = build_identity_reconciled_event(
+        canonical_frek_id="id-abcdef012345-ab12",
+        reconciled_frek_id="id-987654321fed-cd34",
+        reconciled_system="identity_engine",
+        reconciled_at="t",
+        authorized_by="holder",
+    )
+    audit_event = event_envelope_to_audit_event(envelope)
+    assert audit_event.action == "identity.reconciled"
+    assert audit_event.actor_frek_id == "id-abcdef012345-ab12"
+    assert (
+        audit_event.metadata["payload"]["reconciled_frek_id"] == "id-987654321fed-cd34"
+    )
+
+
 def test_object_created_event_maps_to_a_correct_audit_event():
     envelope = build_object_created_event(
         {"frek_id": "id-fk-1", "object_type": "song", "title": "T", "created_at": "t"}
@@ -142,9 +172,9 @@ def test_object_created_event_maps_to_a_correct_audit_event():
 def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
     """End-to-end through the real subscriber function (not just the pure
     mapping) — proves make_audit_trail_subscriber's async-write path works
-    for all three new event shapes, matching how server.py actually wires
-    them (same subscriber instance for every event_type, per _AUDIT_TRAIL_
-    EVENT_TYPES's own design)."""
+    for every non-identity.created event shape, matching how server.py
+    actually wires them (same subscriber instance for every event_type,
+    per _AUDIT_TRAIL_EVENT_TYPES's own design)."""
     fake_db = _FakeMongoDb()
     recorder = MongoAuditRecorder(fake_db)
     subscriber = make_audit_trail_subscriber(recorder)
@@ -164,6 +194,14 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
                 "created_at": "t",
             }
         ),
+        build_identity_recovered_event(frek_id="id-x", recovered_at="t"),
+        build_identity_reconciled_event(
+            canonical_frek_id="id-x",
+            reconciled_frek_id="id-y",
+            reconciled_system="identity_engine",
+            reconciled_at="t",
+            authorized_by="admin",
+        ),
     ]
 
     async def _run():
@@ -181,10 +219,12 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
         "identity.updated",
         "identity.revoked",
         "object.created",
+        "identity.recovered",
+        "identity.reconciled",
     }
 
 
-def test_server_py_subscribes_all_four_real_producers_to_audit_trail():
+def test_server_py_subscribes_all_six_real_producers_to_audit_trail():
     """Static check on server.py's own source — the actual regression this
     guards against is a future new producer (or this list) drifting without
     the other being updated, without needing to boot the full app to catch
@@ -196,5 +236,7 @@ def test_server_py_subscribes_all_four_real_producers_to_audit_trail():
         "identity.updated",
         "identity.revoked",
         "object.created",
+        "identity.recovered",
+        "identity.reconciled",
     ):
         assert f'"{event_type}"' in server_py, f"{event_type} not found in server.py"

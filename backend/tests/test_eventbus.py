@@ -18,6 +18,8 @@ from eventbus.producers import (  # noqa: E402
     build_identity_created_event,
     build_identity_revoked_event,
     build_identity_updated_event,
+    build_identity_recovered_event,
+    build_identity_reconciled_event,
     build_object_created_event,
 )
 
@@ -145,6 +147,44 @@ def test_build_identity_updated_event_never_carries_field_values():
     assert env.payload["changed_fields"] == ["display_name"]
     assert "display_name" not in str(env.payload.get("value", ""))
     assert set(env.payload.keys()) == {"frek_id", "updated_at", "changed_fields"}
+
+
+def test_build_identity_recovered_event_matches_envelope_contract():
+    """RECOVERY (docs/decisions/0003-...md §3) — never carries a
+    'new_frek_id' field, since recovery never regenerates one."""
+    env = build_identity_recovered_event(
+        frek_id="id-abcdef012345-ab12",
+        recovered_at="2026-08-31T00:00:00+00:00",
+        new_credential_label="recovery-device",
+        correlation_id="corr-3",
+    )
+    assert env.event_type == "identity.recovered"
+    assert env.producer == "identity_engine"
+    assert env.subject == "id-abcdef012345-ab12"
+    assert env.correlation_id == "corr-3"
+    assert env.payload["new_credential_label"] == "recovery-device"
+    assert "new_frek_id" not in env.payload
+
+
+def test_build_identity_reconciled_event_matches_envelope_contract():
+    """MERGE (docs/decisions/0003-...md §1) — subject is the initiating
+    (source) frek_id; the payload names the other side and system
+    separately so a subscriber can tell same-system from cross-system
+    (frek_v1) reconciliation without a second lookup."""
+    env = build_identity_reconciled_event(
+        canonical_frek_id="id-abcdef012345-ab12",
+        reconciled_frek_id="id-987654321fed-cd34",
+        reconciled_system="identity_engine",
+        reconciled_at="2026-08-31T00:00:00+00:00",
+        authorized_by="holder",
+        reason="same person, two devices",
+    )
+    assert env.event_type == "identity.reconciled"
+    assert env.producer == "identity_engine"
+    assert env.subject == "id-abcdef012345-ab12"
+    assert env.payload["reconciled_frek_id"] == "id-987654321fed-cd34"
+    assert env.payload["reconciled_system"] == "identity_engine"
+    assert env.payload["authorized_by"] == "holder"
 
 
 def test_build_object_created_event_matches_envelope_contract():

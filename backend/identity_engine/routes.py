@@ -2,8 +2,8 @@
 
 Endpoints publics :
 - POST /identity/init                    -> bootstrap FREKIdentity (attache moments session_id)
-- POST /identity/{frek_id}/register/begin
-- POST /identity/{frek_id}/register/complete
+- POST /identity/{frek_id}/register/begin      -> aussi le point d'entree RECOVERY (X-Admin-Key) [P2]
+- POST /identity/{frek_id}/register/complete   -> idem — emet identity.recovered si recovery [P2]
 - POST /identity/authenticate/begin       -> auth username-less (discovery)
 - POST /identity/authenticate/complete    -> retourne session token
 - GET  /identity/{frek_id}                -> vue publique safe
@@ -14,6 +14,12 @@ Endpoints publics :
 - PATCH /identity/{frek_id}               -> mise a jour display_name/metadata [P1]
 - POST /identity/{frek_id}/archive        -> archivage soft (titulaire ou admin) [P1]
 - GET  /identity/search                   -> recherche/liste, admin uniquement [P1]
+
+P2 (2026-08-31): RECOVERY (docs/decisions/0003-identity-lifecycle-founder-
+decisions-implemented.md §3) added an admin-key override to
+register_begin/register_complete's existing "holder session required to
+add a Passkey" check, closing the real gap that a holder who lost every
+credential had no path back into their own identity.
 
 Priorite 1 items (revoke/update/archive) close the "MISSING since Phase 1"
 finding in reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md's Identity
@@ -69,12 +75,16 @@ try:
         build_identity_created_event as _build_identity_created_event,
         build_identity_revoked_event as _build_identity_revoked_event,
         build_identity_updated_event as _build_identity_updated_event,
+        build_identity_recovered_event as _build_identity_recovered_event,
+        build_identity_reconciled_event as _build_identity_reconciled_event,
     )
 except Exception:  # pragma: no cover - defensive, see comment above
     _event_bus = None
     _build_identity_created_event = None
     _build_identity_revoked_event = None
     _build_identity_updated_event = None
+    _build_identity_recovered_event = None
+    _build_identity_reconciled_event = None
 
 try:
     # Same defensive pattern: notarization failing must never break the
@@ -236,6 +246,7 @@ async def register_begin(
     frek_id: str,
     req: RegisterBeginRequest,
     x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
 ):
     """Genere les options WebAuthn pour enregistrer une Passkey.
 
@@ -243,21 +254,27 @@ async def register_begin(
     fresh anonymous identity (0 credentials) stays open — that is this
     route's real bootstrap purpose, matching /init's own "anonymous by
     default" design. Adding a credential to an identity that ALREADY has one
-    now requires the holder's own session — previously anyone who knew a
-    frek_id (never meant to be secret; it is the thing GET /{frek_id} and
-    QR codes resolve) could register a competing Passkey and take the
-    identity over, which would also have made the new /revoke endpoint
-    trivially bypassable (revoke, then just re-register).
+    now requires the holder's own session (ordinary credential rotation,
+    docs/decisions/0003-...md §2) — previously anyone who knew a frek_id
+    (never meant to be secret; it is the thing GET /{frek_id} and QR codes
+    resolve) could register a competing Passkey and take the identity over,
+    which would also have made the /revoke endpoint trivially bypassable
+    (revoke, then just re-register).
+
+    RECOVERY (docs/decisions/0003-...md §3, added 2026-08-31): an X-Admin-Key
+    override is now accepted here too, mirroring the same
+    `_holder_or_admin` pattern already used by revoke/update/archive/search.
+    Before this, a holder who lost every registered Passkey had NO path back
+    into their own identity, not even via support — this closed that gap.
+    The admin path never deletes or replaces existing credentials, never
+    regenerates frek_id, and register_complete (below) is what actually
+    tells apart "ordinary rotation" from "this was a recovery" for auditing.
     """
     identity = await db.frek_persons.find_one({"frek_id": frek_id})
     if not identity:
         raise HTTPException(404, "FREK identity introuvable")
-    if identity.get("credentials") and (
-        not x_frek_session or service.verify_session_token(x_frek_session) != frek_id
-    ):
-        raise HTTPException(
-            403, "Session du titulaire requise pour ajouter une Passkey"
-        )
+    if identity.get("credentials"):
+        _holder_or_admin(frek_id, x_frek_session, x_admin_key)
 
     options_json, challenge_b64 = service.registration_options(
         frek_id=frek_id,
@@ -274,22 +291,28 @@ async def register_complete(
     frek_id: str,
     req: RegisterCompleteRequest,
     x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
 ):
     """Verifie la Passkey et l'attache a l'identite. Retourne un session token.
 
     Same ownership check as register_begin, re-checked here (not just at
     begin) so a credential set added between begin and complete can't be
     used to bypass it.
+
+    RECOVERY (docs/decisions/0003-...md §3): when this identity already had
+    credentials and the caller authenticated via X-Admin-Key rather than a
+    holder session, this add-a-credential call IS the recovery act — the
+    holder regains a working Passkey on their existing frek_id. That
+    distinction (recovery vs. ordinary holder-initiated rotation) is what
+    decides whether `identity.recovered` fires below.
     """
     identity = await db.frek_persons.find_one({"frek_id": frek_id})
     if not identity:
         raise HTTPException(404, "FREK identity introuvable")
-    if identity.get("credentials") and (
-        not x_frek_session or service.verify_session_token(x_frek_session) != frek_id
-    ):
-        raise HTTPException(
-            403, "Session du titulaire requise pour ajouter une Passkey"
-        )
+    had_credentials_before = bool(identity.get("credentials"))
+    authorized_via = "holder"  # default for the bootstrap case (0 credentials yet)
+    if had_credentials_before:
+        authorized_via = _holder_or_admin(frek_id, x_frek_session, x_admin_key)
     if identity.get("status") in ("revoked", "archived"):
         raise HTTPException(
             403, f"Identite {identity.get('status')} — ajout de Passkey refuse"
@@ -333,6 +356,38 @@ async def register_complete(
             "$set": {"status": "protected"},
         },
     )
+
+    if had_credentials_before and authorized_via == "admin":
+        # RECOVERY (docs/decisions/0003-...md §3) — the holder had no
+        # working session and regained access via the admin-key override.
+        # frek_id is never touched; existing credentials are left in place
+        # (the founder text permits revoking compromised ones separately,
+        # via the existing /revocation route, but does not require it
+        # here). Own event type, distinct from identity.updated, and
+        # notarized like every other sensitive identity_engine action.
+        now = service.now_iso()
+        if _notarize_event is not None:
+            await _notarize_event(
+                payload_type="identity_recovery",
+                payload_id=frek_id,
+                payload_data={
+                    "frek_id": frek_id,
+                    "recovered_at": now,
+                    "new_credential_label": req.label,
+                },
+                metadata={"producer": "identity_engine"},
+            )
+        if _event_bus is not None and _build_identity_recovered_event is not None:
+            try:
+                _event_bus.publish(
+                    _build_identity_recovered_event(frek_id, now, req.label)
+                )
+            except Exception:
+                logger.warning(
+                    "identity.recovered event publish failed (non-blocking)",
+                    exc_info=True,
+                )
+        logger.info(f"FREK identity {frek_id} recuperee via admin-key override")
 
     session_token = service.issue_session_token(frek_id)
     updated = await db.frek_persons.find_one({"frek_id": frek_id})

@@ -360,7 +360,12 @@ async def _registry_startup():
 # BACKLOG.md P1 #8) that were never subscribed here — closing that gap
 # directly improves the freeze assessment's own "Audit trail active for
 # sensitive mutations: PARTIAL (1 of 6 categories)" criterion
-# (reports/21_FREEZE_ASSESSMENT.md).
+# (reports/21_FREEZE_ASSESSMENT.md). identity.recovered and
+# identity.reconciled added with the MERGE/RENEW/RECOVERY implementation
+# (docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md)
+# — both are explicitly named "requires... complete auditability" by the
+# founder decision, so both are wired in from the same commit that adds
+# their producers, not left as a follow-up gap.
 from audit_trail import MongoAuditRecorder, make_audit_trail_subscriber
 from eventbus.bus import default_bus as _audit_event_bus
 
@@ -371,6 +376,8 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "identity.updated",
     "identity.revoked",
     "object.created",
+    "identity.recovered",
+    "identity.reconciled",
 )
 
 
