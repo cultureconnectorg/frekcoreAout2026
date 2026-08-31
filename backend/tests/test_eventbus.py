@@ -18,6 +18,7 @@ from eventbus.producers import (  # noqa: E402
     build_identity_created_event,
     build_identity_revoked_event,
     build_identity_updated_event,
+    build_object_created_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -144,6 +145,44 @@ def test_build_identity_updated_event_never_carries_field_values():
     assert env.payload["changed_fields"] == ["display_name"]
     assert "display_name" not in str(env.payload.get("value", ""))
     assert set(env.payload.keys()) == {"frek_id", "updated_at", "changed_fields"}
+
+
+def test_build_object_created_event_matches_envelope_contract():
+    fk_doc = {
+        "frek_id": "id-fk012345678a-0001",
+        "object_type": "song",
+        "title": "Test Song",
+        "creator_name": "Test Artist",
+        "created_at": "2026-08-31T00:00:00+00:00",
+        "block_hash": "a" * 64,
+        "root_hash": "b" * 64,
+        "media_count": 1,
+        "size_bytes": 12345,
+        "storage_path": "frekcore/fk/id-fk012345678a-0001.fk",
+    }
+    env = build_object_created_event(fk_doc, correlation_id="corr-3")
+
+    assert env.event_type == "object.created"
+    assert env.producer == "fk"
+    assert env.subject == fk_doc["frek_id"]
+    assert env.correlation_id == "corr-3"
+    assert env.payload["object_type"] == "song"
+    assert env.payload["title"] == "Test Song"
+
+
+def test_build_object_created_event_never_carries_storage_path():
+    """storage_path is server-internal (GET /fk/detail/{id} itself excludes
+    it) — the event must never leak it even though fk_doc (the raw
+    db.fk_objects document) carries it."""
+    fk_doc = {
+        "frek_id": "id-x",
+        "object_type": "other",
+        "title": "X",
+        "created_at": "t",
+        "storage_path": "frekcore/fk/id-x.fk",
+    }
+    env = build_object_created_event(fk_doc)
+    assert "storage_path" not in env.payload
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

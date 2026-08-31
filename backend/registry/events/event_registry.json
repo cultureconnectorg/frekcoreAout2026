@@ -64,9 +64,9 @@
       "version": "v1",
       "description": "Creation d'un objet culturel (FK Cultural Object Container).",
       "producer": "fk",
-      "implemented": false,
-      "status": "PARTIAL",
-      "evidence": "backend/fk/routes.py POST /fk/create persiste l'objet et son attestation mais ne publie aucun evenement versionne consommable par un tiers."
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P1 backlog (2026-08-31): backend/fk/routes.py POST /fk/create publishes a real EventEnvelope via backend/eventbus/producers.py:build_object_created_event(), right after db.fk_objects.insert_one(doc), best-effort (try/except, never blocks FK creation — same pattern as identity_engine/routes.py:126-130). Payload echoes only fields GET /api/v1/fk/detail/{frek_id} already returns publicly (storage_path excluded, verified by backend/tests/test_eventbus.py::test_build_object_created_event_never_carries_storage_path). Verified by backend/tests/test_eventbus.py::test_build_object_created_event_matches_envelope_contract (unit, producer output only) and backend/tests/test_fk_object_created_event.py (isolated FastAPI app + TestClient, mongomock_motor-backed, no external server process — monkeypatches fk.routes's own bus reference to a test-local InProcessEventBus, subscribes to object.created, and asserts the real envelope arrives on a real POST /fk/create call, proving the wiring itself, not just the producer function)."
     },
     {
       "event_type": "object.verified",

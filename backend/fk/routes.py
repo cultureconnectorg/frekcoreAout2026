@@ -8,6 +8,7 @@ Endpoints :
 - GET  /api/v1/fk/stats        -> compteur public
 - GET  /api/v1/fk/pubkey       -> cle publique FREKCORE pour verification tiers
 """
+
 import base64
 import json
 import logging
@@ -23,6 +24,19 @@ from passport import keys as passport_keys
 from .models import FK_VERSION, OBJECT_TYPES
 from .packager import create_fk
 from .validator import validate_fk, summary
+
+try:
+    # P1 backlog (2026-08-31): registry/events/event_registry.json already
+    # assigns object.created producer: "fk" — this is that producer.
+    # Same defensive best-effort pattern as identity_engine/routes.py: a
+    # publish failure must never break FK creation itself.
+    from eventbus.bus import default_bus as _event_bus
+    from eventbus.producers import (
+        build_object_created_event as _build_object_created_event,
+    )
+except Exception:  # pragma: no cover - defensive, see comment above
+    _event_bus = None
+    _build_object_created_event = None
 
 logger = logging.getLogger("frek.fk.routes")
 
@@ -42,6 +56,7 @@ MAX_MEDIA_ITEMS = 20
 
 # ---------- CREATE ----------
 
+
 @fk_router.post("/create")
 async def create_fk_endpoint(
     title: str = Form(..., description="Titre de l'objet culturel"),
@@ -49,13 +64,26 @@ async def create_fk_endpoint(
     primary_creator_name: str = Form(..., description="Nom du createur principal"),
     primary_creator_role: Optional[str] = Form("creator"),
     description: Optional[str] = Form(None),
-    context: Optional[str] = Form(None, description="JSON optionnel : location, coordinates, date, institution"),
-    contributors: Optional[str] = Form(None, description="JSON optionnel : liste de {name, role}"),
-    external_refs: Optional[str] = Form(None, description="JSON optionnel : isni, iswc, doi..."),
+    context: Optional[str] = Form(
+        None, description="JSON optionnel : location, coordinates, date, institution"
+    ),
+    contributors: Optional[str] = Form(
+        None, description="JSON optionnel : liste de {name, role}"
+    ),
+    external_refs: Optional[str] = Form(
+        None, description="JSON optionnel : isni, iswc, doi..."
+    ),
     rights_owner_name: Optional[str] = Form(None),
-    keep: bool = Form(False, description="Si true, .fk conserve cote serveur (recuperable via /download)"),
-    files: List[UploadFile] = File(default_factory=list, description="Medias a inclure"),
-    return_json: bool = Form(False, description="Si true, renvoie JSON info + fk_base64 au lieu du binaire"),
+    keep: bool = Form(
+        False,
+        description="Si true, .fk conserve cote serveur (recuperable via /download)",
+    ),
+    files: List[UploadFile] = File(
+        default_factory=list, description="Medias a inclure"
+    ),
+    return_json: bool = Form(
+        False, description="Si true, renvoie JSON info + fk_base64 au lieu du binaire"
+    ),
     x_frek_session: Optional[str] = Header(None),
 ):
     """Cree un objet culturel FK signe. Retourne le .fk binaire par defaut."""
@@ -86,8 +114,9 @@ async def create_fk_endpoint(
         total_bytes += len(data)
         if total_bytes > MAX_MEDIA_TOTAL:
             raise HTTPException(400, f"Volume total > {MAX_MEDIA_TOTAL} octets")
-        media_files.append((f.filename or "file", data,
-                            f.content_type or "application/octet-stream"))
+        media_files.append(
+            (f.filename or "file", data, f.content_type or "application/octet-stream")
+        )
 
     # Creation FK
     try:
@@ -130,9 +159,12 @@ async def create_fk_endpoint(
     if keep:
         try:
             from moment import storage as media_storage
+
             if media_storage.is_available():
                 path = f"frekcore/fk/{frek_id}.fk"
-                media_storage.put_object(path, fk_bytes, "application/vnd.frek.culture+zip")
+                media_storage.put_object(
+                    path, fk_bytes, "application/vnd.frek.culture+zip"
+                )
                 doc["storage_path"] = path
                 logger.info(f"FK stored: {frek_id} -> {path}")
         except Exception as e:
@@ -143,10 +175,22 @@ async def create_fk_endpoint(
     except Exception as e:
         logger.warning(f"FK metadata insert failed: {e}")
 
+    # P1 backlog (2026-08-31) — publish object.created. Best-effort: never
+    # allowed to fail the FK-creation response, matching identity_engine's
+    # own identity.created wiring (backend/identity_engine/routes.py).
+    if _event_bus is not None and _build_object_created_event is not None:
+        try:
+            _event_bus.publish(_build_object_created_event(doc))
+        except Exception:
+            logger.warning(
+                "object.created event publish failed (non-blocking)", exc_info=True
+            )
+
     # Auto-link a une FREK Identity si session token valide fourni
     if x_frek_session:
         try:
             from identity_engine import service as _idsvc
+
             identity_frek_id = _idsvc.verify_session_token(x_frek_session)
             if identity_frek_id:
                 await db.frek_persons.update_one(
@@ -170,15 +214,19 @@ async def create_fk_endpoint(
         "root_hash": fk_obj.proof.root_hash,
         "kept": bool(keep and doc.get("storage_path")),
         "detail_url": f"/api/v1/fk/detail/{frek_id}",
-        "download_url": f"/api/v1/fk/{frek_id}/download" if doc.get("storage_path") else None,
+        "download_url": (
+            f"/api/v1/fk/{frek_id}/download" if doc.get("storage_path") else None
+        ),
         "verify_url": f"/verify/fk/{frek_id}",
     }
 
     if return_json:
-        return JSONResponse({
-            "info": info,
-            "fk_base64": base64.b64encode(fk_bytes).decode("ascii"),
-        })
+        return JSONResponse(
+            {
+                "info": info,
+                "fk_base64": base64.b64encode(fk_bytes).decode("ascii"),
+            }
+        )
 
     filename = f"{title.replace(' ', '_')[:40] or 'creation'}.fk"
     return Response(
@@ -194,8 +242,11 @@ async def create_fk_endpoint(
 
 # ---------- VERIFY ----------
 
+
 @fk_router.post("/verify")
-async def verify_fk_endpoint(file: UploadFile = File(..., description="Fichier .fk a verifier")):
+async def verify_fk_endpoint(
+    file: UploadFile = File(..., description="Fichier .fk a verifier")
+):
     """Valide un .fk uploade — verification OFFLINE (aucune DB requise)."""
     data = await file.read()
     if len(data) > MAX_MEDIA_TOTAL * 2:
@@ -207,16 +258,20 @@ async def verify_fk_endpoint(file: UploadFile = File(..., description="Fichier .
 
 # ---------- DETAIL ----------
 
+
 @fk_router.get("/detail/{frek_id}")
 async def get_fk_detail(frek_id: str):
     """Metadata publique safe d'un FK (equivalent /moment/detail pour les .fk)."""
-    doc = await db.fk_objects.find_one({"frek_id": frek_id}, {"_id": 0, "storage_path": 0})
+    doc = await db.fk_objects.find_one(
+        {"frek_id": frek_id}, {"_id": 0, "storage_path": 0}
+    )
     if not doc:
         raise HTTPException(404, "FK introuvable")
     return doc
 
 
 # ---------- DOWNLOAD ----------
+
 
 @fk_router.get("/{frek_id}/download")
 async def download_fk(frek_id: str, compat: str | None = None):
@@ -228,20 +283,23 @@ async def download_fk(frek_id: str, compat: str | None = None):
       seul le nom change pour que le systeme d'exploitation propose une
       action correcte.
     """
-    doc = await db.fk_objects.find_one({"frek_id": frek_id}, {"storage_path": 1, "title": 1})
+    doc = await db.fk_objects.find_one(
+        {"frek_id": frek_id}, {"storage_path": 1, "title": 1}
+    )
     if not doc:
         raise HTTPException(404, "FK introuvable")
     if not doc.get("storage_path"):
         raise HTTPException(404, "Ce FK n'a pas ete conserve cote serveur")
 
     from moment import storage as media_storage
+
     try:
         data, _ = media_storage.get_object(doc["storage_path"])
     except Exception as e:
         logger.error(f"FK download failed for {frek_id}: {e}")
         raise HTTPException(502, "FK indisponible temporairement")
 
-    base_name = (doc.get('title') or 'creation').replace(' ', '_')[:40]
+    base_name = (doc.get("title") or "creation").replace(" ", "_")[:40]
     if compat == "zip":
         filename = f"{base_name}.fk.zip"
         media_type = "application/zip"
@@ -257,11 +315,14 @@ async def download_fk(frek_id: str, compat: str | None = None):
 
 # ---------- STATS ----------
 
+
 @fk_router.get("/stats")
 async def fk_stats():
     """Compteur public."""
     if db is None:
-        return JSONResponse({"count": 0}, headers={"Cache-Control": "public, max-age=30"})
+        return JSONResponse(
+            {"count": 0}, headers={"Cache-Control": "public, max-age=30"}
+        )
     count = await db.fk_objects.count_documents({})
     return JSONResponse(
         {"fk_version": FK_VERSION, "total_fk": count},
@@ -270,6 +331,7 @@ async def fk_stats():
 
 
 # ---------- PUBKEY ----------
+
 
 @fk_router.get("/pubkey")
 async def fk_pubkey():

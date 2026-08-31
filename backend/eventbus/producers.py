@@ -69,6 +69,42 @@ def build_identity_revoked_event(
     )
 
 
+def build_object_created_event(
+    fk_doc: Dict[str, Any], correlation_id: Optional[str] = None
+) -> EventEnvelope:
+    """Build the `object.created` event for a freshly created `.fk` Cultural
+    Object Container (P1 backlog: closes the `implemented: false` entry in
+    backend/registry/events/event_registry.json, which already assigns this
+    event `producer: "fk"` — this is that producer, not a new one).
+
+    `fk_doc` is the same dict `backend/fk/routes.py:create_fk_endpoint`
+    inserts into `db.fk_objects` — this function does not touch the
+    database itself, matching `build_identity_created_event`'s pattern
+    (unit-testable with a plain dict, no live server/Mongo needed). The
+    payload echoes exactly the fields `GET /api/v1/fk/detail/{frek_id}`
+    already returns publicly (everything but `storage_path`, which that
+    route itself excludes) — publishing this event exposes nothing that
+    wasn't already public via the existing detail route.
+    """
+    return EventEnvelope(
+        event_type="object.created",
+        producer="fk",
+        subject=fk_doc["frek_id"],
+        correlation_id=correlation_id,
+        payload={
+            "frek_id": fk_doc["frek_id"],
+            "object_type": fk_doc.get("object_type"),
+            "title": fk_doc.get("title"),
+            "creator_name": fk_doc.get("creator_name"),
+            "created_at": fk_doc.get("created_at"),
+            "block_hash": fk_doc.get("block_hash"),
+            "root_hash": fk_doc.get("root_hash"),
+            "media_count": fk_doc.get("media_count"),
+        },
+        schema_version="1.0.0",
+    )
+
+
 def build_identity_updated_event(
     frek_id: str,
     updated_at: str,
