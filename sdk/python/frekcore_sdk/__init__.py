@@ -1,27 +1,38 @@
 """FREKCORE Python SDK (Phase 2, Priorite 7).
 
-Scope, deliberately narrow: this SDK wraps ONLY the FREK Registry API
-(`/api/v1/registry/*`), because that is the one API family this phase has
-strong, reproducible evidence is stable — it shipped in Phase 1
-(reports/01_FORENSIC_AUDIT.md, reports/02_GAP_ANALYSIS.md Bloc 1), has a
-dedicated versioned contract (backend/registry/schemas/v1/), and 10/21
-passing unit tests plus this SDK's own end-to-end tests (see
-sdk/python/tests/) exercise it directly against the real FastAPI router.
+Scope, deliberately narrow: this SDK wraps only API families with strong,
+reproducible evidence they're stable enough to commit to as a client
+contract (a passing integration/unit run exercising the real FastAPI
+router directly, see `sdk/python/tests/`). Adding a method for anything
+less would mean "inventer des capacites", which the mission brief
+explicitly forbids for Priority 7.
 
-Every other FREKCORE API family (Identity, Proof/Notary, FK, Certificates,
-...) is explicitly NOT wrapped here. Not because they don't exist — they do,
-see reports/03_ARCHITECTURE_MAP.md — but because this phase has no evidence
-(a passing integration run, see reports/10_TEST_INFRASTRUCTURE.md) that
-their current shape is what should be committed to as a client contract.
-Adding methods for them now would mean "inventer des capacites", which the
-mission brief explicitly forbids for Priority 7. See
-reports/12_PHASE2_IMPLEMENTATION.md for the full reasoning and the
-recommended order to extend this SDK once each family's contract is
-verified stable.
+- `FrekcoreRegistryClient` — the full FREK Registry API
+  (`/api/v1/registry/*`), including the Phase 1 schema-catalog surface and
+  the P1 (2026-08-31) instance-store endpoints (`create_object`/
+  `list_objects`/`get_object`). See `client.py`'s own header comment.
+- `FrekcoreIdentityClient` — `identity_engine`'s public-READ surface only
+  (`/api/v1/identity/*`: `get_identity`, `get_me`, `get_linked_objects`,
+  `search_identities`), added P2 (2026-08-31) once that module's read
+  endpoints had the same live-tested evidence the Registry API has
+  (`reports/21_FREEZE_ASSESSMENT.md`'s SDK-contracts line named this as
+  the next candidate). The write/lifecycle surface is intentionally not
+  wrapped — see `identity_client.py`'s own header comment for why.
+
+Every other FREKCORE API family (Proof/Notary, FK, Certificates, ...) is
+explicitly NOT wrapped here yet — see reports/03_ARCHITECTURE_MAP.md for
+what exists, and reports/12_PHASE2_IMPLEMENTATION.md for the recommended
+order to extend this SDK once each family's contract is verified stable.
 """
 
 from .client import FrekcoreRegistryClient, RegistryNamespace, ValidationResult
+from .identity_client import FrekcoreIdentityClient
 
-__all__ = ["FrekcoreRegistryClient", "RegistryNamespace", "ValidationResult"]
+__all__ = [
+    "FrekcoreRegistryClient",
+    "RegistryNamespace",
+    "ValidationResult",
+    "FrekcoreIdentityClient",
+]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
