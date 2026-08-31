@@ -26,6 +26,13 @@ import { FrekcoreRegistryClient } from "@frekcore/registry-sdk";
 const client = new FrekcoreRegistryClient("https://frekcore.example.com");
 const namespaces = await client.listNamespaces();
 const result = await client.validate("frek.artist", { frek_id: "...", entity_type: "frek.artist" /* ... */ });
+
+// Instance store (P1, 2026-08-31) — needs the same authority the server
+// requires: an OAuth2 bearerToken (registry:write) or an identity_engine
+// holder sessionToken.
+const artist = await client.createObject("frek.artist", { display_name: "Luciole" }, { bearerToken: "..." });
+const same = await client.getObject("frek.artist", artist.frek_id);
+const page = await client.listObjects("frek.artist", { status: "draft" });
 ```
 
 ## Tests
@@ -34,5 +41,5 @@ const result = await client.validate("frek.artist", { frek_id: "...", entity_typ
 available in this sandbox — see `reports/09_PHASE2_BASELINE.md`), asserting
 against real response shapes captured from the actual server (see
 `sdk/python/tests/test_registry_client.py` for the equivalent test suite
-running against the real FastAPI router in-process). 3/3 passing as of this
+running against the real FastAPI router in-process). 7/7 passing as of this
 writing.
