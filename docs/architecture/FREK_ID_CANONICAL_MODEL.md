@@ -56,7 +56,8 @@ Per founder directive §4: this session found the lifecycle applied to **at leas
 | Person lifecycle (frek_v1's GENESIS→LEGACY) | **PARTIAL** (genesis + explicit stage-recording exist; trigger semantics for later stages not documented in prose) | `frek_v1/models.py`, `frek_v1/identity.py` |
 | Work-certification lifecycle (frek/'s GENESIS→WORKSHOP) | **PARTIAL, non-persistent** | `docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md` |
 | Identity revoke/update/archive (identity_engine) | **MISSING** | Confirmed since Phase 1, unchanged |
-| Identity revoke/renew (frek_v1) | **IMPLEMENTED** | `frek_v1/identity.py:134,200` |
+| Identity revoke/renew (frek_v1) | **IMPLEMENTED, RENEW verified conformant 2026-08-31** | `frek_v1/identity.py:134,200,256` — RENEW confirmed by `docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md` §2 to already match the founder's approved semantics (`expires_at`/`renewed_at` only, `frek_id` never touched, never regenerates the identity); `backend/tests/test_frek_v1_renew_unit.py` locks in the invariant |
+| Credential rotation (identity_engine) | **IMPLEMENTED, named 2026-08-31** | `identity_engine/routes.py`'s `register_begin`/`register_complete` already let a holder add a second+ Passkey while holding a valid session — `docs/decisions/0003-...md` §2 names this as `identity_engine`'s answer to "authenticators may rotate," since `FREKIdentity` itself has no expiry field to renew |
 | Cultural provenance graph | **MISSING** (backlog P3 #3) | — |
 | FREK Verified (public trust badge/signal) | **PARTIAL** — the spec describes a full verification pipeline (`.fk` parse → VC verify → chain verify → badge); real pieces exist (`did/vc.py`, `notary/`, offline verifier) but no single "FREK Verified" badge-issuing endpoint was found assembling them into one signal | `frek_v3/docs/FREK_Architecture_Integree_v0.2.md` §3.11 vs. this session's module inventory |
 
