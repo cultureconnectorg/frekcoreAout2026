@@ -333,9 +333,20 @@ from identity_engine.routes import identity_router, set_db as identity_set_db, e
 identity_set_db(db)
 app.include_router(identity_router, prefix="/api/v1")
 
-# FREK Registry — catalogue des namespaces culturels CVLN (Bloc 1, additif, sans etat)
-from registry.routes import registry_router
+# FREK Registry — catalogue des namespaces culturels CVLN (Bloc 1). The
+# schema-catalog endpoints stay stateless; /objects/{namespace} (P1, see
+# registry/routes.py's module docstring) needs the shared db handle.
+from registry.routes import registry_router, set_db as registry_set_db, ensure_indexes as registry_ensure_indexes
+registry_set_db(db)
 app.include_router(registry_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+async def _registry_startup():
+    try:
+        await registry_ensure_indexes()
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Registry instance-store indexes skipped: {_e}")
 
 # Audit Trail (Phase 3 Priority 5) — subscribes to the Event Bus (built
 # Phase 2) so any already-published event (identity.created today, see
@@ -504,7 +515,10 @@ async def seed_clients():
             "name": "Culture Connect 2026",
             "secret": configured_client_secret("FREK_CLIENT_KILTIKONET_SECRET"),
             "secret_env": "FREK_CLIENT_KILTIKONET_SECRET",
-            "permissions": ["emit", "stage", "stats"],
+            # "registry:write" (P1, 2026-08-31): CC2026's own internal
+            # integration client — the natural first ISSUER-authority actor
+            # for backend/registry/routes.py's new /objects instance store.
+            "permissions": ["emit", "stage", "stats", "registry:write"],
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {

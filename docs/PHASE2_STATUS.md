@@ -15,7 +15,7 @@ Statuses use exactly four labels, per the mission brief: **IMPLEMENTED**, **PART
 |---|---|---|
 | 8 versioned JSON Schema namespaces | IMPLEMENTED | Phase 1, re-verified Phase 2. `backend/registry/schemas/v1/` |
 | Registry REST API (list/get/validate) | IMPLEMENTED | `backend/registry/routes.py` |
-| Registry instance store (persisted objects) | NOT IMPLEMENTED | Schema catalog only. `reports/13_PHASE2_GAP_ANALYSIS.md` |
+| Registry instance store (persisted objects) | IMPLEMENTED (2026-08-31) | `POST/GET /api/v1/registry/objects/{namespace}` + `GET .../{namespace}/{frek_id}`, `backend/registry/routes.py`, schema-validated before insert into `registry_objects`. Live-tested: `backend/tests/test_registry_objects.py`. |
 
 ## Identity Engine
 

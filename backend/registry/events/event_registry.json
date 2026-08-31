@@ -37,9 +37,9 @@
       "version": "v1",
       "description": "Modification d'une identite (display_name, metadata, credentials...).",
       "producer": "identity_engine",
-      "implemented": false,
-      "status": "MISSING",
-      "evidence": "Aucune emission d'evenement trouvee dans backend/identity_engine/routes.py ou service.py."
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P1 backlog (2026-08-31): backend/identity_engine/routes.py's PATCH /{frek_id} (update_identity) publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_updated_event(), best-effort (try/except, never blocks the response). payload carries changed_fields (names only, never the new values, so this event can't leak PII by existing) — see docs/architecture/FREK_ID_RECONCILIATION.md's P1 implementation update. Verified by backend/tests/test_eventbus.py::test_build_identity_updated_event_never_carries_field_values (unit) and backend/tests/test_identity_lifecycle.py::TestUpdate (live, mongomock-backed server)."
     },
     {
       "event_type": "identity.merged",
@@ -55,9 +55,9 @@
       "version": "v1",
       "description": "Revocation d'une identite.",
       "producer": "identity_engine",
-      "implemented": false,
-      "status": "PARTIAL",
-      "evidence": "Le champ frek_identities.revoked existe (backend/server.py:530 cree un index sparse dessus) mais aucune route dediee ni evenement emis n'a ete trouve dans identity_engine/routes.py."
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P1 backlog (2026-08-31): backend/identity_engine/routes.py's POST /{frek_id}/revocation (revoke_identity — see docs/architecture/FREK_ID_RECONCILIATION.md for why the path is /revocation, not /revoke: frek_v1 already owns POST /{frek_id}/revoke at the identical mounted path) publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_revoked_event(), best-effort. Also notarized (payload_type=identity_revocation, backend/notary/service.py:notarize_event()). Distinct from frek_identities.revoked (frek_v1's own, separate field/system — see reports/FREKCORE_CONTRADICTIONS.md C1) — this entry now covers identity_engine's revoke. Verified by backend/tests/test_eventbus.py::test_build_identity_revoked_event_matches_envelope_contract and backend/tests/test_identity_lifecycle.py::TestRevoke (live, mongomock-backed server)."
     },
     {
       "event_type": "object.created",

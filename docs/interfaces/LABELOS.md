@@ -32,6 +32,6 @@ All four catalogue namespaces are relevant to LabelOS: `frek.artist`, `frek.trac
 - Distribution to DSPs.
 - `fk.rights` (`backend/fk/models.py:99-104`, `RightsLayer`) already models `owner`/`co_owners`/`licenses`/`transfers` at the *object* level inside a single `.fk` container — LabelOS may read this via `GET /api/v1/fk/detail/{id}` but FREKCORE does not aggregate rights across a catalogue; that aggregation belongs in LabelOS.
 
-## Proposed next step (PROPOSED, NOT IMPLEMENTED)
+## Registry instance store — DELIVERED (2026-08-31, see `KORA.md`)
 
-A read-only catalogue export endpoint scoped by `organization_id` — requires the Registry instance-store gap (see `KORA.md`) to be closed first.
+The instance-store gap this section used to name as a blocker is closed. `GET /api/v1/registry/objects/frek.organization?owner_id=...` (or `?status=active`) is a real, live, paginated listing today — not yet scoped specifically by `organization_id` as a dedicated filter key (the current filters are `owner_id`/`status`, the two fields every namespace's base envelope already carries; `frek.organization`'s own `member_ids`/`parent_organization_id` fields are namespace-specific and not indexed as query filters in this pass). A dedicated `organization_id`-scoped export remains a genuinely open, smaller follow-up, not the instance-store gap itself.

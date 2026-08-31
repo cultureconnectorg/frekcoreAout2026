@@ -20,7 +20,7 @@ Status values used: `IMPLEMENTED`, `VERIFIED` (implemented + exercised with real
 | Identity lifecycle: archive | **IMPLEMENTED (identity_engine only, 2026-08-31)** | `POST /{frek_id}/archive` — holder-initiated-by-default, admin override, idempotent, refused once revoked (not the reverse); a new capability not modeled on any existing one, no `frek_v1` analog, no `unarchive` flow yet. Live-tested (`backend/tests/test_identity_lifecycle.py`) |
 | Identity linking (objects to identity) | **IMPLEMENTED** | `identity_engine/routes.py: POST /link-object`, `GET /{frek_id}/objects` |
 | Pseudonymous / anonymous identities | **IMPLEMENTED** | `backend/moment/routes.py` — explicit doctrine: "anonyme, sans auth", `PUBLIC_CLIENT_ID = "public-window-1"` |
-| Organization identities | **DOCUMENTED_ONLY** (schema exists, no backing store) | `backend/registry/schemas/v1/frek.organization.schema.json` (Phase 1) defines the shape; no `POST`/persisted-instance route exists anywhere in the codebase to actually create one |
+| Organization identities | **IMPLEMENTED (2026-08-31)** | `backend/registry/schemas/v1/frek.organization.schema.json` (Phase 1) defines the shape; `POST /api/v1/registry/objects/frek.organization` (this P1 pass's instance store, see FREK Registry section below) now persists one |
 | Device identities | **PARTIAL** | `backend/fingerprint/routes.py: POST /observe/device` records device-observation data, but there is no first-class "device identity" record type distinct from a FREK-ID |
 | Identity recovery | **MISSING** | No recovery flow found (`heritage/claim` is inheritance-style transfer to a *beneficiary*, not self-recovery — see Cultural Provenance below) |
 | Identity assurance levels | **MISSING** | No LOA (level-of-assurance) concept found in code |
@@ -94,7 +94,7 @@ Fully covered in `reports/18_RUNTIME_VALIDATION.md` Priority 8 — summary: hash
 |---|---|---|
 | Namespace schema catalog | **VERIFIED** | Phase 1/2/3, `backend/registry/` — 8 namespaces, 21+ unit tests |
 | Reconciliation with historical object types | **PARTIAL** | `frek.artist/track/album/work/certificate/organization/wallet/event` (Registry, new) vs. `.fk`'s `object_type` enum (`song, album, event, heritage, photo, captation, document, artwork, other`, `backend/fk/models.py:18-19`, pre-existing) — **these are two different taxonomies that were not reconciled into one**. A `frek.track` (Registry) and a `.fk` with `object_type="song"` describe overlapping but not identical things |
-| Persisted instance store | **MISSING** | Schema-only, confirmed repeatedly since Phase 1 |
+| Persisted instance store | **IMPLEMENTED (2026-08-31)** | `POST/GET /api/v1/registry/objects/{namespace}` + `GET .../{namespace}/{frek_id}`, `backend/registry/routes.py`, `registry_objects` collection, schema-validated before insert. Write authority: OAuth2 client with `registry:write` (ISSUER) or `identity_engine` holder session (OWNER, forced to own `owner_id`). No event published (see Event Bus section: `object.created` stays `.fk`'s own, per the catalog's `producer: "fk"`). Live-tested: `backend/tests/test_registry_objects.py` (18 tests). Closes `docs/interfaces/KORA.md`/`LABELOS.md`'s "PROPOSED, NOT IMPLEMENTED" resolver gap. |
 
 ## FREK Verified
 

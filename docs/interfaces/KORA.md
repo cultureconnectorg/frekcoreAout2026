@@ -26,6 +26,12 @@ Three namespaces give KORA a stable, versioned shape to resolve against:
 - Streaming delivery, DSP aggregation, play-count ingestion.
 - The `artist.verified` event (catalogued as `implemented: false`) is not emitted anywhere in FREKCORE today — see `reports/02_GAP_ANALYSIS.md` Bloc 7. KORA marking an artist `verified: true` in its own system does not currently trigger any FREKCORE-side event; this is a documented gap, not a working notification channel.
 
-## Proposed next step (PROPOSED, NOT IMPLEMENTED)
+## Registry instance store — DELIVERED (2026-08-31)
 
-A read-only `GET /api/v1/registry/resolve/frek.artist/{frek_id}` that would look up a **persisted** registry instance (today the Registry is schema-only, see `reports/02_GAP_ANALYSIS.md` Bloc 1 remaining gap) — this requires an instance store, which was out of scope for this session.
+The gap this section used to describe is closed: `backend/registry/routes.py` now persists real objects into a `registry_objects` MongoDB collection, schema-validated before insert.
+
+- **`GET /api/v1/registry/objects/frek.artist/{frek_id}`** is that proposed resolver, in substance — same lookup, kept under `/objects` (the resource's natural REST path) rather than a separate `/resolve` path. Public, no auth, returns 404 if the artist hasn't been registered.
+- **`GET /api/v1/registry/objects/frek.artist`** lists artists (paginated, filterable by `owner_id`/`status`).
+- **`POST /api/v1/registry/objects/frek.artist`** creates one — requires either an OAuth2 client credential with the `registry:write` permission (KORA's own integration path, once provisioned as a `frek_clients` entry the way `kiltikonet-cc2026` already is) or an `identity_engine` holder session (an artist self-publishing their own record). See `docs/architecture/FREK_ID_RECONCILIATION.md`-adjacent write-up in `backend/registry/routes.py`'s module docstring for the full authority rationale.
+
+Live-tested end-to-end against a real (mongomock-backed) server: `backend/tests/test_registry_objects.py`.
