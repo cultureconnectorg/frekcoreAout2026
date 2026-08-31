@@ -60,6 +60,7 @@ class TestConsent:
         r = requests.post(
             f"{API}/consent/{fid}",
             json={"layers": {"cadence": True, "affinity": True}},
+            headers=H_admin(),
             timeout=5,
         ).json()
         assert r["updated"]["layers"]["cadence"] is True
@@ -71,14 +72,53 @@ class TestConsent:
     def test_revoke_triggers_purge(self, mongo):
         fid = fresh_frek()
         # Grant device + observe
-        requests.post(f"{API}/consent/{fid}", json={"layers": {"device": True}}, timeout=5)
+        requests.post(f"{API}/consent/{fid}", json={"layers": {"device": True}}, headers=H_admin(), timeout=5)
         requests.post(f"{API}/observe/device", json={"frek_id": fid, "raw_device_hash": "abc123def"}, timeout=5)
         assert mongo.frek_device_observations.count_documents({"frek_id": fid}) == 1
         # Revoke device
-        r = requests.post(f"{API}/consent/{fid}", json={"layers": {"device": False}}, timeout=5).json()
+        r = requests.post(
+            f"{API}/consent/{fid}", json={"layers": {"device": False}}, headers=H_admin(), timeout=5
+        ).json()
         assert "device" in r["purged_layers"]
         # Les observations sont effacees (RGPD)
         assert mongo.frek_device_observations.count_documents({"frek_id": fid}) == 0
+
+
+# ---------- P0 fix regression (docs/decisions/0001-founder-decisions-2026-08-31.md) ----------
+class TestConsentWriteAuth:
+    """POST /consent/{frek_id} was reachable with no credential at all before
+    this fix — anyone could silently flip another FREK-ID's tracking consent.
+    Proves the fix actually rejects an unauthorized write and that a
+    legitimate (admin-keyed) write still works."""
+
+    def test_consent_write_without_admin_key_is_rejected(self):
+        fid = fresh_frek()
+        r = requests.post(f"{API}/consent/{fid}", json={"layers": {"cadence": True}}, timeout=5)
+        assert r.status_code == 403
+        # And the mutation must not have applied
+        after = requests.get(f"{API}/consent/{fid}", timeout=5).json()
+        assert after["layers"]["cadence"] is False
+
+    def test_consent_write_with_wrong_admin_key_is_rejected(self):
+        fid = fresh_frek()
+        r = requests.post(
+            f"{API}/consent/{fid}",
+            json={"layers": {"cadence": True}},
+            headers={"X-Admin-Key": "definitely-not-the-real-key"},
+            timeout=5,
+        )
+        assert r.status_code == 403
+
+    def test_consent_write_with_admin_key_still_works(self):
+        fid = fresh_frek()
+        r = requests.post(
+            f"{API}/consent/{fid}",
+            json={"layers": {"cadence": True}},
+            headers=H_admin(),
+            timeout=5,
+        )
+        assert r.status_code == 200
+        assert r.json()["updated"]["layers"]["cadence"] is True
 
 
 # ---------- Observe ----------
@@ -91,7 +131,7 @@ class TestObserve:
 
     def test_device_observe_records_when_consented(self):
         fid = fresh_frek()
-        requests.post(f"{API}/consent/{fid}", json={"layers": {"device": True}}, timeout=5)
+        requests.post(f"{API}/consent/{fid}", json={"layers": {"device": True}}, headers=H_admin(), timeout=5)
         r = requests.post(f"{API}/observe/device", json={"frek_id": fid, "raw_device_hash": "deadbeef1234"}, timeout=5).json()
         assert r["recorded"] is True
         assert "device_hash_prefix" in r
@@ -103,7 +143,7 @@ class TestObserve:
 
     def test_nfc_then_web_couples(self):
         fid = fresh_frek()
-        requests.post(f"{API}/consent/{fid}", json={"layers": {"coupling": True}}, timeout=5)
+        requests.post(f"{API}/consent/{fid}", json={"layers": {"coupling": True}}, headers=H_admin(), timeout=5)
         requests.post(f"{API}/observe/nfc", json={"frek_id": fid, "nfc_scan_id": "scan-XYZ"}, timeout=5)
         r = requests.post(f"{API}/observe/web-verify", json={"frek_id": fid, "nfc_scan_id": "scan-XYZ"}, timeout=5).json()
         assert r["coupled"] is True
@@ -129,7 +169,7 @@ class TestReadFingerprint:
         fid = fresh_frek()
         for i in range(4):
             _ingest(fid, ts=f"2026-05-17T10:0{i}:00Z", badge="CC26-BNV" if i % 2 else "CC26-ART")
-        requests.post(f"{API}/consent/{fid}", json={"layers": {"cadence": True}}, timeout=5)
+        requests.post(f"{API}/consent/{fid}", json={"layers": {"cadence": True}}, headers=H_admin(), timeout=5)
         r = requests.get(f"{API}/{fid}", headers=H_admin(), timeout=5).json()
         c = r["layers"]["cadence"]
         assert c["available"] is True
@@ -141,7 +181,7 @@ class TestReadFingerprint:
         fid = fresh_frek()
         for i in range(3):
             _ingest(fid, badge="CC26-ART", ts=f"2026-05-17T0{i}:00:00Z")
-        requests.post(f"{API}/consent/{fid}", json={"layers": {"affinity": True}}, timeout=5)
+        requests.post(f"{API}/consent/{fid}", json={"layers": {"affinity": True}}, headers=H_admin(), timeout=5)
         r = requests.get(f"{API}/{fid}", headers=H_admin(), timeout=5).json()
         v = r["layers"]["affinity"]
         assert v["available"] is True
@@ -160,7 +200,7 @@ class TestMatch:
         for f in (f1, f2):
             for i in range(3):
                 _ingest(f, badge="CC26-ART", ts=f"2026-05-17T0{i}:00:00Z")
-            requests.post(f"{API}/consent/{f}", json={"layers": {"affinity": True}}, timeout=5)
+            requests.post(f"{API}/consent/{f}", json={"layers": {"affinity": True}}, headers=H_admin(), timeout=5)
         r = requests.post(
             f"{API}/match",
             json={"frek_id_a": f1, "frek_id_b": f2},
@@ -172,7 +212,7 @@ class TestMatch:
 
     def test_match_requires_consent_on_both(self):
         f1, f2 = fresh_frek(), fresh_frek()
-        requests.post(f"{API}/consent/{f1}", json={"layers": {"affinity": True}}, timeout=5)
+        requests.post(f"{API}/consent/{f1}", json={"layers": {"affinity": True}}, headers=H_admin(), timeout=5)
         # f2 n'a pas consenti
         r = requests.post(
             f"{API}/match",
@@ -199,7 +239,7 @@ class TestAnomalyAndDevice:
                 "timestamp": t, "ingested_at": t, "score_delta": 0,
                 "idempotency_key": f"anom-{fid}-{i}",
             })
-        requests.post(f"{API}/consent/{fid}", json={"layers": {"anomaly": True}}, timeout=5)
+        requests.post(f"{API}/consent/{fid}", json={"layers": {"anomaly": True}}, headers=H_admin(), timeout=5)
         r = requests.get(f"{API}/{fid}", headers=H_admin(), timeout=5).json()
         a = r["layers"]["anomaly"]
         assert a["available"] is True
@@ -211,7 +251,7 @@ class TestAnomalyAndDevice:
     def test_device_collision_detected(self):
         f1, f2 = fresh_frek(), fresh_frek()
         for f in (f1, f2):
-            requests.post(f"{API}/consent/{f}", json={"layers": {"device": True}}, timeout=5)
+            requests.post(f"{API}/consent/{f}", json={"layers": {"device": True}}, headers=H_admin(), timeout=5)
             requests.post(f"{API}/observe/device", json={"frek_id": f, "raw_device_hash": "SHARED-DEVICE-XYZ"}, timeout=5)
         r = requests.get(f"{API}/{f1}", headers=H_admin(), timeout=5).json()
         d = r["layers"]["device"]
@@ -231,7 +271,7 @@ class TestSocial:
                     "badge_type": "CC26-BNV", "timestamp": f"2026-05-17T10:{secrets.randbelow(60):02d}:00Z",
                     "source": "kiltikonet"}
             requests.post(INGEST, headers=H_kiltik(), json=body, timeout=5)
-            requests.post(f"{API}/consent/{f}", json={"layers": {"social": True}}, timeout=5)
+            requests.post(f"{API}/consent/{f}", json={"layers": {"social": True}}, headers=H_admin(), timeout=5)
         r = requests.get(f"{API}/{f1}", headers=H_admin(), timeout=5).json()
         s = r["layers"]["social"]
         assert s["available"] is True
@@ -248,6 +288,7 @@ class TestExport:
         requests.post(
             f"{API}/consent/{fid}",
             json={"layers": {l: True for l in ["cadence", "affinity", "device", "social", "anomaly", "coupling", "linguistic"]}},
+            headers=H_admin(),
             timeout=5,
         )
         r = requests.get(f"{API}/export/{fid}", headers={"X-Export-Key": ADMIN_KEY}, timeout=5).json()

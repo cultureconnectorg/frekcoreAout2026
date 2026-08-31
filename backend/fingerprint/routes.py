@@ -12,6 +12,7 @@ from . import affinity as affinity_mod
 from . import device as device_mod
 from . import layers as layers_mod
 from .consent import LAYERS, has_consent
+from security.policies import check_rate_limit
 
 logger = logging.getLogger("frek.fingerprint.routes")
 
@@ -55,11 +56,25 @@ async def get_consent(frek_id: str):
 
 
 @fp_router.post("/consent/{frek_id}")
-async def update_consent(frek_id: str, payload: ConsentUpdate):
+async def update_consent(
+    frek_id: str, payload: ConsentUpdate, x_admin_key: str = Header(default="")
+):
     """Le porteur (ou un client autorise mandate par lui) met a jour ses choix.
 
     Toute revocation declenche un purge_layer_data (RGPD/AfCFTA).
+
+    P0 fix (docs/decisions/0001-founder-decisions-2026-08-31.md): this was
+    previously reachable by anyone with no credential at all, letting an
+    attacker silently opt a FREK-ID into or out of tracking layers. Gated
+    behind the same admin key this file's own GET /{frek_id}, /match, and
+    /export/{frek_id} already use — the closest existing authority level,
+    not a claim that this is true per-holder ("porteur") authorization.
+    Real owner-scoped consent (the holder acting for themselves, without an
+    admin intermediary) needs a per-holder auth mechanism this codebase does
+    not have yet; tracked against Contradiction C1's identity reconciliation
+    in reports/FREKCORE_COMPLETION_BACKLOG.md.
     """
+    _admin_or_403(x_admin_key)
     # Quelles couches sont desactivees par cette update ?
     current = await consent_mod.get_consent(frek_id)
     revoked = [
@@ -79,11 +94,23 @@ class DeviceObservation(BaseModel):
     surface: str = Field(default="verify")
 
 
+async def _fp_rate_limited(frek_id: str) -> bool:
+    """Rate-limit /observe/* per FREK-ID (docs/decisions/0001-...): these routes
+    are called directly by an end-user's own device/browser reporting on
+    itself, so gating them behind a client credential would break the real
+    flow (no session system exists for that caller). Consent-gating already
+    stops silent data collection; this bounds abuse volume against a
+    frek_id that HAS granted consent."""
+    return not await check_rate_limit(scope=frek_id, action="fingerprint_observe")
+
+
 @fp_router.post("/observe/device")
 async def observe_device(payload: DeviceObservation):
     if not await has_consent(payload.frek_id, "device"):
         # Silence : on accuse reception sans collecter (zero fuite info)
         return {"recorded": False, "reason": "consent_required"}
+    if await _fp_rate_limited(payload.frek_id):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
     return await device_mod.observe(payload.frek_id, payload.raw_device_hash, payload.surface)
 
 
@@ -97,6 +124,8 @@ class NFCScan(BaseModel):
 async def observe_nfc(payload: NFCScan):
     if not await has_consent(payload.frek_id, "coupling"):
         return {"recorded": False, "reason": "consent_required"}
+    if await _fp_rate_limited(payload.frek_id):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
     return await layers_mod.record_nfc_scan(payload.frek_id, payload.nfc_scan_id, payload.surface)
 
 
@@ -109,6 +138,8 @@ class WebVerify(BaseModel):
 async def observe_web_verify(payload: WebVerify):
     if not await has_consent(payload.frek_id, "coupling"):
         return {"coupled": False, "reason": "consent_required"}
+    if await _fp_rate_limited(payload.frek_id):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
     return await layers_mod.record_web_verify(payload.frek_id, payload.nfc_scan_id)
 
 

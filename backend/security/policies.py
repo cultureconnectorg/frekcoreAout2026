@@ -25,6 +25,15 @@ DEFAULT_LIMITS = {
     "stage_transition": (int(os.environ.get("FREK_RATE_STAGE_PER_HOUR", "500")), 3600),
     "staff_login_fail": (5, 900),  # 5 echecs / 15 min => lockout
     "scan_access": (int(os.environ.get("FREK_RATE_SCAN_PER_HOUR", "5000")), 3600),
+    # Added under the P0 unauthenticated-mutation review (docs/decisions/0001-...):
+    # these three actions are device/participant-originated and would break their
+    # real client if gated behind an admin/client credential (no session system
+    # exists for the callers), so they stay reachable without auth but are rate
+    # limited per-subject instead — see fingerprint/routes.py, geo/routes.py,
+    # services/stripe_pay.py for where each is called and why.
+    "fingerprint_observe": (int(os.environ.get("FREK_RATE_FP_OBSERVE_PER_HOUR", "120")), 3600),
+    "geo_observe": (int(os.environ.get("FREK_RATE_GEO_OBSERVE_PER_HOUR", "120")), 3600),
+    "checkout_create": (int(os.environ.get("FREK_RATE_CHECKOUT_PER_HOUR", "20")), 3600),
 }
 
 

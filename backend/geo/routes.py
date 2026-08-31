@@ -1,12 +1,14 @@
 """FREK Geo — Routes HTTP /api/geo/*."""
 import logging
+import os
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from . import encoder, satellite, service
 from notary.service import notarize_event
+from security.policies import check_rate_limit
 
 logger = logging.getLogger("frek.geo.routes")
 
@@ -15,6 +17,15 @@ geo_router = APIRouter(prefix="/geo", tags=["FREK Geo — Couche geolocalite sou
 
 def set_db(database):
     service.set_db(database)
+
+
+def _admin_or_403(x_admin_key: str):
+    """Same pattern as fingerprint/routes.py's helper of the same name (kept
+    local per this codebase's existing per-module convention — see also
+    sync/routes.py's own _require_admin). docs/decisions/0001-... ."""
+    expected = os.environ.get("SECRET_KEY")
+    if not expected or x_admin_key != expected:
+        raise HTTPException(status_code=403, detail="invalid_admin_key")
 
 
 # ---------- Encode (zero call externe) ----------
@@ -40,7 +51,13 @@ async def get_consent(frek_id: str):
 
 
 @geo_router.post("/consent/{frek_id}")
-async def set_consent(frek_id: str, req: ConsentRequest):
+async def set_consent(
+    frek_id: str, req: ConsentRequest, x_admin_key: str = Header(default="")
+):
+    """P0 fix (docs/decisions/0001-...): was reachable with no credential at
+    all, same class of finding as fingerprint's consent write. Same interim
+    admin-key gate, same caveat: not true per-holder authorization yet."""
+    _admin_or_403(x_admin_key)
     try:
         return await service.set_consent(frek_id, req.level)
     except ValueError as e:
@@ -59,6 +76,14 @@ class ObserveRequest(BaseModel):
 
 @geo_router.post("/observe")
 async def observe(req: ObserveRequest):
+    """P0 review (docs/decisions/0001-...): device-originated, same reasoning
+    as fingerprint/routes.py's /observe/* — gating behind a client credential
+    would break the real reporting-device flow, no session system exists for
+    that caller. service.observe() already refuses when consent level is
+    "none"; rate-limited here per FREK-ID to bound abuse against a subject
+    that HAS granted consent."""
+    if not await check_rate_limit(scope=req.frek_id, action="geo_observe"):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
     return await service.observe(
         frek_id=req.frek_id,
         lat=req.lat,
@@ -70,7 +95,16 @@ async def observe(req: ObserveRequest):
 
 
 @geo_router.get("/trail/{frek_id}")
-async def get_trail(frek_id: str, limit: int = Query(50, ge=1, le=500)):
+async def get_trail(
+    frek_id: str,
+    limit: int = Query(50, ge=1, le=500),
+    x_admin_key: str = Header(default=""),
+):
+    """P0 fix (docs/decisions/0001-...): full raw location history is
+    materially more sensitive than the consent-level reads left public
+    elsewhere in this file — gated the same way fingerprint/routes.py gates
+    its own sensitive reads (GET /{frek_id}, /export/{frek_id})."""
+    _admin_or_403(x_admin_key)
     return await service.get_trail(frek_id, limit=limit)
 
 
@@ -129,7 +163,7 @@ class GeoNotarizeRequest(BaseModel):
 
 
 @geo_router.post("/notarize")
-async def geo_notarize(req: GeoNotarizeRequest):
+async def geo_notarize(req: GeoNotarizeRequest, x_admin_key: str = Header(default="")):
     """Ancre une presence geo-situee dans FREK-Chain + Bitcoin OTS.
 
     Le payload notarise contient le couple (plus_code, h3_9, sentinel_tile, capture_date).
@@ -137,7 +171,13 @@ async def geo_notarize(req: GeoNotarizeRequest):
     qu'a telle date il existait une image satellite reelle correspondant a la zone.
 
     Respecte le consentement : si level=='none', retourne 403 sans appel notary.
+
+    P0 fix (docs/decisions/0001-...): unlike /observe (high-frequency,
+    device-originated), notarizing is rare and consequential (writes a
+    permanent FREK-Chain block and attempts a Bitcoin OTS submission) —
+    gated the same way as fingerprint's low-frequency, high-stakes /match.
     """
+    _admin_or_403(x_admin_key)
     consent = await service.get_consent(req.frek_id)
     if consent.get("level", "none") == "none":
         raise HTTPException(status_code=403, detail="consent_required")

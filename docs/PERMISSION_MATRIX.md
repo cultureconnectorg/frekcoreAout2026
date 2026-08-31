@@ -50,17 +50,17 @@ This is a first-pass matrix built from real code, not a claim of formal security
 | `staff` (`scan_router`) | 7 | SYSTEM/AGENT | `require_staff_perm` |
 | `security` (`security_router`) | 3 | ADMIN | `verify_admin_key` (Phase 1 audit) |
 | `email_service` (`email_router`) | 4 | AUTHENTICATED (client API key) | `require_permission` |
-| `services` (`stripe_router`) | 3 | **FLAG** (see below) | No auth detected on `/checkout` |
+| `services` (`stripe_router`) | 3 | **PUBLIC-BY-DESIGN, hardened** — see `reports/22_P0_SECURITY_CLOSURE.md` | `POST /checkout` (real path: `/api/payments/checkout`, corrected — was wrongly listed as `/api/v1/checkout`) intentionally left uncredentialed (no account system exists for its caller); rate-limited per `badge_id` |
 | `services` (`webhook_router`) | 1 | INTERNAL / PUBLIC-SECRET | Stripe signature verification inside the handler (`backend/services/webhook.py`, not a FastAPI dependency) |
 | `sync` (`sync_router`) | 6 | mixed — **corrected** | `/baserow/webhook` is PUBLIC-SECRET (HMAC, `backend/sync/routes.py:276-277`); `/status`, `/push/{frek_id}`, `/push`, `/pull`, `/log` all call `_require_admin(x_admin_key)` in-body (`backend/sync/routes.py:35`, an admin-key check not expressed as a `Depends(...)`, which is why the first pass missed it) — ADMIN, real |
 | `heritage` (`heritage_router`) | 6 | mixed — **corrected** | `/claim` is PUBLIC-SECRET (documented: "Public (pas d'auth): la preuve repose sur le secret partagé hors-bande", `backend/heritage/routes.py:216`); `/{frek_id}/declare`, `/{frek_id}` GET/DELETE, `/{frek_id}/transfer` all require `Depends(_auth_require_permission(...))` (`backend/heritage/routes.py:56-58,98,170,184,298` — a locally-wrapped `frek_v1.auth.require_permission`, also missed by the first pass) — AUTHENTICATED, real; `/lineage/{frek_id}` is intentionally PUBLIC (own docstring: "Lignee complete et publique", excludes `claim_secret_hash`) |
-| `fingerprint` (`fp_router`) | 8 | **FLAG** (see below) | `/consent/{frek_id}` writer comment admits intended-owner-scope, not enforced |
-| `geo` (`geo_router`) | 9 | **FLAG** (see below) | Same pattern as `fingerprint` — consent-gated but not owner-authenticated |
+| `fingerprint` (`fp_router`) | 8 | **mixed — HARDENED**, see `reports/22_P0_SECURITY_CLOSURE.md` | `/consent/{frek_id}` write now ADMIN-gated (interim, not true owner-scope — tracked); `/observe/*` rate-limited per FREK-ID (unchanged: consent-gated, no caller credential — device flow); `/{frek_id}` GET, `/match`, `/export/{frek_id}` were **already** ADMIN-gated pre-existing (the original matrix pass wrongly listed `/match` as unauthenticated too — corrected) |
+| `geo` (`geo_router`) | 9 | **mixed — HARDENED**, see `reports/22_P0_SECURITY_CLOSURE.md` | `/consent/{frek_id}` write, `/trail/{frek_id}` read, `/notarize` now ADMIN-gated (new); `/observe` rate-limited per FREK-ID (consent-gated in `service.py`, no caller credential — device flow); `/encode`, `/heatmap`, `/satellite*` remain PUBLIC (stateless/anonymized, verified unaffected) |
 | `did`/`vc` (`did_router`, `vc_router`) | 4 | PUBLIC | DID/VC resolution and verification are meant to be publicly verifiable (W3C DID/VC design intent) |
 | `eudi` (`eudi_router`, `wellknown_router`) | 6 | PUBLIC (protocol-mandated) | OID4VCI endpoints (`/token`, `/credential`, `/credential-offer/{id}`) are inherently public-facing per the OpenID4VCI spec — the wallet calls them without a FREKCORE-issued credential (that's the point of the protocol) |
 | `frek` (`frek_router`, `advanced_router`) | 33 | **LEGACY, PUBLIC, unaudited in depth** | `frek/routes.py` header: "FREK v2 — Routes API" — legacy/superseded surface (see `reports/FREKCORE_CONTRADICTIONS.md`), mounted at unversioned `/api` (not `/api/v1`) |
 | `moment` (`moment_router`) | 6 | PUBLIC | Documented doctrine: "Endpoint public, anonyme, sans auth" (`backend/moment/routes.py:4`) |
-| `counter` (`counter_router`) | 5 | **FLAG** | `POST ""` (batch ingest) has no auth found |
+| `counter` (`counter_router`) | 5 | **mixed — HARDENED**, see `reports/22_P0_SECURITY_CLOSURE.md` | `POST` (batch ingest, real path: `/api/core/count` — corrected, was wrongly listed as `/api/count`) now ADMIN-gated; `/sources`, `/rules`, `/stats` remain PUBLIC read-only reference data |
 | `core` (`core_router`) | 5 | AUTHENTICATED | Live-traffic evidence: `POST /api/core/ingest` returned `403 Forbidden` against the mongomock run without credentials (`reports/16_INTEGRATION_TEST_BASELINE.md`) — real protection exists even though the automated scanner didn't attribute it to a named dependency in this pass |
 | `standards`, `ecosystem`, `spec`, `seal` | 12 | PUBLIC | Documentation/manifest endpoints, intentionally public |
 | `server` (`api_router`) | 3 | PUBLIC, **dead code** | `GET /`, `POST /status`, `GET /status` are the unmodified FastAPI project-template scaffold (`StatusCheck`/`StatusCheckCreate`, `backend/server.py:175-212`) — not a FREKCORE product route, see `reports/FREKCORE_COMPLETION_BACKLOG.md` |
@@ -92,11 +92,15 @@ These are the routes this pass could not attribute to any real auth mechanism af
 
 | Route | Evidence | Risk assessment |
 |---|---|---|
-| `POST /api/v1/core/fingerprint/consent/{frek_id}` | `backend/fingerprint/routes.py:57`, docstring literally says "Le porteur (ou un client autorisé mandaté par lui)" with no code enforcing that claim | Anyone can flip another FREK-ID's consent flags |
-| `POST /api/v1/core/fingerprint/observe/*`, `/match` | `backend/fingerprint/routes.py:82,96,108,175` | Anyone can submit fingerprint observations against any FREK-ID |
-| `POST /api/geo/consent/{frek_id}`, `/observe`, `/notarize`, `/encode` | `backend/geo/routes.py:26,42,60,131` | Same pattern as fingerprint — consent is checked, but nothing authenticates the caller as the consent-setter |
-| `POST /api/core/count` (`counter_router`, empty path = router prefix root) | `backend/counter/routes.py:33` | Open batch-ingest of arbitrary counted entries |
-| `POST /api/v1/checkout` (`stripe_router`) | `backend/services/stripe_pay.py:46` | Anyone can create a Stripe Checkout session (financial-adjacent; the actual charge still requires real payment details at Stripe, but session creation itself is unauthenticated) |
+**All rows below are CLOSED — see `reports/22_P0_SECURITY_CLOSURE.md` for the full per-route disposition, kept here for the historical record and because two of the paths listed were themselves wrong (corrected in the closure report).** `/api/geo/encode` was included in the original list in error — it is stateless, has no `frek_id`, and writes nothing; it was never a real finding.
+
+| Route (as originally listed) | Original evidence | Original risk assessment | Disposition |
+|---|---|---|---|
+| `POST /api/v1/core/fingerprint/consent/{frek_id}` (real path: `/api/core/fingerprint/consent/{frek_id}`) | `backend/fingerprint/routes.py:57` | Anyone can flip another FREK-ID's consent flags | **CLOSED** — ADMIN-gated |
+| `POST /api/v1/core/fingerprint/observe/*`, `/match` | `backend/fingerprint/routes.py:82,96,108,175` | Anyone can submit fingerprint observations against any FREK-ID | **`/match` was already ADMIN-gated pre-existing** (false positive in the original scan, same class as the notary finding above); `/observe/*` rate-limited (device flow, auth would break it — see closure report) |
+| `POST /api/geo/consent/{frek_id}`, `/observe`, `/notarize` | `backend/geo/routes.py:42,60,131` | Consent is checked, but nothing authenticates the caller | **CLOSED** — consent/notarize ADMIN-gated, observe rate-limited |
+| `POST /api/core/count` (real path corrected — was listed as `/api/count`) | `backend/counter/routes.py:33` | Open batch-ingest of arbitrary counted entries | **CLOSED** — ADMIN-gated |
+| `POST /api/payments/checkout` (real path corrected — was listed as `/api/v1/checkout`) | `backend/services/stripe_pay.py:46` | Anyone can create a Stripe Checkout session | **Reviewed and left PUBLIC by design** (no fund movement possible from this endpoint — see closure report), hardened with a rate limit |
 
 ## PUBLIC-by-design (verified, not a finding)
 
@@ -111,7 +115,7 @@ These are the routes this pass could not attribute to any real auth mechanism af
 
 **Wired**: nothing new was added to any of the FLAG routes above. Given this sandbox's Docker/MongoDB access is blocked at the network-policy level (`reports/16_INTEGRATION_TEST_BASELINE.md` §1) for anything beyond the `mongomock`-substitute run, and every one of these routes is exercised by the pre-existing 335-test integration suite in ways this session cannot fully regression-test against real MongoDB semantics, adding enforcement blind would risk exactly the outcome Priority 3's rules forbid ("no weakening security to make tests pass" cuts both ways — it also means not adding security that might silently break a legitimate existing caller without being able to prove it doesn't).
 
-**What this phase does instead**: this matrix itself, handed to whoever wires enforcement next with `backend/permissions/` (Phase 2, still not wired into any route) as the mechanism. `fingerprint/*` and `geo/*`'s consent/observe/match routes are the clear P0 items now that `notary`/`anchor` are confirmed already enforced (see the correction note above) — see `reports/FREKCORE_COMPLETION_BACKLOG.md`.
+**Update (founder directive, docs/decisions/0001-founder-decisions-2026-08-31.md)**: the FLAG table above is now fully closed — see `reports/22_P0_SECURITY_CLOSURE.md` for the per-route WHO/WHAT/AUTHORITY/AUDIT/FAILURE analysis and evidence. `backend/permissions/` (Phase 2's role/scope model) was still not wired into any route as the mechanism for this closure — the fixes reuse the codebase's existing, simpler admin-key and rate-limit primitives instead, since wiring the full permission engine is a larger change than a scoped P0 closure warranted. Real per-holder (owner-scoped) authorization for fingerprint/geo consent remains a genuine gap, tracked against Contradiction C1's identity reconciliation.
 
 ## Routes not fully audited this pass
 
