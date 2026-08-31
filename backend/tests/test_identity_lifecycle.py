@@ -16,11 +16,12 @@ available here). That specific branch is verified by direct code review
 instead (backend/identity_engine/routes.py's register_begin/complete),
 recorded here rather than silently left untested with no explanation.
 """
+
 import os
+import secrets
 
 import pytest
 import requests
-
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api/v1/identity"
@@ -57,7 +58,12 @@ class TestRevoke:
 
     def test_revoke_with_admin_key_works_and_is_idempotent(self, fresh_identity):
         fid = fresh_identity["frek_id"]
-        r1 = requests.post(f"{API}/{fid}/revocation", json={"reason": "test"}, headers=H_admin(), timeout=5)
+        r1 = requests.post(
+            f"{API}/{fid}/revocation",
+            json={"reason": "test"},
+            headers=H_admin(),
+            timeout=5,
+        )
         assert r1.status_code == 200, r1.text
         assert r1.json()["status"] == "revoked"
 
@@ -66,7 +72,9 @@ class TestRevoke:
         assert pub["status"] == "revoked"
 
         # Second revoke is idempotent, not an error
-        r2 = requests.post(f"{API}/{fid}/revocation", json={}, headers=H_admin(), timeout=5)
+        r2 = requests.post(
+            f"{API}/{fid}/revocation", json={}, headers=H_admin(), timeout=5
+        )
         assert r2.status_code == 200
         assert "Deja revoque" in r2.json()["message"]
 
@@ -74,12 +82,20 @@ class TestRevoke:
         fid = fresh_identity["frek_id"]
         requests.post(f"{API}/{fid}/revocation", json={}, headers=H_admin(), timeout=5)
         r = requests.patch(
-            f"{API}/{fid}", json={"display_name": "new name"}, headers=H_admin(), timeout=5
+            f"{API}/{fid}",
+            json={"display_name": "new name"},
+            headers=H_admin(),
+            timeout=5,
         )
         assert r.status_code == 409
 
     def test_revoke_unknown_frek_id_returns_404(self):
-        r = requests.post(f"{API}/id-000000000000-0000/revocation", json={}, headers=H_admin(), timeout=5)
+        r = requests.post(
+            f"{API}/id-000000000000-0000/revocation",
+            json={},
+            headers=H_admin(),
+            timeout=5,
+        )
         assert r.status_code == 404
 
 
@@ -92,7 +108,10 @@ class TestUpdate:
     def test_update_display_name_with_admin_key(self, fresh_identity):
         fid = fresh_identity["frek_id"]
         r = requests.patch(
-            f"{API}/{fid}", json={"display_name": "Laurentia"}, headers=H_admin(), timeout=5
+            f"{API}/{fid}",
+            json={"display_name": "Laurentia"},
+            headers=H_admin(),
+            timeout=5,
         )
         assert r.status_code == 200, r.text
         assert r.json()["display_name"] == "Laurentia"
@@ -100,7 +119,10 @@ class TestUpdate:
     def test_update_metadata_with_admin_key(self, fresh_identity):
         fid = fresh_identity["frek_id"]
         r = requests.patch(
-            f"{API}/{fid}", json={"metadata": {"locale": "fr"}}, headers=H_admin(), timeout=5
+            f"{API}/{fid}",
+            json={"metadata": {"locale": "fr"}},
+            headers=H_admin(),
+            timeout=5,
         )
         assert r.status_code == 200, r.text
 
@@ -118,14 +140,21 @@ class TestArchive:
 
     def test_archive_with_admin_key_works_and_is_idempotent(self, fresh_identity):
         fid = fresh_identity["frek_id"]
-        r1 = requests.post(f"{API}/{fid}/archive", json={"reason": "unused"}, headers=H_admin(), timeout=5)
+        r1 = requests.post(
+            f"{API}/{fid}/archive",
+            json={"reason": "unused"},
+            headers=H_admin(),
+            timeout=5,
+        )
         assert r1.status_code == 200, r1.text
         assert r1.json()["status"] == "archived"
 
         pub = requests.get(f"{API}/{fid}", timeout=5).json()
         assert pub["status"] == "archived"
 
-        r2 = requests.post(f"{API}/{fid}/archive", json={}, headers=H_admin(), timeout=5)
+        r2 = requests.post(
+            f"{API}/{fid}/archive", json={}, headers=H_admin(), timeout=5
+        )
         assert r2.status_code == 200
         assert "Deja archivee" in r2.json()["message"]
 
@@ -141,8 +170,82 @@ class TestRegisterBeginStillBootstraps:
     zero-credential identity — that is register/begin's real bootstrap
     purpose and must stay open."""
 
-    def test_fresh_anonymous_identity_can_still_start_registration(self, fresh_identity):
+    def test_fresh_anonymous_identity_can_still_start_registration(
+        self, fresh_identity
+    ):
         fid = fresh_identity["frek_id"]
         r = requests.post(f"{API}/{fid}/register/begin", json={}, timeout=5)
         assert r.status_code == 200, r.text
         assert "challenge" in r.json()
+
+
+class TestSearch:
+    """P1 backlog: closes docs/PHASE2_STATUS.md's "Search | NOT IMPLEMENTED"
+    Identity Engine row. Admin-only by design — see
+    identity_engine/routes.py's search_identities() docstring for why no
+    holder path exists here (a bulk-listing surface, unlike every other
+    gated route in this module)."""
+
+    def test_without_admin_key_is_403(self):
+        r = requests.get(f"{API}/search", timeout=5)
+        assert r.status_code == 403
+
+    def test_with_wrong_admin_key_is_403(self):
+        r = requests.get(
+            f"{API}/search", headers={"X-Admin-Key": "not-the-real-key"}, timeout=5
+        )
+        assert r.status_code == 403
+
+    def test_matches_by_display_name_substring_case_insensitive(self):
+        unique = f"SearchTarget-{secrets.token_hex(4)}"
+        create = requests.post(
+            f"{API}/init",
+            json={"identity_type": "individual", "display_name": unique},
+            timeout=5,
+        )
+        assert create.status_code == 200, create.text
+        fid = create.json()["frek_id"]
+
+        r = requests.get(
+            f"{API}/search",
+            params={"display_name": unique.lower()},
+            headers=H_admin(),
+            timeout=5,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert any(i["frek_id"] == fid for i in body["identities"])
+
+    def test_filters_by_identity_type(self):
+        unique = f"TypeFilter-{secrets.token_hex(4)}"
+        create = requests.post(
+            f"{API}/init",
+            json={"identity_type": "institution", "display_name": unique},
+            timeout=5,
+        )
+        fid = create.json()["frek_id"]
+
+        r = requests.get(
+            f"{API}/search",
+            params={"identity_type": "institution", "display_name": unique},
+            headers=H_admin(),
+            timeout=5,
+        )
+        assert r.status_code == 200, r.text
+        assert all(i["identity_type"] == "institution" for i in r.json()["identities"])
+        assert any(i["frek_id"] == fid for i in r.json()["identities"])
+
+    def test_never_leaks_credentials(self):
+        r = requests.get(f"{API}/search", headers=H_admin(), timeout=5)
+        assert r.status_code == 200, r.text
+        for identity in r.json()["identities"]:
+            assert "credentials" not in identity
+
+    def test_search_does_not_shadow_frek_id_lookup(self):
+        """Route-order regression guard: GET /search must be registered
+        before GET /{frek_id}, or FastAPI would treat "search" as a
+        frek_id and this endpoint would be permanently unreachable — the
+        same class of bug fixed in TestRevoke's /revocation rename."""
+        r = requests.get(f"{API}/search", headers=H_admin(), timeout=5)
+        assert r.status_code == 200
+        assert "identities" in r.json()

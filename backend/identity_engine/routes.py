@@ -13,6 +13,7 @@ Endpoints publics :
 - POST /identity/{frek_id}/revocation     -> revocation (titulaire ou admin) [P1]
 - PATCH /identity/{frek_id}               -> mise a jour display_name/metadata [P1]
 - POST /identity/{frek_id}/archive        -> archivage soft (titulaire ou admin) [P1]
+- GET  /identity/search                   -> recherche/liste, admin uniquement [P1]
 
 Priorite 1 items (revoke/update/archive) close the "MISSING since Phase 1"
 finding in reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md's Identity
@@ -32,9 +33,11 @@ docs/architecture/FREK_ID_RECONCILIATION.md for the full writeup — this
 collision is concrete proof of C1's real-world impact, found while building
 this feature.
 """
+
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -103,26 +106,34 @@ async def ensure_indexes():
     await db.frek_persons.create_index("frek_id", unique=True)
     await db.frek_persons.create_index("credentials.credential_id")
     await db.frek_persons.create_index("linked_sessions")
-    await db.frek_persons_challenges.create_index("created_at", expireAfterSeconds=CHALLENGE_TTL_SECONDS)
+    await db.frek_persons_challenges.create_index(
+        "created_at", expireAfterSeconds=CHALLENGE_TTL_SECONDS
+    )
     await db.frek_persons_challenges.create_index("frek_id")
     await db.frek_persons_challenges.create_index("challenge", unique=True)
 
 
 async def _store_challenge(challenge_b64: str, frek_id: Optional[str], kind: str):
-    await db.frek_persons_challenges.insert_one({
-        "challenge": challenge_b64,
-        "frek_id": frek_id,
-        "kind": kind,  # "register" | "authenticate"
-        "created_at": datetime.now(timezone.utc),
-    })
+    await db.frek_persons_challenges.insert_one(
+        {
+            "challenge": challenge_b64,
+            "frek_id": frek_id,
+            "kind": kind,  # "register" | "authenticate"
+            "created_at": datetime.now(timezone.utc),
+        }
+    )
 
 
 async def _pop_challenge(challenge_b64: str) -> Optional[dict]:
-    doc = await db.frek_persons_challenges.find_one_and_delete({"challenge": challenge_b64})
+    doc = await db.frek_persons_challenges.find_one_and_delete(
+        {"challenge": challenge_b64}
+    )
     return doc
 
 
-def _holder_or_admin(frek_id: str, x_frek_session: Optional[str], x_admin_key: str) -> str:
+def _holder_or_admin(
+    frek_id: str, x_frek_session: Optional[str], x_admin_key: str
+) -> str:
     """Returns "holder" if x_frek_session verifies as frek_id, "admin" if
     x_admin_key matches SECRET_KEY, else raises 403.
 
@@ -142,6 +153,15 @@ def _holder_or_admin(frek_id: str, x_frek_session: Optional[str], x_admin_key: s
     raise HTTPException(403, "Autorisation requise (session du titulaire ou cle admin)")
 
 
+def _admin_or_403(x_admin_key: str) -> None:
+    """Admin-only, no holder path — see search_identities()'s docstring
+    for why (a bulk-listing surface has no per-holder analog, unlike every
+    other gated route in this module)."""
+    expected = os.environ.get("SECRET_KEY")
+    if not expected or x_admin_key != expected:
+        raise HTTPException(403, "invalid_admin_key")
+
+
 def _to_public(identity: dict) -> dict:
     return {
         "frek_id": identity["frek_id"],
@@ -156,6 +176,7 @@ def _to_public(identity: dict) -> dict:
 
 
 # ---------------- INIT ----------------
+
 
 @identity_router.post("/init")
 async def init_identity(req: InitIdentityRequest):
@@ -187,15 +208,19 @@ async def init_identity(req: InitIdentityRequest):
         try:
             _event_bus.publish(_build_identity_created_event(identity))
         except Exception:
-            logger.warning("identity.created event publish failed (non-blocking)", exc_info=True)
+            logger.warning(
+                "identity.created event publish failed (non-blocking)", exc_info=True
+            )
 
     # Compte les moments deja signes sous cette session (pour affichage UI)
     linked_moments_count = 0
     if req.session_id:
-        linked_moments_count = await db.frek_identities.count_documents({
-            "client_id": "public-window-1",
-            "metadata.session_id": req.session_id,
-        })
+        linked_moments_count = await db.frek_identities.count_documents(
+            {
+                "client_id": "public-window-1",
+                "metadata.session_id": req.session_id,
+            }
+        )
 
     return {
         **_to_public(identity),
@@ -205,9 +230,12 @@ async def init_identity(req: InitIdentityRequest):
 
 # ---------------- REGISTER ----------------
 
+
 @identity_router.post("/{frek_id}/register/begin")
 async def register_begin(
-    frek_id: str, req: RegisterBeginRequest, x_frek_session: Optional[str] = Header(None)
+    frek_id: str,
+    req: RegisterBeginRequest,
+    x_frek_session: Optional[str] = Header(None),
 ):
     """Genere les options WebAuthn pour enregistrer une Passkey.
 
@@ -227,7 +255,9 @@ async def register_begin(
     if identity.get("credentials") and (
         not x_frek_session or service.verify_session_token(x_frek_session) != frek_id
     ):
-        raise HTTPException(403, "Session du titulaire requise pour ajouter une Passkey")
+        raise HTTPException(
+            403, "Session du titulaire requise pour ajouter une Passkey"
+        )
 
     options_json, challenge_b64 = service.registration_options(
         frek_id=frek_id,
@@ -241,7 +271,9 @@ async def register_begin(
 
 @identity_router.post("/{frek_id}/register/complete")
 async def register_complete(
-    frek_id: str, req: RegisterCompleteRequest, x_frek_session: Optional[str] = Header(None)
+    frek_id: str,
+    req: RegisterCompleteRequest,
+    x_frek_session: Optional[str] = Header(None),
 ):
     """Verifie la Passkey et l'attache a l'identite. Retourne un session token.
 
@@ -255,9 +287,13 @@ async def register_complete(
     if identity.get("credentials") and (
         not x_frek_session or service.verify_session_token(x_frek_session) != frek_id
     ):
-        raise HTTPException(403, "Session du titulaire requise pour ajouter une Passkey")
+        raise HTTPException(
+            403, "Session du titulaire requise pour ajouter une Passkey"
+        )
     if identity.get("status") in ("revoked", "archived"):
-        raise HTTPException(403, f"Identite {identity.get('status')} — ajout de Passkey refuse")
+        raise HTTPException(
+            403, f"Identite {identity.get('status')} — ajout de Passkey refuse"
+        )
 
     cred = req.credential or {}
     # Le challenge attendu est retrouve via la derniere entree register pour ce frek_id
@@ -266,7 +302,9 @@ async def register_complete(
         sort=[("created_at", -1)],
     )
     if not challenge_doc:
-        raise HTTPException(400, "Challenge introuvable ou expire — recommence l'enregistrement")
+        raise HTTPException(
+            400, "Challenge introuvable ou expire — recommence l'enregistrement"
+        )
 
     try:
         cred_info = service.verify_registration(cred, challenge_doc["challenge"])
@@ -306,10 +344,13 @@ async def register_complete(
 
 # ---------------- AUTHENTICATE ----------------
 
+
 @identity_router.post("/authenticate/begin")
 async def authenticate_begin(req: AuthBeginRequest):
     """Auth WebAuthn username-less. Retourne un challenge public."""
-    options_json, challenge_b64 = service.authentication_options(allowed_credentials=None)
+    options_json, challenge_b64 = service.authentication_options(
+        allowed_credentials=None
+    )
     await _store_challenge(challenge_b64, None, "authenticate")
     return json.loads(options_json)
 
@@ -330,14 +371,18 @@ async def authenticate_complete(req: AuthCompleteRequest):
         raise HTTPException(400, "Challenge auth introuvable ou expire")
 
     # Retrouver l'identite qui possede ce credential
-    identity = await db.frek_persons.find_one({"credentials.credential_id": credential_id})
+    identity = await db.frek_persons.find_one(
+        {"credentials.credential_id": credential_id}
+    )
     if not identity:
         raise HTTPException(404, "Passkey inconnue")
     if identity.get("status") in ("revoked", "archived"):
         # Real enforcement for revoke/archive (P1) — a revoked/archived
         # identity's Passkey must not be able to mint a new session, or
         # revoke would be a label, not a security control.
-        raise HTTPException(403, f"Identite {identity.get('status')} — authentification refusee")
+        raise HTTPException(
+            403, f"Identite {identity.get('status')} — authentification refusee"
+        )
 
     target_cred = next(
         (c for c in identity["credentials"] if c["credential_id"] == credential_id),
@@ -378,6 +423,7 @@ async def authenticate_complete(req: AuthCompleteRequest):
 
 # ---------------- QUERIES ----------------
 
+
 @identity_router.get("/me")
 async def get_me(x_frek_session: Optional[str] = Header(None)):
     """Retourne l'identite courante via le session token."""
@@ -392,6 +438,58 @@ async def get_me(x_frek_session: Optional[str] = Header(None)):
     return _to_public(identity)
 
 
+@identity_router.get("/search")
+async def search_identities(
+    display_name: Optional[str] = None,
+    status: Optional[str] = None,
+    identity_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    x_admin_key: str = Header(default=""),
+):
+    """P1 backlog (closes the "Search" entry in docs/PHASE2_STATUS.md's
+    Identity Engine table, `MISSING` since Phase 2): a directory-listing
+    query surface over `frek_persons`.
+
+    ADMIN-key only — no holder path, unlike revoke/update/archive/export
+    above. Those are all single-subject operations a holder legitimately
+    performs on their OWN record; search is structurally different, a
+    bulk-listing/enumeration surface across MANY identities, which has no
+    per-holder analog (a holder searching for OTHER people's identities
+    isn't a holder-scoped action at all — it's an operator/support tool).
+    This is the "architecture explicitly requires it" admin-key case, not
+    an interim shortcut: there is no existing per-holder mechanism this
+    could use even in principle, unlike fingerprint/geo's consent routes
+    (see docs/architecture/FREK_ID_RECONCILIATION.md).
+
+    `display_name` matches as a case-insensitive substring; `status`/
+    `identity_type` match exactly against the enums in
+    `identity_engine/models.py`.
+    """
+    _admin_or_403(x_admin_key)
+
+    limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+    query: dict = {}
+    if display_name:
+        query["display_name"] = {"$regex": re.escape(display_name), "$options": "i"}
+    if status:
+        query["status"] = status
+    if identity_type:
+        query["identity_type"] = identity_type
+
+    cursor = (
+        db.frek_persons.find(query).sort("created_at", -1).skip(offset).limit(limit)
+    )
+    docs = await cursor.to_list(limit)
+    total = await db.frek_persons.count_documents(query)
+    return {
+        "count": len(docs),
+        "total": total,
+        "identities": [_to_public(d) for d in docs],
+    }
+
+
 @identity_router.get("/{frek_id}")
 async def get_identity(frek_id: str):
     """Vue publique safe (jamais de credentials en clair)."""
@@ -402,12 +500,16 @@ async def get_identity(frek_id: str):
 
 
 @identity_router.get("/{frek_id}/objects")
-async def get_linked_objects(frek_id: str, x_frek_session: Optional[str] = Header(None)):
+async def get_linked_objects(
+    frek_id: str, x_frek_session: Optional[str] = Header(None)
+):
     """Liste des objets attaches. Requiert session valide pour le frek_id demande."""
     if not x_frek_session or service.verify_session_token(x_frek_session) != frek_id:
         raise HTTPException(401, "Session invalide pour cet identity")
 
-    identity = await db.frek_persons.find_one({"frek_id": frek_id}, {"_id": 0, "credentials": 0})
+    identity = await db.frek_persons.find_one(
+        {"frek_id": frek_id}, {"_id": 0, "credentials": 0}
+    )
     if not identity:
         raise HTTPException(404, "Identity introuvable")
 
@@ -417,15 +519,24 @@ async def get_linked_objects(frek_id: str, x_frek_session: Optional[str] = Heade
 
     moments = []
     if sessions:
-        cursor = db.frek_identities.find(
-            {"client_id": "public-window-1", "metadata.session_id": {"$in": sessions}},
-            {"_id": 0, "email_hash": 0, "metadata.ip_key": 0},
-        ).sort("created_at", -1).limit(200)
+        cursor = (
+            db.frek_identities.find(
+                {
+                    "client_id": "public-window-1",
+                    "metadata.session_id": {"$in": sessions},
+                },
+                {"_id": 0, "email_hash": 0, "metadata.ip_key": 0},
+            )
+            .sort("created_at", -1)
+            .limit(200)
+        )
         moments = await cursor.to_list(200)
 
     fks = []
     if linked_ids:
-        cursor = db.fk_objects.find({"frek_id": {"$in": list(linked_ids)}}, {"_id": 0, "storage_path": 0})
+        cursor = db.fk_objects.find(
+            {"frek_id": {"$in": list(linked_ids)}}, {"_id": 0, "storage_path": 0}
+        )
         fks = await cursor.to_list(200)
 
     return {
@@ -461,6 +572,7 @@ async def link_object(payload: dict, x_frek_session: Optional[str] = Header(None
 # admin-key override, modeled on (not copied from) frek_v1's
 # client-initiated revoke (backend/frek_v1/identity.py:201).
 
+
 @identity_router.post("/{frek_id}/revocation")
 async def revoke_identity(
     frek_id: str,
@@ -488,12 +600,14 @@ async def revoke_identity(
     now = service.now_iso()
     await db.frek_persons.update_one(
         {"frek_id": frek_id},
-        {"$set": {
-            "status": "revoked",
-            "revoked_at": now,
-            "revoked_by": revoked_by,
-            "revoke_reason": req.reason,
-        }},
+        {
+            "$set": {
+                "status": "revoked",
+                "revoked_at": now,
+                "revoked_by": revoked_by,
+                "revoke_reason": req.reason,
+            }
+        },
     )
 
     if _notarize_event is not None:
@@ -515,7 +629,9 @@ async def revoke_identity(
                 _build_identity_revoked_event(frek_id, now, revoked_by, req.reason)
             )
         except Exception:
-            logger.warning("identity.revoked event publish failed (non-blocking)", exc_info=True)
+            logger.warning(
+                "identity.revoked event publish failed (non-blocking)", exc_info=True
+            )
 
     logger.info(f"FREK identity {frek_id} revoquee par {revoked_by}")
     return {
@@ -563,9 +679,13 @@ async def update_identity(
 
     if _event_bus is not None and _build_identity_updated_event is not None:
         try:
-            _event_bus.publish(_build_identity_updated_event(frek_id, now, changed_fields))
+            _event_bus.publish(
+                _build_identity_updated_event(frek_id, now, changed_fields)
+            )
         except Exception:
-            logger.warning("identity.updated event publish failed (non-blocking)", exc_info=True)
+            logger.warning(
+                "identity.updated event publish failed (non-blocking)", exc_info=True
+            )
 
     updated = await db.frek_persons.find_one({"frek_id": frek_id})
     return _to_public(updated)
@@ -603,12 +723,14 @@ async def archive_identity(
     now = service.now_iso()
     await db.frek_persons.update_one(
         {"frek_id": frek_id},
-        {"$set": {
-            "status": "archived",
-            "archived_at": now,
-            "archived_by": archived_by,
-            "archive_reason": req.reason,
-        }},
+        {
+            "$set": {
+                "status": "archived",
+                "archived_at": now,
+                "archived_by": archived_by,
+                "archive_reason": req.reason,
+            }
+        },
     )
 
     logger.info(f"FREK identity {frek_id} archivee par {archived_by}")

@@ -22,7 +22,8 @@ Statuses use exactly four labels, per the mission brief: **IMPLEMENTED**, **PART
 | Capability | Status | Detail |
 |---|---|---|
 | Generate, Resolve (WebAuthn/Passkey) | IMPLEMENTED | Pre-existing. `reports/02_GAP_ANALYSIS.md` |
-| Merge, Revoke, Archive, Search | NOT IMPLEMENTED | No route exists. `reports/02_GAP_ANALYSIS.md` |
+| Revoke, Archive, Search | IMPLEMENTED (2026-08-31) | `POST /{frek_id}/revocation`, `POST /{frek_id}/archive`, `GET /search` (admin-only — see route docstring for why no holder path applies to a bulk-listing surface). `backend/identity_engine/routes.py`, live-tested: `backend/tests/test_identity_lifecycle.py` |
+| Merge | NOT IMPLEMENTED | No existing implementation in either identity system to model semantics from; the founder directive (§28) requires a founder decision before merging identity semantics — deliberately not attempted |
 | Publishes `identity.created` event | IMPLEMENTED | New this phase. `backend/identity_engine/routes.py:36-46,124-130` |
 
 ## Events (Bloc 7)
