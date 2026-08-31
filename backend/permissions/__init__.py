@@ -10,6 +10,13 @@ depends on today, and replacing it live, without a way to run the 335
 integration tests in this sandbox (reports/10_TEST_INFRASTRUCTURE.md), would
 risk locking out real API clients with no way to verify the blast radius.
 This module is the foundation the next phase wires in, not a live cutover.
+
+P2 (2026-08-31): `protocol_roles.py` adds `ProtocolRole` (Issuer/Holder/
+Verifier, the W3C VC Data Model's roles) plus its documented mapping to
+this module's own `Role` vocabulary — connecting a gap named in
+`reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md`'s Credentials section.
+See that file's own docstring for why this is a typed reference point,
+not new enforceable `Role` values.
 """
 
 from .models import (
@@ -24,6 +31,11 @@ from .models import (
     Subject,
 )
 from .engine import ROLE_CAPABILITIES, decide
+from .protocol_roles import (
+    PROTOCOL_ROLE_TO_CVLN_ROLE,
+    ProtocolRole,
+    cvln_role_for_protocol_role,
+)
 
 __all__ = [
     "Action",
@@ -37,4 +49,7 @@ __all__ = [
     "Subject",
     "ROLE_CAPABILITIES",
     "decide",
+    "ProtocolRole",
+    "PROTOCOL_ROLE_TO_CVLN_ROLE",
+    "cvln_role_for_protocol_role",
 ]

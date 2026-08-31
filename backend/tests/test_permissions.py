@@ -17,15 +17,18 @@ if str(BACKEND_DIR) not in sys.path:
 from permissions import (  # noqa: E402
     Action,
     DecisionRequest,
+    ProtocolRole,
     ResourceRef,
     Role,
     RoleGrant,
     Scope,
     ScopeType,
     Subject,
+    cvln_role_for_protocol_role,
     decide,
 )
 from permissions.audit_integration import decision_to_audit_event  # noqa: E402
+from permissions.protocol_roles import PROTOCOL_ROLE_TO_CVLN_ROLE  # noqa: E402
 
 pytestmark = pytest.mark.unit
 
@@ -190,3 +193,37 @@ def test_decision_to_audit_event_completes_the_chain():
     assert event.result == "deny"
     assert event.request_id == "req-1"
     assert event.correlation_id == "corr-1"
+
+
+# ------------- Protocol Role vocabulary (Issuer/Holder/Verifier, P2 2026-08-31) -------------
+# Closes reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md's Credentials-section
+# gap: the DID/VC/EUDI protocol roles connected to this module's own Role
+# vocabulary, via a documented mapping rather than new Role enum members
+# (see permissions/protocol_roles.py's own docstring for why).
+
+
+def test_every_protocol_role_has_a_documented_mapping_entry():
+    """Total mapping — no protocol role silently unmapped."""
+    assert set(PROTOCOL_ROLE_TO_CVLN_ROLE.keys()) == set(ProtocolRole)
+
+
+def test_protocol_roles_are_exactly_the_w3c_vc_three():
+    assert {r.value for r in ProtocolRole} == {"issuer", "holder", "verifier"}
+
+
+def test_cvln_role_for_protocol_role_matches_the_documented_mapping():
+    for protocol_role in ProtocolRole:
+        assert (
+            cvln_role_for_protocol_role(protocol_role)
+            == PROTOCOL_ROLE_TO_CVLN_ROLE[protocol_role]
+        )
+
+
+def test_no_protocol_role_currently_maps_to_an_enforceable_cvln_role():
+    """Documents today's real answer (see protocol_roles.py's per-entry
+    comments): none of Issuer/Holder/Verifier is gated by an existing Role
+    grant yet, because no DID/EUDI route calls permissions.engine.decide().
+    A future route wiring one of these in would need to change this test —
+    that's the point: it can't silently drift unnoticed."""
+    for protocol_role in ProtocolRole:
+        assert cvln_role_for_protocol_role(protocol_role) is None
