@@ -349,21 +349,41 @@ async def _registry_startup():
         logging.getLogger(__name__).warning(f"Registry instance-store indexes skipped: {_e}")
 
 # Audit Trail (Phase 3 Priority 5) — subscribes to the Event Bus (built
-# Phase 2) so any already-published event (identity.created today, see
-# reports/20_EVENT_PRODUCERS.md) becomes an append-only audit_trail_events
-# record. No new route; no change to any existing route's code.
+# Phase 2) so any already-published event becomes an append-only
+# audit_trail_events record. No new route; no change to any existing
+# route's code — event_envelope_to_audit_event() is a generic mapping
+# (backend/audit_trail/subscribers.py), not hardcoded to any one event
+# type, so extending this list is purely additive.
+#
+# P1/P2 (2026-08-31): identity.updated, identity.revoked, and
+# object.created are all now real producers (reports/FREKCORE_COMPLETION_
+# BACKLOG.md P1 #8) that were never subscribed here — closing that gap
+# directly improves the freeze assessment's own "Audit trail active for
+# sensitive mutations: PARTIAL (1 of 6 categories)" criterion
+# (reports/21_FREEZE_ASSESSMENT.md).
 from audit_trail import MongoAuditRecorder, make_audit_trail_subscriber
 from eventbus.bus import default_bus as _audit_event_bus
 
 _audit_recorder = MongoAuditRecorder(db)
+
+_AUDIT_TRAIL_EVENT_TYPES = (
+    "identity.created",
+    "identity.updated",
+    "identity.revoked",
+    "object.created",
+)
 
 
 @app.on_event("startup")
 async def _audit_trail_startup():
     try:
         await _audit_recorder.ensure_indexes()
-        _audit_event_bus.subscribe("identity.created", make_audit_trail_subscriber(_audit_recorder))
-        logging.getLogger(__name__).info("Audit Trail: subscribed to identity.created")
+        _subscriber = make_audit_trail_subscriber(_audit_recorder)
+        for _event_type in _AUDIT_TRAIL_EVENT_TYPES:
+            _audit_event_bus.subscribe(_event_type, _subscriber)
+        logging.getLogger(__name__).info(
+            "Audit Trail: subscribed to %s", ", ".join(_AUDIT_TRAIL_EVENT_TYPES)
+        )
     except Exception as _e:
         logging.getLogger(__name__).warning(f"Audit Trail startup skipped: {_e}")
 
