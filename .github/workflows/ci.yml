@@ -90,8 +90,12 @@ jobs:
       # create it (PermissionError: [Errno 13], found via PR #1's first
       # CI run on this branch after the requirements-ci.txt fix — see
       # reports/16_INTEGRATION_TEST_BASELINE.md §8). Point it at the
-      # runner's own writable temp dir instead, CI-only.
-      FREK_PASSPORT_KEY_PATH: ${{ runner.temp }}/frekcore_ci_passport_key.pem
+      # runner's own writable temp dir instead, CI-only. A literal /tmp
+      # path (not ${{ runner.temp }}: GitHub's parser rejects the `runner`
+      # context at job-level `env:` — "Unrecognized named-value: 'runner'",
+      # confirmed via workflow_dispatch's own validation error) — /tmp is
+      # always writable on GitHub-hosted Linux runners.
+      FREK_PASSPORT_KEY_PATH: /tmp/frekcore_ci_passport_key.pem
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
