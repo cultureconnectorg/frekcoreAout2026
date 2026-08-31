@@ -37,7 +37,7 @@ VERIFICATION                  → how a third party checks all of the above
 | **PROVENANCE** | Stage history is itself a provenance record (append-only per `reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md`'s Identity section) | None | `backend/frek/`'s NODE06 (Réseau) graph models creator/place/work relations, but is non-persistent (same finding) | N/A | `heritage/` (chain-of-custody transfers), `.fk`'s provenance/lineage fields |
 | **AUTHORITY** | `require_permission(...)` (OAuth2 client scope) gates mutation | Session-token gates mutation (no fine-grained scope beyond "is this session") | **None found** — no `Depends(...)` anywhere in the module | N/A | `notary`'s routes: `Depends(require_permission("emit"))` (confirmed real this phase, see `docs/PERMISSION_MATRIX.md`'s correction note) |
 | **PROOF** | Notary block created on emission (`identity/emit` triggers `notarize_event`, confirmed Phase 3) | None wired to notary (a real gap — `identity_engine`'s own lifecycle events are not notarized) | None (no `notary`/`proof_engine` usage found) | N/A | **Owns this**: hash-chain blocks, OTS submission, Bitcoin anchoring attempt (`reports/18_RUNTIME_VALIDATION.md`'s 6-level classification) |
-| **REVOCATION** | **Owns this**: `POST /{frek_id}/revoke` (`frek_v1/identity.py:201`), live-tested (`test_governance_phase1.py`) | **MISSING** (confirmed every phase — this is the "missing lifecycle capability" founder directive §7 names) | N/A (no revoke concept — a certified work isn't "revoked" the way a person's identity is; a legal-retraction concept, if wanted, would be new, not copied) | N/A | N/A |
+| **REVOCATION** | **Owns this**: `POST /{frek_id}/revoke` (`frek_v1/identity.py:201`), live-tested (`test_governance_phase1.py`) | **Now owns this too** (P1, implemented 2026-08-31): `POST /{frek_id}/revocation` (`identity_engine/routes.py`) — see the implementation update below for why the path is `/revocation`, not `/revoke` | N/A (no revoke concept — a certified work isn't "revoked" the way a person's identity is; a legal-retraction concept, if wanted, would be new, not copied) | N/A | N/A |
 | **RECOVERY** | **MISSING** (no recovery flow found in either identity system) | **MISSING** | N/A | N/A | N/A |
 | **VERIFICATION** | `GET /{frek_id}` (status, public, no-auth by design) | `GET /me`, `/{frek_id}/objects` (session-scoped) | `GET /verify/{frek_id}` (reads the in-memory/non-persistent store) | **Owns cross-system verification**: `did/routes.py:resolve_did`, offline verifier (`verifier/python/verify_passport.py`) | `notary/routes.py:GET /chain/verify`, `passport`'s own offline verification |
 
@@ -59,8 +59,54 @@ A future canonical resolver should answer, for any `frek_id` string, without the
 
 This is deliberately **not implemented in this pass**. Per founder directive §6: "Do NOT implement this blindly. First document the contract. Preserve backward compatibility." The map above is that documentation step; the resolver itself is `reports/FREKCORE_COMPLETION_BACKLOG.md`'s own item (P1, already listed as depending on this document).
 
+## P1 implementation update (2026-08-31)
+
+`identity_engine` now implements `revoke`, `update`, and `archive` as
+holder-initiated-by-default (with an `X-Admin-Key` override), exactly as
+recommended above — see `backend/identity_engine/routes.py`'s LIFECYCLE
+section and `backend/tests/test_identity_lifecycle.py`. Notes:
+
+- **A path collision was found and fixed while building this.**
+  `frek_v1` already owns `POST /{frek_id}/revoke` at the identical mounted
+  path `/api/v1/identity/{frek_id}/revoke` (both routers share that
+  prefix). FastAPI resolves overlapping path+verb registrations across
+  routers by registration order, silently — no error, no warning — and
+  `frek_v1`'s router registers first in `server.py`, so a same-named
+  `identity_engine` route would have been permanently dead code, shadowed
+  on every call. This is a concrete, load-bearing instance of Contradiction
+  C1 (`reports/FREKCORE_CONTRADICTIONS.md`): two systems sharing a URL
+  namespace they don't share an identity model for. Reordering registration
+  would not fix it — it would just make whichever system moved second the
+  shadowed one, since the router dispatch has no way to know which identity
+  system a given `frek_id` string belongs to (that's exactly the resolver
+  gap §6 above describes). The fix taken: `identity_engine`'s new endpoint
+  is `POST /{frek_id}/revocation` (a noun, distinct from `frek_v1`'s verb
+  path) — `frek_v1`'s route is untouched (no breaking change, per founder
+  directive §28), and `identity_engine`'s is now a live, reachable route.
+  `PATCH /{frek_id}` and `POST /{frek_id}/archive` do not collide with any
+  `frek_v1` route (checked against every `frek_id`-scoped route in
+  `frek_v1/identity.py`: `/activate`, `/status`, `/revoke`, `/renew`,
+  `/detail`, `/qr.png`).
+- Revoke is immutable and idempotent, notarized (`payload_type:
+  identity_revocation`), and blocks future authentication/registration for
+  that `frek_id`. Archive is a distinct, softer, non-notarized state (not a
+  security event) and does not (yet) have an unarchive flow — a new
+  capability, not modeled on an existing one.
+- Building this surfaced a genuine, separate, pre-existing security gap:
+  `register_begin`/`register_complete` let anyone who knew a `frek_id`
+  (never meant to be secret — it's what `GET /{frek_id}` and QR codes
+  resolve) register a *second*, competing Passkey and take over an
+  already-credentialed identity, which would have made `/revocation`
+  trivially bypassable (revoke, then just re-register). Fixed alongside
+  this work: adding a credential to an identity that already has one now
+  requires the holder's own session; claiming a fresh, zero-credential
+  identity (the real bootstrap case) stays open.
+- `renew` and `recovery` are still not implemented for `identity_engine` —
+  as noted above, neither system has an existing implementation to model
+  them from, so they remain open P1 backlog items, not done in this pass.
+
 ## Explicit non-goals of this document
 
 - Does not decide whether `frek_v1` and `identity_engine` should ever merge into one collection (§5: still open, deferred to whoever makes that call with this map in hand).
-- Does not implement any missing capability (revoke/update/archive/renew/recovery for `identity_engine`, notarization wiring, the resolver itself).
+- Does not implement `renew`/`recovery` for `identity_engine`, notarization wiring for `identity.created`, or the canonical resolver itself — `revoke`/`update`/`archive` are now implemented (see the P1 update above).
 - Does not touch `backend/frek/`'s (work-certification) lifecycle beyond citing it — its fate is `docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`'s to decide.

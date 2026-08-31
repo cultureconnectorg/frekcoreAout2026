@@ -10,9 +10,31 @@ Endpoints publics :
 - GET  /identity/me                       -> identite courante via header X-FREK-Session
 - POST /identity/link-object              -> associe un FK ou moment a l'identite
 - GET  /identity/{frek_id}/objects        -> liste des objets attaches
+- POST /identity/{frek_id}/revocation     -> revocation (titulaire ou admin) [P1]
+- PATCH /identity/{frek_id}               -> mise a jour display_name/metadata [P1]
+- POST /identity/{frek_id}/archive        -> archivage soft (titulaire ou admin) [P1]
+
+Priorite 1 items (revoke/update/archive) close the "MISSING since Phase 1"
+finding in reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md's Identity
+section — see docs/architecture/FREK_ID_RECONCILIATION.md for why these
+are holder-initiated-by-default (matching this module's own /me,
+/link-object pattern) rather than a literal port of frek_v1's
+client-initiated revoke, which has no holder-session concept to port.
+
+Note on the path: `frek_v1` already owns `POST /{frek_id}/revoke` at this
+exact prefix (backend/frek_v1/identity.py, mounted before this router in
+server.py — first-match-wins, silently, since FastAPI raises nothing on a
+path+verb collision across routers). This module's endpoint is therefore
+`POST /{frek_id}/revocation` (a noun, not a verb) to stay a live, distinct
+route rather than dead code shadowed by frek_v1's. See Contradiction C1 in
+reports/FREKCORE_CONTRADICTIONS.md and
+docs/architecture/FREK_ID_RECONCILIATION.md for the full writeup — this
+collision is concrete proof of C1's real-world impact, found while building
+this feature.
 """
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -28,6 +50,9 @@ from .models import (
     RegisterCompleteRequest,
     AuthBeginRequest,
     AuthCompleteRequest,
+    RevokeIdentityRequest,
+    UpdateIdentityRequest,
+    ArchiveIdentityRequest,
     IdentityPublicResponse,
 )
 from . import service
@@ -37,10 +62,25 @@ try:
     # failure must never break identity creation itself, matching the
     # existing defensive import pattern in backend/frek_v1/stages.py:10-14.
     from eventbus.bus import default_bus as _event_bus
-    from eventbus.producers import build_identity_created_event as _build_identity_created_event
+    from eventbus.producers import (
+        build_identity_created_event as _build_identity_created_event,
+        build_identity_revoked_event as _build_identity_revoked_event,
+        build_identity_updated_event as _build_identity_updated_event,
+    )
 except Exception:  # pragma: no cover - defensive, see comment above
     _event_bus = None
     _build_identity_created_event = None
+    _build_identity_revoked_event = None
+    _build_identity_updated_event = None
+
+try:
+    # Same defensive pattern: notarization failing must never break the
+    # revoke/update/archive response itself. notarize_event() itself never
+    # raises (backend/notary/service.py:30), but the import can fail if the
+    # notary module isn't wired in a given deployment.
+    from notary.service import notarize_event as _notarize_event
+except Exception:  # pragma: no cover - defensive, see comment above
+    _notarize_event = None
 
 logger = logging.getLogger("frek.identity_engine.routes")
 
@@ -80,6 +120,26 @@ async def _store_challenge(challenge_b64: str, frek_id: Optional[str], kind: str
 async def _pop_challenge(challenge_b64: str) -> Optional[dict]:
     doc = await db.frek_persons_challenges.find_one_and_delete({"challenge": challenge_b64})
     return doc
+
+
+def _holder_or_admin(frek_id: str, x_frek_session: Optional[str], x_admin_key: str) -> str:
+    """Returns "holder" if x_frek_session verifies as frek_id, "admin" if
+    x_admin_key matches SECRET_KEY, else raises 403.
+
+    Holder-initiated is the primary path — matches this module's existing
+    /me and /link-object pattern (a real per-subject session, which is what
+    makes identity_engine a different case from frek_v1's client-scoped
+    model, see docs/architecture/FREK_ID_RECONCILIATION.md). The admin
+    override exists for cases the holder cannot self-serve (every
+    credential lost, legal takedown, support case) — same interim pattern
+    as the P0 closure's admin-key gates (reports/22_P0_SECURITY_CLOSURE.md).
+    """
+    if x_frek_session and service.verify_session_token(x_frek_session) == frek_id:
+        return "holder"
+    expected = os.environ.get("SECRET_KEY")
+    if expected and x_admin_key == expected:
+        return "admin"
+    raise HTTPException(403, "Autorisation requise (session du titulaire ou cle admin)")
 
 
 def _to_public(identity: dict) -> dict:
@@ -146,11 +206,28 @@ async def init_identity(req: InitIdentityRequest):
 # ---------------- REGISTER ----------------
 
 @identity_router.post("/{frek_id}/register/begin")
-async def register_begin(frek_id: str, req: RegisterBeginRequest):
-    """Genere les options WebAuthn pour enregistrer une Passkey."""
+async def register_begin(
+    frek_id: str, req: RegisterBeginRequest, x_frek_session: Optional[str] = Header(None)
+):
+    """Genere les options WebAuthn pour enregistrer une Passkey.
+
+    Security fix (found auditing revoke, docs/decisions/0001-...): claiming a
+    fresh anonymous identity (0 credentials) stays open — that is this
+    route's real bootstrap purpose, matching /init's own "anonymous by
+    default" design. Adding a credential to an identity that ALREADY has one
+    now requires the holder's own session — previously anyone who knew a
+    frek_id (never meant to be secret; it is the thing GET /{frek_id} and
+    QR codes resolve) could register a competing Passkey and take the
+    identity over, which would also have made the new /revoke endpoint
+    trivially bypassable (revoke, then just re-register).
+    """
     identity = await db.frek_persons.find_one({"frek_id": frek_id})
     if not identity:
         raise HTTPException(404, "FREK identity introuvable")
+    if identity.get("credentials") and (
+        not x_frek_session or service.verify_session_token(x_frek_session) != frek_id
+    ):
+        raise HTTPException(403, "Session du titulaire requise pour ajouter une Passkey")
 
     options_json, challenge_b64 = service.registration_options(
         frek_id=frek_id,
@@ -163,11 +240,24 @@ async def register_begin(frek_id: str, req: RegisterBeginRequest):
 
 
 @identity_router.post("/{frek_id}/register/complete")
-async def register_complete(frek_id: str, req: RegisterCompleteRequest):
-    """Verifie la Passkey et l'attache a l'identite. Retourne un session token."""
+async def register_complete(
+    frek_id: str, req: RegisterCompleteRequest, x_frek_session: Optional[str] = Header(None)
+):
+    """Verifie la Passkey et l'attache a l'identite. Retourne un session token.
+
+    Same ownership check as register_begin, re-checked here (not just at
+    begin) so a credential set added between begin and complete can't be
+    used to bypass it.
+    """
     identity = await db.frek_persons.find_one({"frek_id": frek_id})
     if not identity:
         raise HTTPException(404, "FREK identity introuvable")
+    if identity.get("credentials") and (
+        not x_frek_session or service.verify_session_token(x_frek_session) != frek_id
+    ):
+        raise HTTPException(403, "Session du titulaire requise pour ajouter une Passkey")
+    if identity.get("status") in ("revoked", "archived"):
+        raise HTTPException(403, f"Identite {identity.get('status')} — ajout de Passkey refuse")
 
     cred = req.credential or {}
     # Le challenge attendu est retrouve via la derniere entree register pour ce frek_id
@@ -243,6 +333,11 @@ async def authenticate_complete(req: AuthCompleteRequest):
     identity = await db.frek_persons.find_one({"credentials.credential_id": credential_id})
     if not identity:
         raise HTTPException(404, "Passkey inconnue")
+    if identity.get("status") in ("revoked", "archived"):
+        # Real enforcement for revoke/archive (P1) — a revoked/archived
+        # identity's Passkey must not be able to mint a new session, or
+        # revoke would be a label, not a security control.
+        raise HTTPException(403, f"Identite {identity.get('status')} — authentification refusee")
 
     target_cred = next(
         (c for c in identity["credentials"] if c["credential_id"] == credential_id),
@@ -359,3 +454,168 @@ async def link_object(payload: dict, x_frek_session: Optional[str] = Header(None
         {"$addToSet": {"linked_objects": object_id}},
     )
     return {"ok": True, "object_id": object_id}
+
+
+# ---------------- LIFECYCLE (P1: revoke / update / archive) ----------------
+# docs/architecture/FREK_ID_RECONCILIATION.md — holder-initiated-by-default,
+# admin-key override, modeled on (not copied from) frek_v1's
+# client-initiated revoke (backend/frek_v1/identity.py:201).
+
+@identity_router.post("/{frek_id}/revocation")
+async def revoke_identity(
+    frek_id: str,
+    req: RevokeIdentityRequest,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
+    """Revocation — immutable, idempotente. La preuve historique reste lisible
+    (jamais de delete). Bloque toute authentification/enregistrement futurs
+    pour ce frek_id (voir authenticate_complete, register_begin/complete)."""
+    identity = await db.frek_persons.find_one({"frek_id": frek_id}, {"_id": 0})
+    if not identity:
+        raise HTTPException(404, "Identity introuvable")
+
+    revoked_by = _holder_or_admin(frek_id, x_frek_session, x_admin_key)
+
+    if identity.get("status") == "revoked":
+        return {
+            "frek_id": frek_id,
+            "status": "revoked",
+            "revoked_at": identity.get("revoked_at"),
+            "message": "Deja revoque (idempotent)",
+        }
+
+    now = service.now_iso()
+    await db.frek_persons.update_one(
+        {"frek_id": frek_id},
+        {"$set": {
+            "status": "revoked",
+            "revoked_at": now,
+            "revoked_by": revoked_by,
+            "revoke_reason": req.reason,
+        }},
+    )
+
+    if _notarize_event is not None:
+        await _notarize_event(
+            payload_type="identity_revocation",
+            payload_id=frek_id,
+            payload_data={
+                "frek_id": frek_id,
+                "revoked_at": now,
+                "revoked_by": revoked_by,
+                "reason": req.reason,
+            },
+            metadata={"producer": "identity_engine"},
+        )
+
+    if _event_bus is not None and _build_identity_revoked_event is not None:
+        try:
+            _event_bus.publish(
+                _build_identity_revoked_event(frek_id, now, revoked_by, req.reason)
+            )
+        except Exception:
+            logger.warning("identity.revoked event publish failed (non-blocking)", exc_info=True)
+
+    logger.info(f"FREK identity {frek_id} revoquee par {revoked_by}")
+    return {
+        "frek_id": frek_id,
+        "status": "revoked",
+        "revoked_at": now,
+        "reason": req.reason,
+        "message": "Identite revoquee. Preuve historique conservee.",
+    }
+
+
+@identity_router.patch("/{frek_id}")
+async def update_identity(
+    frek_id: str,
+    req: UpdateIdentityRequest,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
+    """Met a jour display_name et/ou metadata. Refuse sur identite revoquee
+    (immuable une fois revoquee — coherent avec revoke_identity)."""
+    identity = await db.frek_persons.find_one({"frek_id": frek_id}, {"_id": 0})
+    if not identity:
+        raise HTTPException(404, "Identity introuvable")
+
+    _holder_or_admin(frek_id, x_frek_session, x_admin_key)
+
+    if identity.get("status") == "revoked":
+        raise HTTPException(409, "Identite revoquee — immuable")
+
+    update_set: dict = {}
+    changed_fields: list = []
+    if req.display_name is not None:
+        update_set["display_name"] = req.display_name
+        changed_fields.append("display_name")
+    if req.metadata is not None:
+        update_set["metadata"] = req.metadata
+        changed_fields.append("metadata")
+
+    if not update_set:
+        return _to_public(identity)
+
+    now = service.now_iso()
+    update_set["updated_at"] = now
+    await db.frek_persons.update_one({"frek_id": frek_id}, {"$set": update_set})
+
+    if _event_bus is not None and _build_identity_updated_event is not None:
+        try:
+            _event_bus.publish(_build_identity_updated_event(frek_id, now, changed_fields))
+        except Exception:
+            logger.warning("identity.updated event publish failed (non-blocking)", exc_info=True)
+
+    updated = await db.frek_persons.find_one({"frek_id": frek_id})
+    return _to_public(updated)
+
+
+@identity_router.post("/{frek_id}/archive")
+async def archive_identity(
+    frek_id: str,
+    req: ArchiveIdentityRequest,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
+    """Archivage souple — distinct de revoke : pas un evenement de securite
+    (pas de notarisation), simplement "identite non active". Bloque aussi
+    l'authentification (voir authenticate_complete) mais n'est pas immuable
+    de la meme facon que revoke : pas encore de flux "unarchive" (nouvelle
+    capacite, non modelee sur un existant — voir
+    docs/architecture/FREK_ID_RECONCILIATION.md)."""
+    identity = await db.frek_persons.find_one({"frek_id": frek_id}, {"_id": 0})
+    if not identity:
+        raise HTTPException(404, "Identity introuvable")
+
+    archived_by = _holder_or_admin(frek_id, x_frek_session, x_admin_key)
+
+    if identity.get("status") == "revoked":
+        raise HTTPException(409, "Identite revoquee — archivage sans objet")
+    if identity.get("status") == "archived":
+        return {
+            "frek_id": frek_id,
+            "status": "archived",
+            "archived_at": identity.get("archived_at"),
+            "message": "Deja archivee (idempotent)",
+        }
+
+    now = service.now_iso()
+    await db.frek_persons.update_one(
+        {"frek_id": frek_id},
+        {"$set": {
+            "status": "archived",
+            "archived_at": now,
+            "archived_by": archived_by,
+            "archive_reason": req.reason,
+        }},
+    )
+
+    logger.info(f"FREK identity {frek_id} archivee par {archived_by}")
+    return {
+        "frek_id": frek_id,
+        "status": "archived",
+        "archived_at": now,
+        "reason": req.reason,
+        "message": "Identite archivee.",
+    }

@@ -14,7 +14,11 @@ if str(BACKEND_DIR) not in sys.path:
 
 from eventbus.bus import InProcessEventBus  # noqa: E402
 from eventbus.envelope import EventEnvelope  # noqa: E402
-from eventbus.producers import build_identity_created_event  # noqa: E402
+from eventbus.producers import (  # noqa: E402
+    build_identity_created_event,
+    build_identity_revoked_event,
+    build_identity_updated_event,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -98,6 +102,48 @@ def test_build_identity_created_event_matches_envelope_contract():
     assert env.subject == identity["frek_id"]
     assert env.correlation_id == "corr-1"
     assert env.payload["frek_id"] == identity["frek_id"]
+
+
+def test_build_identity_revoked_event_matches_envelope_contract():
+    env = build_identity_revoked_event(
+        frek_id="id-abcdef012345-ab12",
+        revoked_at="2026-08-31T00:00:00+00:00",
+        revoked_by="holder",
+        reason="lost device",
+        correlation_id="corr-2",
+    )
+
+    assert env.event_type == "identity.revoked"
+    assert env.producer == "identity_engine"
+    assert env.subject == "id-abcdef012345-ab12"
+    assert env.correlation_id == "corr-2"
+    assert env.payload["revoked_by"] == "holder"
+    assert env.payload["reason"] == "lost device"
+
+
+def test_build_identity_revoked_event_never_carries_a_client_id():
+    """revoked_by must be "holder" or "admin" — never a client_id (unlike
+    frek_v1's revoke), since identity_engine has no OAuth2-client concept."""
+    env = build_identity_revoked_event(
+        frek_id="id-x", revoked_at="t", revoked_by="admin"
+    )
+    assert env.payload["revoked_by"] in ("holder", "admin")
+
+
+def test_build_identity_updated_event_never_carries_field_values():
+    """changed_fields names which fields changed, never the new values —
+    so this event can never leak PII to a subscriber (e.g. the Audit Trail)
+    just by existing."""
+    env = build_identity_updated_event(
+        frek_id="id-abcdef012345-ab12",
+        updated_at="2026-08-31T00:00:00+00:00",
+        changed_fields=["display_name"],
+    )
+
+    assert env.event_type == "identity.updated"
+    assert env.payload["changed_fields"] == ["display_name"]
+    assert "display_name" not in str(env.payload.get("value", ""))
+    assert set(env.payload.keys()) == {"frek_id", "updated_at", "changed_fields"}
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

@@ -10,7 +10,10 @@ from pydantic import BaseModel, Field
 
 
 IDENTITY_TYPES = ["individual", "professional", "institution"]
-IDENTITY_STATUS = ["anonymous", "protected", "revoked"]
+# "revoked" was already reserved here before any route set it (P1 backlog:
+# revoke/update/archive, see docs/architecture/FREK_ID_RECONCILIATION.md).
+# "archived" added alongside it, same reservation-then-implementation pattern.
+IDENTITY_STATUS = ["anonymous", "protected", "revoked", "archived"]
 
 
 class Credential(BaseModel):
@@ -37,7 +40,7 @@ class FREKIdentity(BaseModel):
     identity_type: Literal["individual", "professional", "institution"] = "individual"
     display_name: Optional[str] = None
     created_at: str
-    status: Literal["anonymous", "protected", "revoked"] = "anonymous"
+    status: Literal["anonymous", "protected", "revoked", "archived"] = "anonymous"
     credentials: List[Credential] = Field(default_factory=list)
     linked_objects: List[str] = Field(default_factory=list)  # FK ids + moment frek_ids
     linked_sessions: List[str] = Field(default_factory=list)  # session_ids de moments
@@ -68,6 +71,23 @@ class AuthBeginRequest(BaseModel):
 
 class AuthCompleteRequest(BaseModel):
     credential: dict  # AuthenticationCredential JSON
+
+
+class RevokeIdentityRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+class UpdateIdentityRequest(BaseModel):
+    """Only these two fields are mutable post-creation. `identity_type` is
+    deliberately not updatable here — changing it after credentials/objects
+    are attached is a bigger semantic question than this endpoint answers,
+    left out rather than guessed at."""
+    display_name: Optional[str] = None
+    metadata: Optional[dict] = None
+
+
+class ArchiveIdentityRequest(BaseModel):
+    reason: Optional[str] = None
 
 
 class IdentityPublicResponse(BaseModel):

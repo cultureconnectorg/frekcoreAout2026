@@ -35,3 +35,59 @@ def build_identity_created_event(
         },
         schema_version="1.0.0",
     )
+
+
+def build_identity_revoked_event(
+    frek_id: str,
+    revoked_at: str,
+    revoked_by: str,
+    reason: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+) -> EventEnvelope:
+    """Build the `identity.revoked` event (P1 backlog item, closes the
+    `implemented: false` entry in backend/registry/events/event_registry.json
+    — see docs/architecture/FREK_ID_RECONCILIATION.md for why this was built
+    holder-initiated-by-default rather than copied from frek_v1's
+    client-initiated revoke).
+
+    `revoked_by` is `"holder"` (the FREK-ID's own session revoked itself) or
+    `"admin"` (the X-Admin-Key override path) — never a client_id, since
+    identity_engine has no OAuth2-client concept the way frek_v1 does.
+    """
+    return EventEnvelope(
+        event_type="identity.revoked",
+        producer="identity_engine",
+        subject=frek_id,
+        correlation_id=correlation_id,
+        payload={
+            "frek_id": frek_id,
+            "revoked_at": revoked_at,
+            "revoked_by": revoked_by,
+            "reason": reason,
+        },
+        schema_version="1.0.0",
+    )
+
+
+def build_identity_updated_event(
+    frek_id: str,
+    updated_at: str,
+    changed_fields: list,
+    correlation_id: Optional[str] = None,
+) -> EventEnvelope:
+    """Build the `identity.updated` event. `changed_fields` names which
+    top-level identity fields changed (e.g. `["display_name"]`) — never the
+    values themselves, so this event can never leak PII a subscriber (like
+    the Audit Trail) shouldn't see just by existing."""
+    return EventEnvelope(
+        event_type="identity.updated",
+        producer="identity_engine",
+        subject=frek_id,
+        correlation_id=correlation_id,
+        payload={
+            "frek_id": frek_id,
+            "updated_at": updated_at,
+            "changed_fields": changed_fields,
+        },
+        schema_version="1.0.0",
+    )
