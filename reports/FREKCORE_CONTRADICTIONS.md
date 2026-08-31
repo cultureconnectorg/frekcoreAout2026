@@ -1,0 +1,52 @@
+# FREKCORE — Contradictions Record
+
+Per the Documentation-as-Backlog directive. Each entry: source A, source B, code reality, impact, recommendation, migration risk, founder decision required.
+
+This is a first-pass audit — the codebase has 30+ modules and multiple generations of documentation (`memory/`, `ecosystem/`, `frek_v3/docs/`, in-code doctrine comments). Entries below are the contradictions this session actually found and verified against code, not a claim of exhaustive coverage of every possible conflict. See `reports/FREKCORE_COMPLETION_BACKLOG.md` for "continue this audit" as a named backlog item.
+
+---
+
+## C1 — Two parallel, non-interoperating "identity" systems
+
+- **Source A**: `backend/frek_v1/` ("Luciole" protocol) — `frek_identities` collection, OAuth2-client-scoped, stage-based lifecycle (`GENESIS → WORKSHOP → METAMORPHOSE → EMISSION → LEGACY`, `backend/frek_v1/models.py:STAGE_ORDER`), has `POST /{frek_id}/revoke`, `POST /{frek_id}/renew`, `POST /{frek_id}/activate` (`backend/frek_v1/identity.py:134,200,256`).
+- **Source B**: `backend/identity_engine/` — `frek_persons` collection, WebAuthn/Passkey-based, session-token auth, has `POST /init`, register/authenticate ceremonies, but **no** revoke/renew/update/merge/archive (confirmed by direct inspection, Phase 2 and re-confirmed Phase 3).
+- **Code reality**: both are live, both are mounted (`backend/server.py`), both mint values that look like the same "FREK-ID" format (`id-{hex}-{hex}` pattern) but live in **different collections with no cross-reference field**. `backend/registry/schemas/v1/_base.schema.json`'s `frek_id` regex accepts both. The Bloc 7 Event Registry catalog (`backend/registry/events/event_registry.json`) describes `identity.created`/`identity.revoked` etc. in terms that match `identity_engine`'s vocabulary, not `frek_v1`'s — meaning the "legacy_stage_log" entry already in that file (added Phase 1) is the closest existing analog to those events, produced by the *other* identity system.
+- **Impact**: a consumer (SDK, another CVLN system) asking "what is a FREK-ID's status" gets a different, incompatible answer depending on which system minted it. Revocation exists for `frek_v1` identities but not `identity_engine` identities — a real capability gap for the newer, WebAuthn-based system that is exposed under `docs/interfaces/*.md` as the trust root external systems should rely on.
+- **Recommendation**: do not merge the two collections silently (real data-model differences — `frek_v1` identities are OAuth2-client-attributable with an email/QR-token model, `identity_engine` identities are Passkey-credential-attributable). Instead: (a) add the missing revoke/update/archive endpoints to `identity_engine` (matches the Phase 1/2 gap analysis's own "MISSING" finding for these), modeled on `frek_v1/identity.py`'s existing revoke/renew semantics where they transfer cleanly; (b) document explicitly, in `docs/`, which system is authoritative for which use case, rather than letting both answer to "FREK-ID" ambiguously.
+- **Migration risk**: Medium — no data migration needed if endpoints are added to `identity_engine` independently; risk is only in *not* documenting the split, which is what causes silent misuse.
+- **Founder decision required**: **yes** — whether `identity_engine` should absorb `frek_v1`'s lifecycle concepts, or the two remain permanently separate (e.g. `frek_v1` = event-badge-scoped short-lived identities, `identity_engine` = long-lived personal identities).
+
+## C2 — `ecosystem/registry.json` overclaimed "Ed25519 signed blocks" for FREK-Chain
+
+- **Source A**: `ecosystem/registry.json`'s `frek_chain` entry, prior to Phase 2: `"protocol": "Ed25519 signed blocks + OpenTimestamps + Bitcoin anchoring"`.
+- **Source B (code reality)**: `backend/notary/chain.py` and `backend/notary/models.py:BlockResponse` — hash-chaining only (`block_hash = sha256(prev_hash + payload_hash)`), no `signature` field, no `Ed25519`/`sign` reference anywhere in `backend/notary/*.py` (verified by grep, Phase 2).
+- **Impact**: any CVLN system reading `ecosystem/registry.json` to decide what to trust would over-trust FREK-Chain blocks as individually signed when they are not (they are signed one layer up, at the Passport level, over a *different* data structure).
+- **Status**: **FIXED in Phase 2** — `ecosystem/registry.json`'s entry corrected with an inline note; `backend/proof_engine/notary_adapter.py` encodes the corrected understanding (`ProofState.LOCAL_PROOF`, not `SIGNED_PROOF`, for a bare block).
+- **Founder decision required**: no — already resolved, documented here for the historical record per the directive's "create an explicit contradiction record" instruction, not left silently fixed.
+
+## C3 — Phase 2's `backend/storage/` docstring overclaimed local disk as FREKCORE's real storage
+
+- **Source A**: `backend/storage/__init__.py` (Phase 2, before this phase's fix): "the only storage backend this session has first-hand evidence FREKCORE actually needs today (local dev/tests)."
+- **Source B (code reality)**: `backend/moment/storage.py` — FREKCORE's one real, wired storage path is Emergent's remote Object Storage API (`https://integrations.emergentagent.com/objstore/api/v1/storage`), gated by `EMERGENT_LLM_KEY`. No local-filesystem code path exists in the real feature at all.
+- **Impact**: a future engineer reading Phase 2's `backend/storage/` module could reasonably (and wrongly) conclude local disk is what to wire up for real, when the actual integration point is a remote API.
+- **Status**: **FIXED this phase** — `backend/storage/emergent_object_storage.py` added (wraps the real API), `backend/storage/__init__.py`'s docstring corrected. `LocalFilesystemStorageProvider` kept as a genuinely-useful dev/test tool, now correctly labeled as such rather than "the real need."
+- **Founder decision required**: no — already resolved.
+
+## C4 — `backend/frek/` ("FREK v2") is a parallel, unversioned, largely-unaudited surface
+
+- **Source A**: `backend/frek/routes.py`'s own header comment: `"""FREK v2 — Routes API ... Endpoints pour les 11 nœuds de FREK."""`. Mounted at unversioned `/api` (`backend/server.py`), not `/api/v1`.
+- **Source B**: `backend/frek_v1/` is explicitly the *next* generation after `frek/` (the name says so), and `backend/identity_engine/`, `backend/fk/`, `backend/notary/`, `backend/passport/` are described in `memory/INVENTORY.md` as the current production core.
+- **Code reality**: `backend/frek/routes.py` + `backend/frek/routes_advanced.py` together expose 33 live routes (`/certify`, `/genesis`, `/workshop`, `/resonance`, `/extract`, `/reseau/*`, `/transmission/*`, `/systeme/*`, `/juridique/*`) — none of which this session found referenced from `memory/INVENTORY.md`'s "current production core" description, and none of which were included in this phase's Permission Matrix beyond a module-level pass (`docs/PERMISSION_MATRIX.md`).
+- **Impact**: unclear whether this is live production surface, a frozen legacy API kept for backward compatibility, or dead code that should be deprecated. It is currently unauthenticated (PUBLIC by the automated scan) and unaudited beyond that.
+- **Recommendation**: do not delete (per the mission's "no aggressive deletion" rule) or silently reclassify. Needs a founder decision: still-served legacy API (document and permission-audit it properly) vs. deprecation candidate (mark `Deprecated` in docs, plan removal with a migration window).
+- **Migration risk**: Unknown without founder input — depends entirely on whether any real client still calls `/api/genesis` etc.
+- **Founder decision required**: **yes**.
+
+## C5 — `backend/server.py`'s `/api/status` and `/api/` routes are unmodified FastAPI template scaffold
+
+- **Source A**: implicit — every FastAPI "quickstart" template ships a `StatusCheck`/`StatusCheckCreate` example.
+- **Source B**: nothing in `memory/`, `docs/`, or `ecosystem/registry.json` documents `/api/status` as a FREKCORE capability.
+- **Code reality**: `backend/server.py:175-212` (pre-Phase-3 line numbers) implements exactly this scaffold, unauthenticated, writing to a `status_checks` collection with no other consumer found in the codebase.
+- **Impact**: low (harmless), but it is dead/example code left in a file that otherwise has real production routes — a documentation-truthfulness and cleanliness issue, not a security one.
+- **Recommendation**: deprecate. See `reports/FREKCORE_COMPLETION_BACKLOG.md` P2.
+- **Founder decision required**: no — low-risk cleanup, but not removed this phase to keep `server.py`'s diff minimal and reviewable (see `reports/12_PHASE2_IMPLEMENTATION.md`'s stated diff-discipline, carried into Phase 3).

@@ -337,6 +337,25 @@ app.include_router(identity_router, prefix="/api/v1")
 from registry.routes import registry_router
 app.include_router(registry_router, prefix="/api/v1")
 
+# Audit Trail (Phase 3 Priority 5) — subscribes to the Event Bus (built
+# Phase 2) so any already-published event (identity.created today, see
+# reports/20_EVENT_PRODUCERS.md) becomes an append-only audit_trail_events
+# record. No new route; no change to any existing route's code.
+from audit_trail import MongoAuditRecorder, make_audit_trail_subscriber
+from eventbus.bus import default_bus as _audit_event_bus
+
+_audit_recorder = MongoAuditRecorder(db)
+
+
+@app.on_event("startup")
+async def _audit_trail_startup():
+    try:
+        await _audit_recorder.ensure_indexes()
+        _audit_event_bus.subscribe("identity.created", make_audit_trail_subscriber(_audit_recorder))
+        logging.getLogger(__name__).info("Audit Trail: subscribed to identity.created")
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Audit Trail startup skipped: {_e}")
+
 
 @app.on_event("startup")
 async def _identity_engine_startup():
@@ -370,6 +389,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Observability (Phase 3 Priority 7, module built in Phase 2) — request/
+# correlation ID middleware, added last so it is outermost (present even
+# around CORS handling). Only reads/writes X-Request-ID and X-Correlation-ID
+# — never Authorization, X-Admin-Key, X-FREK-Session, or any credential
+# header (backend/observability/request_id.py has no code path that reads
+# them). See reports/18_RUNTIME_VALIDATION.md for the wiring evidence.
+from observability.request_id import RequestIdMiddleware
+from observability import metrics as _obs_metrics
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response as _MetricsResponse
+
+app.add_middleware(RequestIdMiddleware)
+
+
+@app.get("/api/metrics")
+async def metrics_endpoint():
+    """Prometheus exposition format. No PII: only counters/histograms with
+    method/path/status/operation labels — never a header value, a FREK-ID,
+    an email, or any other user-identifying value. See
+    reports/18_RUNTIME_VALIDATION.md for the label-content audit."""
+    return _MetricsResponse(content=generate_latest(_obs_metrics.registry), media_type=CONTENT_TYPE_LATEST)
 
 # Configure logging
 logging.basicConfig(

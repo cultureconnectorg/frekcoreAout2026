@@ -1,3 +1,32 @@
+# Phase 3 (reports/15_DEPENDENCY_REMEDIATION.md): this file now installs
+# cleanly with a single `pip install -r backend/requirements.txt` on a
+# clean environment (Python 3.11), EXCEPT for one line:
+#
+#   emergentintegrations==0.1.0 (below) is a private package from the
+#   Emergent platform (emergentagent.com — see .emergent/ in this repo's
+#   root), not published on public PyPI. It is a real, used dependency of
+#   backend/services/webhook.py (Stripe checkout webhook handling) — not
+#   dead code, and not removed here. Its import was made lazy
+#   (backend/services/webhook.py:36) so that its absence no longer breaks
+#   importing the rest of the application (server.py and every other
+#   route); only POST /api/webhook/stripe itself needs it, and fails with a
+#   clear JSON error if it is missing rather than crashing at startup.
+#
+#   Official installation mechanism (not automatable from this sandbox —
+#   no credentials/index URL available here): install from Emergent's
+#   private package index, e.g.
+#     pip install emergentintegrations==0.1.0 \
+#       --extra-index-url <Emergent's private PyPI index URL>
+#   The exact index URL/credentials are an Emergent platform deployment
+#   secret and are intentionally not hardcoded here. A deployment that
+#   needs the Stripe webhook feature must supply it (as a CI/build secret,
+#   or pre-installed in the base image); every other feature of FREKCORE
+#   works without it, per the previous paragraph.
+#
+# The other historical blocker (cryptography==46.0.4 conflicting with
+# webauthn==3.0.0's cryptography>=49.0.0 requirement, reports/10) is fixed
+# by the cryptography pin below (bumped to 49.0.0 — the minimum version
+# that satisfies webauthn, not the latest, to minimize behavior change).
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.3
 aiosignal==1.4.0
@@ -17,12 +46,14 @@ cffi==2.0.0
 charset-normalizer==3.4.4
 click==8.3.1
 coincurve==21.0.0
-cryptography==46.0.4
+cryptography==49.0.0
 decorator==5.2.1
 distro==1.9.0
 dnspython==2.8.0
 ecdsa==0.19.1
 email-validator==2.3.0
+# Private package, not on PyPI — see the header comment at the top of this
+# file for what depends on it, why it can be absent, and how to install it.
 emergentintegrations==0.1.0
 fastapi==0.110.1
 fastuuid==0.14.0
