@@ -136,16 +136,38 @@ being folded into a generic "identity changed" event.
 
 ## Verification performed
 
-Unit tests for all three (`backend/tests/test_identity_lifecycle.py`,
-`backend/tests/test_eventbus.py`, `backend/tests/test_audit_trail.py`):
-reconciliation authorization (holder+holder, holder+missing-target-consent
-rejected, admin cross-system, duplicate-pair idempotency, both original
-identities still independently resolvable after reconciling), the
-`frek_id`-never-regenerates invariant for renew, and the recovery
-admin-override path (including that a non-admin, non-holder caller is
-still rejected exactly as before this change). Full evidence and counts
-in the commits implementing each piece and in this session's final
-report.
+- **RECOVERY**: `backend/tests/test_identity_recovery_unit.py` (7 tests)
+  — bootstrap needs no auth, second credential rejected with neither
+  session nor admin key, admin-key succeeds without a session, ordinary
+  holder rotation does NOT emit `identity.recovered`, admin-key recovery
+  DOES emit it and never regenerates `frek_id`, the prior credential is
+  never deleted by default, a revoked identity still cannot be
+  "recovered."
+- **RENEW**: `backend/tests/test_frek_v1_renew_unit.py` (4 tests) —
+  `frek_id` never changes, only `expires_at`/`renewed_at` mutate (every
+  other field asserted unchanged, document count asserted unchanged), a
+  past expiry is rejected, a revoked identity cannot be renewed.
+- **MERGE**: `backend/tests/test_identity_reconcile_unit.py` (9 tests) —
+  self-reconciliation rejected, unauthorized caller rejected, missing
+  target consent rejected (prevents cross-holder takeover), dual-consent
+  holder path succeeds and both identities remain independently
+  resolvable afterward, admin bypasses dual consent, cross-system
+  (`frek_v1`) targets are admin-only, an unknown target 404s, duplicate
+  reconciliation is idempotent (and does not re-publish the event), and
+  reconciliation records are visible from either `frek_id`.
+- New producer-level tests in `backend/tests/test_eventbus.py`
+  (`build_identity_recovered_event`, `build_identity_reconciled_event`)
+  and mapping/subscriber tests in `backend/tests/test_audit_trail.py`
+  (both new event types round-trip through the Audit Trail correctly;
+  the static `server.py` source check now covers all 6 event types).
+- Full local unit suite: 156 passed / 0 failed. Exact CI coverage
+  command reproduced locally and in a fresh venv
+  (`pip install -r requirements-ci.txt`): 96.34% overall, 100% on
+  `eventbus/producers.py` — above the 90% gate. `backend/registry/events/
+  event_registry.json` updated: `identity.merged` marked `REJECTED` (true
+  fusion was explicitly rejected by this ADR) with a pointer to the new
+  `identity.reconciled` entry; `identity.recovered` and
+  `identity.reconciled` both catalogued as `EXISTS`.
 
 ## What this ADR does not do
 

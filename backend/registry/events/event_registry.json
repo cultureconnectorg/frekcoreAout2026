@@ -42,13 +42,31 @@
       "evidence": "P1 backlog (2026-08-31): backend/identity_engine/routes.py's PATCH /{frek_id} (update_identity) publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_updated_event(), best-effort (try/except, never blocks the response). payload carries changed_fields (names only, never the new values, so this event can't leak PII by existing) — see docs/architecture/FREK_ID_RECONCILIATION.md's P1 implementation update. Verified by backend/tests/test_eventbus.py::test_build_identity_updated_event_never_carries_field_values (unit) and backend/tests/test_identity_lifecycle.py::TestUpdate (live, mongomock-backed server)."
     },
     {
+      "event_type": "identity.recovered",
+      "version": "v1",
+      "description": "Un titulaire ayant perdu tous ses Passkeys a retrouve l'acces a son FREK-ID existant via la cle admin (RECOVERY, docs/decisions/0003-...md Section 3).",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P2 backlog (2026-08-31): backend/identity_engine/routes.py's register_begin/register_complete publish a real EventEnvelope via backend/eventbus/producers.py:build_identity_recovered_event() specifically when an already-credentialed identity is recovered via the X-Admin-Key path (not ordinary holder-initiated credential rotation, which does not fire this event). frek_id is never regenerated; payload has no 'new_frek_id' field by design. Notarized (payload_type=identity_recovery). Verified by backend/tests/test_eventbus.py::test_build_identity_recovered_event_matches_envelope_contract (unit) and backend/tests/test_identity_recovery_unit.py (7 tests, isolated FastAPI app + mongomock_motor)."
+    },
+    {
       "event_type": "identity.merged",
       "version": "v1",
       "description": "Fusion de deux identites (Bloc 2 — Identity Engine: Merge).",
       "producer": "identity_engine",
       "implemented": false,
-      "status": "MISSING",
-      "evidence": "Aucune route ou fonction de merge trouvee sous backend/identity_engine/ (grep: pas de 'merge')."
+      "status": "REJECTED",
+      "evidence": "docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md Section 1 (founder-approved, 2026-08-31): true fusion/merge of two identities is explicitly rejected — 'never delete or overwrite a FREK-ID', 'existing references to reconciled IDs must remain resolvable'. This literal event_type (destructive merge) will never be implemented. See identity.reconciled below for the approved, non-destructive replacement concept."
+    },
+    {
+      "event_type": "identity.reconciled",
+      "version": "v1",
+      "description": "Etablit une relation d'identite canonique non-destructive entre deux FREK-ID (MERGE, docs/decisions/0003-...md Section 1).",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P2 backlog (2026-08-31): backend/identity_engine/routes.py's POST /{frek_id}/reconcile (reconcile_identity) appends one record to frek_reconciliations (never deletes, updates, or overwrites either identity) and publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_reconciled_event(), best-effort. Notarized (payload_type=identity_reconciliation). Authorization requires dual holder-session consent for same-system targets or the admin key (prevents cross-holder takeover); cross-system (frek_v1) targets are admin-only, since frek_v1 has no holder-session concept to verify consent against. Verified by backend/tests/test_eventbus.py::test_build_identity_reconciled_event_matches_envelope_contract (unit) and backend/tests/test_identity_reconcile_unit.py (9 tests, isolated FastAPI app + mongomock_motor — non-destructiveness, dual-consent, cross-system admin-only, idempotency, bidirectional visibility)."
     },
     {
       "event_type": "identity.revoked",

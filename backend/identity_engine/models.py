@@ -90,6 +90,21 @@ class ArchiveIdentityRequest(BaseModel):
     reason: Optional[str] = None
 
 
+class ReconcileRequest(BaseModel):
+    """MERGE (docs/decisions/0003-identity-lifecycle-founder-decisions-
+    implemented.md §1) — establishes a non-destructive canonical
+    relationship between this frek_id and `target_frek_id`. Neither
+    identity is ever deleted, overwritten, or stops resolving; this only
+    ever appends one record to `frek_reconciliations`."""
+
+    target_frek_id: str
+    target_system: Literal["identity_engine", "frek_v1"] = "identity_engine"
+    target_session_token: Optional[str] = None  # proves holder consent for
+    # target_frek_id when target_system == "identity_engine" — required
+    # unless the caller is admin (prevents cross-holder takeover).
+    reason: Optional[str] = None
+
+
 class IdentityPublicResponse(BaseModel):
     """Vue publique safe d'une identite (jamais de credentials en clair)."""
     frek_id: str

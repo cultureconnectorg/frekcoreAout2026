@@ -14,12 +14,16 @@ Endpoints publics :
 - PATCH /identity/{frek_id}               -> mise a jour display_name/metadata [P1]
 - POST /identity/{frek_id}/archive        -> archivage soft (titulaire ou admin) [P1]
 - GET  /identity/search                   -> recherche/liste, admin uniquement [P1]
+- POST /identity/{frek_id}/reconcile          -> MERGE non-destructif [P2]
+- GET  /identity/{frek_id}/reconciliations    -> historique de reconciliation, public [P2]
 
 P2 (2026-08-31): RECOVERY (docs/decisions/0003-identity-lifecycle-founder-
 decisions-implemented.md §3) added an admin-key override to
 register_begin/register_complete's existing "holder session required to
 add a Passkey" check, closing the real gap that a holder who lost every
-credential had no path back into their own identity.
+credential had no path back into their own identity. MERGE (same ADR §1)
+added /reconcile — never a true merge, an append-only relationship record
+between two frek_ids, neither of which is ever deleted or overwritten.
 
 Priorite 1 items (revoke/update/archive) close the "MISSING since Phase 1"
 finding in reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md's Identity
@@ -62,6 +66,7 @@ from .models import (
     RevokeIdentityRequest,
     UpdateIdentityRequest,
     ArchiveIdentityRequest,
+    ReconcileRequest,
     IdentityPublicResponse,
 )
 from . import service
@@ -121,6 +126,14 @@ async def ensure_indexes():
     )
     await db.frek_persons_challenges.create_index("frek_id")
     await db.frek_persons_challenges.create_index("challenge", unique=True)
+    # MERGE (docs/decisions/0003-...md §1) — append-only, never deleted or
+    # updated. The compound unique index enforces idempotency (one record
+    # per ordered pair) at the DB level too, not just in the route's own
+    # duplicate check.
+    await db.frek_reconciliations.create_index(
+        [("canonical_frek_id", 1), ("reconciled_frek_id", 1)], unique=True
+    )
+    await db.frek_reconciliations.create_index("reconciled_frek_id")
 
 
 async def _store_challenge(challenge_b64: str, frek_id: Optional[str], kind: str):
@@ -796,3 +809,151 @@ async def archive_identity(
         "reason": req.reason,
         "message": "Identite archivee.",
     }
+
+
+# ---------------- MERGE (reconciliation) ----------------
+# docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md
+# §1. Deliberately named "reconcile", not "merge" — the approved semantics
+# are strictly non-destructive: neither frek_id involved is ever deleted,
+# overwritten, or stops resolving. This only ever appends one record to
+# frek_reconciliations, establishing a canonical relationship. See
+# docs/architecture/FREK_ID_ENTITY_TAXONOMY.md for why this is scoped to
+# identity_engine's own frek_persons collection.
+
+
+@identity_router.post("/{frek_id}/reconcile")
+async def reconcile_identity(
+    frek_id: str,
+    req: ReconcileRequest,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
+    """Establishes a non-destructive canonical relationship between
+    `frek_id` and `req.target_frek_id`. Never merges, deletes, or
+    overwrites either identity — GET /{frek_id} keeps resolving exactly as
+    before for both, satisfying the founder's "existing references must
+    remain resolvable" requirement literally.
+
+    Authorization (prevents cross-holder takeover, per the ADR):
+    - The caller must prove authority over the SOURCE `frek_id` — a valid
+      holder session or the admin key (`_holder_or_admin`, same pattern as
+      revoke/update/archive).
+    - Reconciling with ANOTHER `identity_engine` identity additionally
+      requires `target_session_token` to verify holder consent for that
+      target too, UNLESS the caller is admin — a holder can only reconcile
+      identities they can prove control of on both sides.
+    - Reconciling with a `frek_v1` identity (`target_system="frek_v1"`) is
+      admin-only: frek_v1 has no holder-session concept a plain holder
+      could use to self-serve prove consent there (see
+      docs/architecture/FREK_ID_RECONCILIATION.md) — an honest,
+      pre-existing architectural constraint, not a shortcut introduced
+      here.
+    """
+    identity = await db.frek_persons.find_one({"frek_id": frek_id}, {"_id": 0})
+    if not identity:
+        raise HTTPException(404, "Identity introuvable")
+    if frek_id == req.target_frek_id:
+        raise HTTPException(
+            400, "Impossible de reconcilier une identite avec elle-meme"
+        )
+
+    authorized_via = _holder_or_admin(frek_id, x_frek_session, x_admin_key)
+
+    if req.target_system == "identity_engine":
+        target = await db.frek_persons.find_one({"frek_id": req.target_frek_id})
+        if not target:
+            raise HTTPException(404, "Identite cible introuvable")
+        if authorized_via == "holder":
+            target_ok = (
+                req.target_session_token
+                and service.verify_session_token(req.target_session_token)
+                == req.target_frek_id
+            )
+            if not target_ok:
+                raise HTTPException(
+                    403,
+                    "Consentement du titulaire de l'identite cible requis "
+                    "(target_session_token)",
+                )
+    else:
+        # Cross-system (frek_v1): no holder-session concept to verify
+        # consent against — admin-key only.
+        if authorized_via != "admin":
+            raise HTTPException(
+                403,
+                "Reconciliation cross-systeme (frek_v1) reservee a la cle admin",
+            )
+
+    # Idempotent: a prior reconciliation of this exact ordered pair returns
+    # the existing record rather than erroring or duplicating it.
+    existing = await db.frek_reconciliations.find_one(
+        {"canonical_frek_id": frek_id, "reconciled_frek_id": req.target_frek_id},
+        {"_id": 0},
+    )
+    if existing:
+        return {**existing, "message": "Deja reconcilie (idempotent)"}
+
+    now = service.now_iso()
+    record = {
+        "canonical_frek_id": frek_id,
+        "reconciled_frek_id": req.target_frek_id,
+        "reconciled_system": req.target_system,
+        "reconciled_at": now,
+        "authorized_by": authorized_via,
+        "reason": req.reason,
+    }
+    await db.frek_reconciliations.insert_one(dict(record))
+
+    if _notarize_event is not None:
+        await _notarize_event(
+            payload_type="identity_reconciliation",
+            payload_id=frek_id,
+            payload_data=record,
+            metadata={"producer": "identity_engine"},
+        )
+    if _event_bus is not None and _build_identity_reconciled_event is not None:
+        try:
+            _event_bus.publish(
+                _build_identity_reconciled_event(
+                    canonical_frek_id=frek_id,
+                    reconciled_frek_id=req.target_frek_id,
+                    reconciled_system=req.target_system,
+                    reconciled_at=now,
+                    authorized_by=authorized_via,
+                    reason=req.reason,
+                )
+            )
+        except Exception:
+            logger.warning(
+                "identity.reconciled event publish failed (non-blocking)",
+                exc_info=True,
+            )
+
+    logger.info(
+        f"FREK identity {frek_id} reconciliee avec {req.target_frek_id} "
+        f"({req.target_system}) par {authorized_via}"
+    )
+    return {**record, "message": "Reconciliation enregistree."}
+
+
+@identity_router.get("/{frek_id}/reconciliations")
+async def get_reconciliations(frek_id: str):
+    """Every reconciliation record naming `frek_id` on EITHER side — public,
+    no auth, matching GET /{frek_id}'s own public-view design. The founder's
+    "existing references must remain resolvable" requirement means this is
+    a read anyone who can already resolve `frek_id` should be able to see,
+    not a holder-only surface."""
+    records = (
+        await db.frek_reconciliations.find(
+            {
+                "$or": [
+                    {"canonical_frek_id": frek_id},
+                    {"reconciled_frek_id": frek_id},
+                ]
+            },
+            {"_id": 0},
+        )
+        .sort("reconciled_at", 1)
+        .to_list(200)
+    )
+    return {"frek_id": frek_id, "count": len(records), "reconciliations": records}
