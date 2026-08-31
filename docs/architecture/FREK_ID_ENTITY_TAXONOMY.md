@@ -52,7 +52,10 @@ site in `backend/` (21 files); every `did:frek:` occurrence across
 | Location / Infrastructure | **No — never a FREK-ID subject** | OBSERVED (as free-text metadata only) | `fk/models.py`'s `Context.location`/`coordinates`/`institution` are plain strings, not FREK-ID references |
 | Certificate / Credential record | **Yes**, its own `frek_id`, with its own expiry | OBSERVED | `registry/schemas/v1/frek.certificate.schema.json` — `holder_id`, `issuer`, `expires_at` |
 | Staff / Terrain Agent (operational) | **No — deliberately a separate system** | OBSERVED (as a negative finding) | `backend/staff/routes.py` — `agent_id` + PIN + role, no `frek_id` anywhere |
-| Project | Not found | NOT FOUND | — |
+| Project / Production | Not found | NOT FOUND | — |
+| Événement vérifiable | **Yes**, its own `frek_id` | OBSERVED | `registry/schemas/v1/frek.event.schema.json` |
+| Droits / mandat / relation juridique | **No — a linked object, not an identity** | OBSERVED (as attachment) + DOCUMENTED (spec `rights.splits`) | `fk/models.py`'s `RightsLayer` (free-text `Contributor`, not FREK-ID-linked) |
+| Heritage / Transmission (succession) | N/A — a *lifecycle event* on an existing Person FREK-ID, not its own entity | OBSERVED, `frek_v1`-only | `backend/heritage/routes.py` — real, notarized, transfers control without regenerating `frek_id`; no `identity_engine` equivalent |
 
 ## 2. Per-entity detail
 
@@ -73,6 +76,36 @@ site in `backend/` (21 files); every `did:frek:` occurrence across
 | Proof/audit requirements | Revoke is notarized (`notary.notarize_event`); Audit Trail subscribes to `identity.created`/`updated`/`revoked` (`backend/server.py`) |
 | Relationship to `.fk`/FAP/FREK-Chain | Owns `.fk` objects via `owner_id`; is the `creator` referenced by a `.fk`'s `identity` layer (spec) / `Contributor` (code, free-text only — see §2.4) |
 
+**Sub-roles (artiste/auteur/producteur/etc.)**: not a property of the
+identity itself in either minting system — `identity_engine.FREKIdentity`
+has no role field beyond `identity_type` (individual/professional/
+institution). The closest evidenced sub-role vocabulary is
+`registry/schemas/v1/frek.artist.schema.json`'s `primary_role` enum
+(`musician`/`producer`/`songwriter`/`label`/`performer`/`other`) — but
+that lives on the **Registry catalog record** (`frek.artist`, owned *by*
+a Person via `owner_id`), not on the Person identity itself. `salarié`
+(employee), `client`, `utilisateur` (platform user), and `représentant
+légal` (legal representative) have **no evidence anywhere** in code or
+historical docs as distinct sub-roles — NOT FOUND, not invented here.
+
+**Heritage / Transmission (succession) — a real, separate, `frek_v1`-only
+mechanism found while researching RECOVERY, worth naming precisely so it
+is never confused with it**: `backend/heritage/routes.py` is a fully
+implemented, notarized, append-only succession flow for `frek_v1`
+identities (`declare` a beneficiary → `claim` or admin-`force` transfer →
+same `frek_id`, `email_hash` ownership changes; `GET /heritage/lineage/
+{frek_id}` exposes the full chain-of-custody). It already satisfies "never
+regenerate a FREK-ID because control changes hands" for the one case it
+covers (death, donation, retirement — see `TransferRequest.reason`'s own
+docstring). Two things distinguish it from this ADR's RECOVERY: (1)
+heritage transfers control to a **different** person by design; recovery
+restores the **same** person's own access; (2) heritage exists only for
+`frek_v1` identities (`db.frek_identities`) — `identity_engine`'s
+`frek_persons` has no equivalent, a real, evidenced asymmetry between the
+two identity systems, not addressed by this pass (recorded here, not
+solved — a genuine C1-shaped gap for a future pass, not invented scope
+for this one).
+
 ### 2.2 Institution / Organization
 
 | Dimension | Answer |
@@ -81,6 +114,7 @@ site in `backend/` (21 files); every `did:frek:` occurrence across
 | Linked to another FREK-ID? | `frek.organization.member_ids: FREK-ID[]` — an organization references its members' FREK-IDs; the reverse link (a person declaring their org membership) is not implemented |
 | Ownership/control model | `owner_id` on the Registry envelope (the identity that registered the org record) — not the same as "who can act as this organization," which is undefined |
 | Authority model | Registry write authority (`_authorize_write` — OAuth2 `registry:write` or an `identity_engine` holder session) governs *editing the record*; no concept of "acting on the organization's behalf" exists |
+| Representatives / delegation (mandat) | **NOT FOUND as a real mechanism.** `spec/routes.py`'s notary payload-type catalog documents a `"transfer"` type (*"Transmission de FREK-ID (heritage / delegation, P2 backlog)"*) — a named placeholder, not an implementation. `member_ids` (above) lists members but grants none of them authority to act for the organization. DOCUMENTED intent, MISSING implementation. |
 | Credential model | None — a `frek.organization` Registry object has no WebAuthn credentials, no session concept; it cannot itself authenticate anywhere |
 | Merge semantics | Not addressed by `0003` (that ADR is scoped to Person identities in `identity_engine`) — a `frek.organization`-to-`frek.organization` reconciliation is out of scope this pass, NOT FOUND as a distinct requirement anywhere |
 | Recovery semantics | Not applicable — no credentials exist to lose |
@@ -199,9 +233,55 @@ A distinct entity type worth calling out on its own, because it is the one place
 
 Deliberately excluded from the FREK-ID system entirely: `backend/staff/routes.py`'s `agent_id` (`SUPERVISEUR-01`, `EMISSION-01`, etc.) is PIN-authenticated, JWT-scoped by `role`, with **no `frek_id` field anywhere** in `StaffLoginRequest`/`StaffMeResponse`/the staff account documents. This is a correct, evidenced negative finding, not a gap: terrain staff are an operational-access concept (who may operate the scanner PWA), not a cultural/provenance identity — conflating the two would be exactly the kind of invented scope this taxonomy is meant to prevent.
 
-### 2.13 Project — NOT FOUND
+### 2.13 Project / Production — NOT FOUND (distinct from Event, §2.14)
 
-Searched `backend/` (route/model names), `frek_v3/docs/`, `memory/PRD.md`, `docs/interfaces/*.md` for any "project" entity concept tied to FREK-ID. No route, no schema, no historical specification section names a Project as a FREK-ID subject or as anything else. Not classified further — there is nothing to classify. If KORA, LabelOS, or another CVLN system needs a Project entity, that is new scope for whoever builds it, not a gap in FREKCORE's existing model.
+Searched `backend/` (route/model names), `frek_v3/docs/`, `memory/PRD.md`,
+`docs/interfaces/*.md` for "project," "production," "session studio,"
+"campagne," "formation" as a FREK-ID-bearing entity concept (a
+multi-work container with its own identity, as opposed to a single
+`.fk`). No route, no schema, no historical specification section names
+this. Not classified further — there is nothing to classify. If KORA,
+LabelOS, or Academy needs a Project entity, that is new scope for whoever
+builds it, not a gap in FREKCORE's existing model.
+
+### 2.14 Événement vérifiable (verifiable event)
+
+Distinct from "Project" (§2.13) precisely because there **is** real
+evidence for this one — a cultural event is already a first-class,
+FREK-ID-bearing Registry entity, not a human-identity-shaped subject but
+an addressable/traceable one, matching the founder's own framing.
+
+| Dimension | Answer |
+|---|---|
+| Own FREK-ID | Yes — `registry/schemas/v1/frek.event.schema.json` |
+| Linked to another FREK-ID? | Via the generic Registry `owner_id`; no `organizer_id`/`participant_ids` field found — an event's relationship to the people/orgs running it is not yet modeled beyond ownership |
+| Ownership/control model | Standard Registry `_authorize_write` |
+| Credential model | None |
+| Merge/renew/recovery | Not applicable — same reasoning as §2.2/§2.4: no credentials, so nothing to recover; a duplicate-event reconciliation is NOT FOUND as a requirement anywhere |
+| Lifecycle/status | Standard Registry envelope `status`; `starts_at`/`ends_at` for the event's own real-world timing (distinct from the envelope's `status` lifecycle) |
+| Provenance/proof requirements | Standard Registry envelope only — no event-specific proof mechanism found |
+| Relationship to `.fk`/FAP/FREK-Chain | None found beyond the generic Registry envelope; a `frek.event` does not currently reference the `.fk` objects captured at it |
+
+### 2.15 Droits / mandat / relation juridique (rights, mandate, legal relationship)
+
+**Confirmed: a linked-object concept, not an autonomous FREK-ID**, exactly
+as the founder's own framing anticipates ("probablement pas un FREK-ID
+principal... plutôt des objets liés au graphe d'identité"). Evidence:
+
+| Where | What it models |
+|---|---|
+| `fk/models.py`'s `RightsLayer` | `owner: Contributor`, `co_owners: List[Dict]` — attached to a `.fk` object, referencing people by free-text `Contributor` (name/role/isni), not by FREK-ID (same gap as §2.4's creator/contributor fields) |
+| `frek_v3/docs/FREK_Object_Model_Specification_v0.1.md` §2 | `rights.splits` (répartition des droits), `rights.contributors` (rôles et pourcentages) — DOCUMENTED, not implemented (code has no `splits` field) |
+| `registry/schemas/v1/frek.certificate.schema.json` | `holder_id`, `issuer` — a certificate *is* a rights-adjacent artifact with its own `frek_id`, already covered in §2.11 |
+
+No mechanism anywhere establishes a **mandate** (one FREK-ID authorized to
+act legally on another's behalf) as a first-class, verifiable relationship
+— the closest adjacent concepts are the Organization's undelivered
+delegation placeholder (§2.2) and `frek_v1`'s Heritage/Transmission module
+(§2.1), neither of which is a general-purpose mandate mechanism. NOT
+FOUND as its own entity; DOCUMENTED as a rights-attachment concept;
+classified here explicitly so it is not silently treated as equivalent to
+an identity going forward, per the founder's own caution.
 
 ## 3. What this means for entity-aware MERGE/RENEW/RECOVERY
 
@@ -235,3 +315,43 @@ path is therefore correctly scoped to `identity_engine`'s `frek_persons`
 collection only — this document is the evidence for why that scoping is
 entity-aware rather than an unexamined default, per the founder's
 instruction.
+
+## 4. The canonical model, going forward
+
+The founder's own framing, confirmed rather than contradicted by every
+finding above: **FREK-ID is the canonical identifier of an addressable,
+verifiable entity; `entity_type` then selects which rules apply.** This
+is not a new invention this document is proposing — it is already the
+literal shape of the Registry API's own envelope
+(`registry/schemas/v1/_base.schema.json`: every object carries `frek_id`
++ `entity_type`, and each namespace's schema is exactly "the base envelope
+plus this type's own rules"). The gap this taxonomy closes is that
+`identity_engine`'s lifecycle work (revoke/update/archive/search, and now
+merge/renew/recovery) was designed and reasoned about as if every FREK-ID
+behaved like a Person's — this document is the record that it was
+checked, not assumed, and does not.
+
+Per-type asymmetry this evidence actually supports (not a speculative
+target design, a description of what already exists or is already
+decided):
+
+| Entity type | Has credentials to recover? | Has keys/devices to rotate? | Has representatives/delegation? | Has provenance/ownership? |
+|---|---|---|---|---|
+| Person | **Yes** (WebAuthn Passkeys) | Yes (same mechanism) | N/A | Yes (`linked_objects`, `created_at`) |
+| Institution/Organization | No | No | DOCUMENTED gap, not implemented (§2.2) | Yes (Registry envelope) |
+| Cultural Object (`.fk`) | No | N/A | N/A | Yes — its defining feature (`ProofLayer`, `RightsLayer`) |
+| Device (FAP) | DOCUMENTED_ONLY — PUF-derived key rotation is spec'd, not built | DOCUMENTED_ONLY | N/A | DOCUMENTED_ONLY |
+| Software Agent | No (institutional key only) | No | N/A | N/A |
+| Wallet/Certificate | No | No | N/A | Yes (`holder_id`/`issuer`, `expires_at` for certificates) |
+
+No entity type in this codebase currently has a "capabilities/scopes"
+model the way an autonomous software agent eventually would (`Permission`
+in `identity_engine/models.py` is explicitly `"Extensible pour futur
+multi-tenant / role-based"` — PROPOSED shape, not populated) — recorded
+here as the honest current answer, not filled in with an invented one.
+
+This table is descriptive, not a commitment to build every empty cell —
+each MISSING/DOCUMENTED_ONLY gap it names was already tracked elsewhere
+in this taxonomy (§2) with its own evidence; this table exists so the
+per-type asymmetry itself, not just each individual gap, is visible in
+one place.
