@@ -58,8 +58,8 @@ does not require touching the Proof Engine's existing model at all.
 |---|---|---|
 | **FREK Object / `.fk`** | FAP's L2 proof (283 fixed bytes: `AUDIO_HASH`, `FINGERPRINT_HASH`, `CONTEXT_HASH`, `FIRMWARE_HASH`, device `PUB_KEY`, `SIGNATURE`) is exactly the kind of artifact the `.fk` spec's own `credentials`/`proofs` layers already have a named slot for (`FREK_Object_Model_Specification_v0.1.md` §2: `credentials.FREK VC` with `type: FREKCaptureCredential`). The real code's `fk/models.py` `ProofLayer` (`content_hash`, `signatures`, `BlockRef`, `BtcAnchor`) has no FAP-specific field today — additive, not a redesign, when built: one new optional field carrying the raw/parsed FAP proof. |
 | **FREK-ID** | FAP's `DEVICE_ID` (16 bytes, UUIDv4-shaped) is a device identity, distinct from a Person's FREK-ID — matches `docs/architecture/FREK_ID_ENTITY_TAXONOMY.md` §2.6's finding that `did:frek:device-<uuid>` is DOCUMENTED_ONLY, never minted. FAP does not require device identities to be FREK-IDs to function (its own verification algorithm needs only a `device_registry: {device_id: pub_key}` mapping, §10.1) — typed device DIDs (Contradiction C6) and FAP integration are related but independently gated; neither blocks the other. |
-| **Provenance** | FAP's `DEVICE_TIME`, `FIRMWARE_HASH`, and the counter-bound signing key (§5.4: the signing key is derived from `COUNTER \|\| FIRMWARE_HASH`, so a firmware change or a replayed counter changes the effective key) are exactly the provenance guarantees `.fk`'s `provenance.creation` (timestamp, lieu, device) layer already has a named slot for, per the Object Model spec. No code change needed to the `.fk` provenance *concept* — only to populate that layer with FAP data once hardware exists. |
-| **Signatures** | FAP uses **NIST P-256 / ECDSA**, raw `r\|\|s` (no ASN.1/DER), deliberately different from every other signature in this codebase (Ed25519 — `passport/keys.py`, `did/vc.py`, notary blocks). This is a **real, documented cryptographic divergence, not a contradiction to fix**: the spec's own rationale (§5.4) is that hardware key derivation from a PUF response needs a curve/scheme suited to constrained-device HKDF derivation and per-counter key rotation; there is no requirement anywhere that every signature in the system use the same curve, and Ed25519 remains exactly what FREKCORE's own platform-level signing already correctly uses. "Do not silently replace historical cryptographic semantics" — this reconciliation does not touch FAP's P-256 choice, nor propose migrating the platform's Ed25519 to match it. |
+| **Provenance** | FAP's `DEVICE_TIME` and `FIRMWARE_HASH` are *signed fields* attesting to capture context — exactly the provenance guarantees `.fk`'s `provenance.creation` (timestamp, lieu, device) layer already has a named slot for, per the Object Model spec. No code change needed to the `.fk` provenance *concept* — only to populate that layer with FAP data once hardware exists. (Corrected from an earlier draft of this document — see §"A corrected finding" below: `COUNTER`/`FIRMWARE_HASH` are signed data, not key-derivation inputs.) |
+| **Signatures** | FAP uses **NIST P-256 / ECDSA**, raw `r\|\|s` (no ASN.1/DER), deliberately different from every other signature in this codebase (Ed25519 — `passport/keys.py`, `did/vc.py`, notary blocks). This is a **real, documented cryptographic divergence, not a contradiction to fix**: hardware key derivation from a PUF response needs a curve/scheme suited to constrained-device HKDF derivation; there is no requirement anywhere that every signature in the system use the same curve, and Ed25519 remains exactly what FREKCORE's own platform-level signing already correctly uses. "Do not silently replace historical cryptographic semantics" — this reconciliation does not touch FAP's P-256 choice, nor propose migrating the platform's Ed25519 to match it. |
 | **Device identity** | See "FREK-ID" row above — `DEVICE_ID` plus the PUF-derived `DEVICE_ROOT_KEY` (§5.3, HKDF-SHA256 over `PUF_RESPONSE` + fab/wafer/die metadata) is FAP's own, complete device-identity model. Nothing in `backend/` today represents a device as an identity at all (confirmed, taxonomy §2.6) — FAP is the only place this concept is even specified. |
 | **Counters / nonces / replay protection** | Fully self-contained inside FAP, verified entirely offline (§10.1's `verify_proof`): a monotonic per-device `COUNTER` (rejects `counter <= last_counter`) plus a verifier-supplied `NONCE` for the challenge-response mode. `grep -rn "counter\|nonce\|replay" backend/notary/ backend/proof_engine/` returns **no matches** — neither module has any counter/nonce/replay concept today, and none is needed for FAP's own protection to work; FAP does not depend on the Proof Engine gaining one. |
 | **Proof Engine** | See headline finding above — orthogonal axis, not a replacement. When FAP is eventually implemented, the natural integration point is a **new, additive `ProofState`-adjacent field** on `ProofReceipt` (e.g. `device_attestation_level: Optional[Literal["L0","L1","L2"]]`) or a small sibling verifier module (`backend/fap/` or `proof_engine/fap_verifier.py`) that runs FAP's own `verify_proof` algorithm and hands its result to the existing pipeline as an input, not a fork of it. |
@@ -108,3 +108,121 @@ verifier module, `payload_type="fap_capture_attestation"` on the existing
 `FrekVerifier.verify()` reused directly rather than re-implemented), which
 this document now records so the next pass that touches Luciole/FAP
 hardware doesn't have to re-derive it.
+
+## Addendum (2026-08-31, exhaustive documentation reconciliation pass)
+
+Per the founder's instruction to reconcile every historical FREK document,
+not just the primary spec: seven `frek_v3/docs/` documents had zero
+cross-references anywhere in `reports/`/`docs/` before this pass
+(confirmed by `grep -rl <filename> reports/ docs/`). All seven are
+supporting material for the same FAP/hardware-attestation work this
+document already reconciles — none introduces a requirement on
+`identity_engine`, the Registry, or any other part of `backend/` beyond
+what's already covered above. Reconciled here, in the order their own
+internal cross-references imply:
+
+### A real, resolvable contradiction found and fixed
+
+**`FREK_Cryptographic_Architecture_Review_v0.1.md`** is an explicit,
+authored correction to `FREK_Attestation_Protocol_v0.1.md` (both produced
+in the same 2026-08-10 session per `BILAN_DISCUSSION_FREK_V3.md`'s own
+account of its two deliverables). Its executive summary states directly:
+*"corrige une construction présente dans le FREK Attestation Protocol
+v0.1 : la Device Root Key ne doit en aucun cas dépendre du compteur
+monotone ni du hash du firmware."* The correction: the Attestation Key
+(AK) is derived once at boot from the Device Root Key (DRK) via HKDF and
+stays stable for the device's life; `COUNTER` and `FIRMWARE_HASH` are
+**signed fields** in the proof message, never key-derivation inputs —
+mixing the two roles was identified as breaking firmware updates and
+incident recovery.
+
+This directly contradicted this document's own earlier §"Point-by-point"
+table above (now corrected), which had repeated FAP v0.1's superseded
+claim uncritically. Resolved from evidence, not a founder question: (1)
+the Crypto Review is later, explicit, and reasoned; (2)
+`frek_v3/reference_verifier/frek_crypto.py`'s actual working code
+implements the corrected design (`derive_device_id(ak_pub)` — a stable
+per-device key — not a per-proof, counter-bound one; `COUNTER`/
+`FIRMWARE_HASH` appear in the signed `MESSAGE`, never in a KDF call).
+The reference implementation being the ground truth for "what's actually
+built" settles which of the two documents is authoritative.
+
+### The full key hierarchy (preserved terminology, not previously recorded anywhere in `docs/`)
+
+`FREK_Cryptographic_Architecture_Review_v0.1.md` §2 defines four
+HKDF-derived keys, all descending from one immutable, PUF-derived,
+never-exported **Device Root Key (DRK)** — domain-separated by HKDF
+`info` string, never reused across roles:
+
+- **Attestation Key (AK)** — signs FREK proofs (the one FAP L2 actually
+  uses); public key exportable via `GET_IDENTITY`.
+- **Firmware Key (FK)** — verifies firmware signatures at secure boot;
+  per `FREK_V3_Engineering_Exploded_View_v0.2.md`'s own v0.1→v0.2
+  correction #1, FK is actually **FREK Authority's own public key**
+  baked in at manufacture, not a device-derived key — named here exactly
+  as the corrected document names it, not the superseded v0.1 framing.
+- **Communication Key (CK)** — optional internal bus encryption.
+
+None of these are implemented in `backend/` (confirmed, same grep as the
+rest of this document) — DOCUMENTED_ONLY, consistent with every other FAP
+finding here.
+
+### DSP/Fingerprint objective — a product decision already made within `frek_v3/` itself
+
+`FREK_DSP_Fingerprint_Specification_v0.1.md` names four possible
+fingerprinting objectives — **Identification** (exact-copy detection, zero
+tolerance), **Similarity** (catalog/recommendation clustering),
+**Provenance** (survives re-encoding, not re-capture — proves "this signal
+came from this microphone at this instant"), **Resistance** (survives any
+common transformation, streaming-service-grade robustness) — each with
+real, named tradeoffs (false-positive/negative rate, DSP complexity). The
+document's own §2 makes and justifies a recommendation: **Provenance
+(Objective C)** as FREK V3's primary objective, because it is "the
+objective most aligned with FREK's promise" and is realizable without a
+neural model. This is a recorded architectural recommendation, not yet
+confirmed as founder-locked the way the crypto/PUF/secure-boot design is
+— `FREK_V3_Engineering_Exploded_View_v0.2.md`'s own final synthesis (§8)
+lists "DSP Spec v0.1" under "À DÉFINIR" (still to be finalized), not
+under "VERROUILLÉ" (locked) alongside the crypto/PUF/key-hierarchy/
+secure-boot/device-ID/TRNG work. Recorded as DOCUMENTED_ONLY, with the
+recommendation preserved by name (Objective C / Provenance) rather than
+re-derived if a future pass picks this up.
+
+### Overall FREK V3 hardware maturity (the roadmap's own honest self-assessment)
+
+`FREK_V3_Architecture_Review_Final.md` names three maturity levels —
+**Concept** (dépassé/superseded), **Architecture** (current — "hardware +
+crypto + DSP + Core fonctionnent ensemble" on paper), **Engineering**
+(next — "bits exacts, timings, RTL, consommation, résultats
+expérimentaux") — and states plainly: *"La faisabilité technique n'est
+PAS encore prouvée. Elle est suffisamment définie pour être testée."*
+Its own explicit "what NOT to do now" list (contact a fab, price an NRE,
+commit to a final certification profile, freeze the fingerprint algorithm,
+promise a tape-out) rules out exactly the kind of premature hardware
+commitment this reconciliation pass has also avoided. `FREK_V3_Roadmap_
+Next_Lock_v0.2.md` names the concrete next deliverable as **Golden
+Vectors + Rust Verifier** (a second, Rust reference implementation that
+must byte-for-byte match the existing Python one's outputs) — not yet
+started; `frek_v3/reference_verifier/`'s 16 golden test vectors are the
+Python half of that pair, already real and passing.
+
+### Documents given lighter treatment, and why
+
+`BILAN_DISCUSSION_FREK_V3.md` is a session recap that itself summarizes
+the other six documents (its own §3 "Livrables produits" lists them) —
+reconciling it item-by-item would double-count content already reconciled
+above from its primary sources. `INSTRUCTIONS_EMERGENT.md` is developer
+onboarding instructions for the Emergent.sh coding-assistance platform
+("Instructions pour l'équipe" — how to set up and validate the reference
+verifier in that tool), not a FREK product/requirements document at all —
+no requirement to extract. Both read in full to confirm this triage was
+correct, not skipped on assumption.
+
+### Net effect on this reconciliation's conclusions
+
+No change to the headline finding (FAP and the Proof Engine are
+orthogonal, not competing) or to the "not implemented, correctly deferred"
+verdict — every one of these seven documents is hardware-attestation
+material with zero backend code implementing it. The one substantive
+correction (key derivation) sharpens this document's own accuracy without
+changing what it recommends or what remains deferred.
