@@ -4,7 +4,9 @@ Per founder directive §9–11 (`docs/decisions/0001-founder-decisions-2026-08-3
 
 ## Route count correction
 
-The route count carried in every prior report (`docs/PERMISSION_MATRIX.md`, `reports/FREKCORE_CONTRADICTIONS.md` C4) was **33**. Reading both files in full this pass counts **42 routes**: 13 in `backend/frek/routes.py` + 29 in `backend/frek/routes_advanced.py`. Corrected here with the exact list below; the prior "33" figure is not re-derivable from the code as written and is treated as a stale estimate, not evidence of routes since removed.
+The route count carried in every prior report (`docs/PERMISSION_MATRIX.md`, `reports/FREKCORE_CONTRADICTIONS.md` C4) was **33**. Reading both files in full this pass counts **43 routes**: 13 in `backend/frek/routes.py` + 30 in `backend/frek/routes_advanced.py`. Corrected here with the exact list below; the prior "33" figure is not re-derivable from the code as written and is treated as a stale estimate, not evidence of routes since removed.
+
+**Update (2026-08-31)**: this section originally said 42 (13+29) — an off-by-one in its own header arithmetic, found while re-verifying this audit's claims for the P1 backlog. The per-route tables below were already complete and correct (every one of NODE06's 7, NODE07's 6, NODE08's 5, NODE09's 6, and NODE10's 6 `routes_advanced.py` routes was already individually classified) — only this summary sentence's count was wrong, re-verified directly against `grep -c "@advanced_router\.\(get\|post\|put\|delete\)" backend/frek/routes_advanced.py` = 30. No `frek/` code changed.
 
 ## The single most important finding: `backend/frek/`'s real storage backend
 
@@ -86,12 +88,16 @@ No routes found under this name in either file. `frek_stats`'s own NODE map desc
 
 ## Summary disposition
 
+**Update (2026-08-31)**: this table originally read 15/4/1/22/0 (summing to 42, the same off-by-one this document's opening section already corrected). Recounted here route-by-route against the per-route tables above — every individual route's classification is unchanged; only this aggregate table's arithmetic was wrong (it undercounted PRESERVE, most, and overcounted NEEDS_FOUNDER_DECISION and ABSORB, likely from counting `/reseau/*` toward ABSORB in an earlier draft before the NODE06 section settled it as NEEDS_FOUNDER_DECISION-as-a-group).
+
 | Classification | Count | Routes |
 |---|---|---|
-| PRESERVE | 15 | Info/doctrine reads across NODE01, NODE08, NODE09, NODE10, plus `/extract` and the PDF certificate route |
-| ABSORB candidate | 4 | `/resonance` (x2), `/coherence`, tentatively `/reseau/*` (grouped with NODE06's NEEDS_FOUNDER_DECISION below) |
-| ADAPTER candidate | 1 | QR code rendering |
-| NEEDS_FOUNDER_DECISION | 22 | `/certify`, `/certify/upload`, `/verify/{frek_id}`, `/genesis`, `/workshop` (routes.py); all 7 NODE06 `/reseau/*` routes; all 6 NODE07 `/transmission/*` routes; `/juridique/attestation` |
+| PRESERVE | 20 | routes.py: `/extract`, `/verify/{frek_id}/certificat.pdf`, `/` (info), `/stats` (4). routes_advanced.py: all 5 NODE08 `/systeme*` reads, all 5 NODE09 `/juridique*` reads (excl. `/attestation`), all 6 NODE10 `/institutionnel*` reads (16) |
+| ABSORB candidate | 3 | `/resonance` (POST + GET), `/coherence` |
+| ADAPTER candidate | 1 | QR code rendering (`/verify/{frek_id}/qr.png`) |
+| NEEDS_FOUNDER_DECISION | 19 | routes.py: `/certify`, `/certify/upload`, `/verify/{frek_id}`, `/genesis`, `/workshop` (5). routes_advanced.py: all 7 NODE06 `/reseau/*` routes, all 6 NODE07 `/transmission/*` routes, `/juridique/attestation` (14) |
 | SUPERSEDE / DEPRECATE / MIGRATE | 0 | None found — no route in this module was found to have a clean, semantically-equivalent modern replacement already built; every apparent overlap (`/juridique/attestation` vs. `notary`) turned out to need founder input rather than being a clean supersession |
+
+20 + 3 + 1 + 19 + 0 = 43, matching the corrected route count above.
 
 **No route in this audit was found safe to authenticate, harden, or modify in-place this session** — every mutation's real defect (non-persistent storage) is architectural, not a missing `Depends(...)`, and fixing it would mean either wiring a real database (new scope, a capability decision) or accepting the ephemeral-memory behavior as intentional for a debug/demo surface (also a decision). Per founder directive §28, this stops for founder input rather than guessing.
