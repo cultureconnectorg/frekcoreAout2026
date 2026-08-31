@@ -1,9 +1,11 @@
 """FREK Notary — API endpoints"""
+import os
 import base64
+import hmac
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Query, Header
 
 from frek_v1.auth import get_current_client, require_permission
 
@@ -22,8 +24,18 @@ logger = logging.getLogger("frek.notary.routes")
 
 notary_router = APIRouter(prefix="/notary", tags=["FREK Notary — Notaire Culturel Tech"])
 
+ADMIN_KEY = os.environ.get("SECRET_KEY", "")
+
 _chain: Optional[FrekChain] = None
 _anchor: Optional[OTSAnchor] = None
+
+
+def _require_admin(x_admin_key: Optional[str]):
+    """Admin-key gate (same convention as health/routes.py's _require_admin,
+    fingerprint/routes.py's _admin_or_403, geo/routes.py's _admin_or_403):
+    X-Admin-Key must match SECRET_KEY via constant-time comparison."""
+    if not ADMIN_KEY or not x_admin_key or not hmac.compare_digest(x_admin_key, ADMIN_KEY):
+        raise HTTPException(status_code=401, detail="X-Admin-Key requis")
 
 
 def set_db(database):
@@ -199,6 +211,33 @@ async def anchor_upgrade(
     client: dict = Depends(require_permission("emit")),
 ):
     """Tente l'upgrade Bitcoin pour les blocks ancres en attente."""
+    return await get_anchor().upgrade_pending(max_blocks=max_blocks)
+
+
+@notary_router.post("/anchor/force-upgrade")
+async def anchor_force_upgrade(
+    max_blocks: int = Query(100, ge=1, le=1000),
+    x_admin_key: Optional[str] = Header(None),
+):
+    """Vide la queue OTS a la demande, reserve a l'administration.
+
+    Historique (P1, memory/RESILIENCE_REPORT_v1.0.md Sprint G, section 4.1
+    point 2 + section 7 P1#3): pendant le test de coupure OpenTimestamps,
+    `pending_anchors` ne diminuait pas avant le prochain cycle du sweep
+    automatique (jusqu'a 30 min). Le rapport recommandait explicitement un
+    endpoint distinct, gate admin, pour vider la queue apres un incident
+    sans attendre le cycle.
+
+    `POST /anchor/upgrade` (ci-dessus) existait deja au moment du rapport
+    mais reste accessible a tout client credentialise avec la permission
+    `emit` — n'importe quel partenaire autorise a emettre des FREK-ID, pas
+    seulement un administrateur. Cet endpoint ferme cet ecart precis : meme
+    capacite (`OTSAnchor.upgrade_pending`), mais gate par `X-Admin-Key`
+    (meme convention que `health/routes.py::_require_admin`,
+    `fingerprint/routes.py::_admin_or_403`, `geo/routes.py::_admin_or_403`)
+    au lieu de la permission client `emit`. `/anchor/upgrade` reste
+    inchange pour ne pas casser un appelant `emit` existant."""
+    _require_admin(x_admin_key)
     return await get_anchor().upgrade_pending(max_blocks=max_blocks)
 
 

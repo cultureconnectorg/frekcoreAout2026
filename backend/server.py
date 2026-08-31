@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import asyncio
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
@@ -28,6 +29,7 @@ from services.webhook import webhook_router, set_db as webhook_set_db
 # Import FREK Notary (Bitcoin anchoring via OpenTimestamps)
 from notary.routes import notary_router, set_db as notary_set_db, get_chain as notary_get_chain, get_anchor as notary_get_anchor
 from notary.service import init_service as notary_init_service
+from notary.chain_watchdog import watchdog_loop as notary_watchdog_loop
 
 # Import FREK Staff PWA (Scanner terrain)
 from staff.routes import staff_router, set_db as staff_set_db, seed_default_staff
@@ -40,7 +42,11 @@ from audit.routes import audit_router, set_db as audit_set_db
 from spec.routes import spec_router
 
 # Import FREK Security (rate limiting silencieux + audit trail)
-from security.policies import set_db as security_set_db, ensure_indexes as security_ensure_indexes
+from security.policies import (
+    set_db as security_set_db,
+    ensure_indexes as security_ensure_indexes,
+    record_anomaly as security_record_anomaly,
+)
 from security.routes import security_router, set_db as security_routes_set_db
 
 # Import FREK Passport (Phase 3 — souverainete du porteur, Ed25519 + Merkle disclosure)
@@ -128,6 +134,11 @@ webhook_set_db(db)
 # Initialize FREK Notary (Bitcoin anchoring)
 notary_set_db(db)
 notary_init_service(notary_get_chain(), notary_get_anchor())
+
+# FREK-Chain integrity watchdog task handle (started in startup, cancelled
+# in shutdown — see notary/chain_watchdog.py and memory/RESILIENCE_REPORT_
+# v1.0.md Sprint G §7#4).
+_chain_watchdog_task = None
 
 # Initialize FREK Staff PWA
 staff_set_db(db)
@@ -608,6 +619,20 @@ async def seed_clients():
     notary_get_anchor().start()
     logger.info("FREK Notary (Bitcoin anchoring) demarre")
 
+    # FREK-Chain integrity watchdog (P1, memory/RESILIENCE_REPORT_v1.0.md
+    # Sprint G §5.2/§7#4): periodic verify_chain() pass, reports via
+    # security_events (severity critical) on tamper detection — closes
+    # the historical gap where corruption was only ever caught if someone
+    # happened to call /notary/chain/verify. Opt out with
+    # FREK_DISABLE_CHAIN_WATCHDOG=1 (e.g. a short-lived dev/mongomock run
+    # where a long-lived background task isn't wanted).
+    global _chain_watchdog_task
+    if os.environ.get("FREK_DISABLE_CHAIN_WATCHDOG") != "1":
+        _chain_watchdog_task = asyncio.create_task(
+            notary_watchdog_loop(notary_get_chain(), security_record_anomaly)
+        )
+        logger.info("FREK-Chain watchdog demarre (verification toutes les 6h)")
+
     # FREK Staff PWA — seed comptes terrain + indexes
     await db.staff.create_index("agent_id", unique=True)
     # client_uuid idempotency indexes are preflighted and never replaced at startup.
@@ -664,4 +689,6 @@ async def seed_clients():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     notary_get_anchor().stop()
+    if _chain_watchdog_task is not None:
+        _chain_watchdog_task.cancel()
     client.close()
