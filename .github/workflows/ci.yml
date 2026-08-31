@@ -82,6 +82,16 @@ jobs:
   unit-tests:
     name: Unit tests + coverage (this phase's modules)
     runs-on: ubuntu-latest
+    env:
+      # backend/passport/keys.py defaults FREK_PASSPORT_KEY_PATH to
+      # /app/backend/.passport_key.pem — a real production convention
+      # (this whole app is deployed rooted at /app), not a bug to change
+      # there. GitHub Actions runners have no /app and no permission to
+      # create it (PermissionError: [Errno 13], found via PR #1's first
+      # CI run on this branch after the requirements-ci.txt fix — see
+      # reports/16_INTEGRATION_TEST_BASELINE.md §8). Point it at the
+      # runner's own writable temp dir instead, CI-only.
+      FREK_PASSPORT_KEY_PATH: ${{ runner.temp }}/frekcore_ci_passport_key.pem
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
