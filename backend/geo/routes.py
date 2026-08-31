@@ -1,4 +1,5 @@
 """FREK Geo — Routes HTTP /api/geo/*."""
+
 import logging
 import os
 
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from . import encoder, satellite, service
+from identity_engine import service as identity_service
 from notary.service import notarize_event
 from security.policies import check_rate_limit
 
@@ -15,7 +17,12 @@ logger = logging.getLogger("frek.geo.routes")
 geo_router = APIRouter(prefix="/geo", tags=["FREK Geo — Couche geolocalite souveraine"])
 
 
+db = None
+
+
 def set_db(database):
+    global db
+    db = database
     service.set_db(database)
 
 
@@ -26,6 +33,33 @@ def _admin_or_403(x_admin_key: str):
     expected = os.environ.get("SECRET_KEY")
     if not expected or x_admin_key != expected:
         raise HTTPException(status_code=403, detail="invalid_admin_key")
+
+
+async def _is_holder(frek_id: str, x_frek_session: Optional[str]) -> bool:
+    """True per-holder proof — identical logic and rationale to
+    fingerprint/routes.py's helper of the same name (P1 backlog #3, see
+    docs/architecture/FREK_ID_RECONCILIATION.md). Kept as a local copy
+    rather than a shared import per this codebase's existing per-module
+    convention for these small auth helpers (see _admin_or_403 above)."""
+    if not x_frek_session:
+        return False
+    session_frek_id = identity_service.verify_session_token(x_frek_session)
+    if not session_frek_id:
+        return False
+    if session_frek_id == frek_id:
+        return True
+    identity = await db.frek_persons.find_one(
+        {"frek_id": session_frek_id}, {"_id": 0, "linked_objects": 1}
+    )
+    return bool(identity and frek_id in identity.get("linked_objects", []))
+
+
+async def _holder_or_admin(
+    frek_id: str, x_frek_session: Optional[str], x_admin_key: str
+):
+    if await _is_holder(frek_id, x_frek_session):
+        return
+    _admin_or_403(x_admin_key)
 
 
 # ---------- Encode (zero call externe) ----------
@@ -52,12 +86,17 @@ async def get_consent(frek_id: str):
 
 @geo_router.post("/consent/{frek_id}")
 async def set_consent(
-    frek_id: str, req: ConsentRequest, x_admin_key: str = Header(default="")
+    frek_id: str,
+    req: ConsentRequest,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
 ):
-    """P0 fix (docs/decisions/0001-...): was reachable with no credential at
-    all, same class of finding as fingerprint's consent write. Same interim
-    admin-key gate, same caveat: not true per-holder authorization yet."""
-    _admin_or_403(x_admin_key)
+    """P0 fix (docs/decisions/0001-...) closed "reachable with no credential
+    at all" with an interim admin-key gate. P1 (2026-08-31,
+    docs/architecture/FREK_ID_RECONCILIATION.md): real per-holder authority
+    now — see `_holder_or_admin`/`_is_holder`. Admin key remains the
+    documented override."""
+    await _holder_or_admin(frek_id, x_frek_session, x_admin_key)
     try:
         return await service.set_consent(frek_id, req.level)
     except ValueError as e:
@@ -98,13 +137,14 @@ async def observe(req: ObserveRequest):
 async def get_trail(
     frek_id: str,
     limit: int = Query(50, ge=1, le=500),
+    x_frek_session: Optional[str] = Header(None),
     x_admin_key: str = Header(default=""),
 ):
-    """P0 fix (docs/decisions/0001-...): full raw location history is
-    materially more sensitive than the consent-level reads left public
-    elsewhere in this file — gated the same way fingerprint/routes.py gates
-    its own sensitive reads (GET /{frek_id}, /export/{frek_id})."""
-    _admin_or_403(x_admin_key)
+    """P0 fix (docs/decisions/0001-...) gated this the same way as
+    fingerprint's sensitive reads. P1 (2026-08-31): real per-holder
+    authority — the holder can read their own full raw location history;
+    admin key remains the documented override."""
+    await _holder_or_admin(frek_id, x_frek_session, x_admin_key)
     return await service.get_trail(frek_id, limit=limit)
 
 
@@ -140,9 +180,27 @@ async def satellite_sources():
     """Liste les sources satellite gratuites cablees."""
     return {
         "sources": [
-            {"id": "eox_s2", "name": "EOX Sentinel-2 Cloudless", "resolution_m": 10, "auth": False, "free": True},
-            {"id": "gibs", "name": "NASA EOSDIS GIBS (MODIS Terra)", "resolution_m": 250, "auth": False, "free": True},
-            {"id": "osm", "name": "OpenStreetMap", "resolution_m": None, "auth": False, "free": True},
+            {
+                "id": "eox_s2",
+                "name": "EOX Sentinel-2 Cloudless",
+                "resolution_m": 10,
+                "auth": False,
+                "free": True,
+            },
+            {
+                "id": "gibs",
+                "name": "NASA EOSDIS GIBS (MODIS Terra)",
+                "resolution_m": 250,
+                "auth": False,
+                "free": True,
+            },
+            {
+                "id": "osm",
+                "name": "OpenStreetMap",
+                "resolution_m": None,
+                "auth": False,
+                "free": True,
+            },
         ],
         "geocoding": {
             "provider": "nominatim_osm",
@@ -163,7 +221,11 @@ class GeoNotarizeRequest(BaseModel):
 
 
 @geo_router.post("/notarize")
-async def geo_notarize(req: GeoNotarizeRequest, x_admin_key: str = Header(default="")):
+async def geo_notarize(
+    req: GeoNotarizeRequest,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
     """Ancre une presence geo-situee dans FREK-Chain + Bitcoin OTS.
 
     Le payload notarise contient le couple (plus_code, h3_9, sentinel_tile, capture_date).
@@ -175,9 +237,11 @@ async def geo_notarize(req: GeoNotarizeRequest, x_admin_key: str = Header(defaul
     P0 fix (docs/decisions/0001-...): unlike /observe (high-frequency,
     device-originated), notarizing is rare and consequential (writes a
     permanent FREK-Chain block and attempts a Bitcoin OTS submission) —
-    gated the same way as fingerprint's low-frequency, high-stakes /match.
-    """
-    _admin_or_403(x_admin_key)
+    gated behind an authority level accordingly. P1 (2026-08-31): unlike
+    fingerprint's /match, this is single-subject (one frek_id) — a holder
+    self-attesting their own presence is a coherent operation, so
+    `_holder_or_admin` applies here, not an admin-only carve-out."""
+    await _holder_or_admin(req.frek_id, x_frek_session, x_admin_key)
     consent = await service.get_consent(req.frek_id)
     if consent.get("level", "none") == "none":
         raise HTTPException(status_code=403, detail="consent_required")
@@ -199,10 +263,21 @@ async def geo_notarize(req: GeoNotarizeRequest, x_admin_key: str = Header(defaul
             "lon": encoded["lon"],
         },
         "satellite_witness": {
-            "eox_s2": {"provider": sat_eox["provider"], "layer": sat_eox["layer"],
-                       "x": sat_eox["x"], "y": sat_eox["y"], "zoom": sat_eox["zoom"]},
-            "nasa_gibs": {"provider": sat_gibs["provider"], "layer": sat_gibs["layer"],
-                          "date": sat_gibs["date"], "x": sat_gibs["x"], "y": sat_gibs["y"], "zoom": sat_gibs["zoom"]},
+            "eox_s2": {
+                "provider": sat_eox["provider"],
+                "layer": sat_eox["layer"],
+                "x": sat_eox["x"],
+                "y": sat_eox["y"],
+                "zoom": sat_eox["zoom"],
+            },
+            "nasa_gibs": {
+                "provider": sat_gibs["provider"],
+                "layer": sat_gibs["layer"],
+                "date": sat_gibs["date"],
+                "x": sat_gibs["x"],
+                "y": sat_gibs["y"],
+                "zoom": sat_gibs["zoom"],
+            },
         },
         "observation_at": observation_at,
     }

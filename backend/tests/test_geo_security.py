@@ -10,7 +10,10 @@ reachable without a credential.
 
 import os
 import secrets
+import sys
+from pathlib import Path
 
+import pytest
 import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
@@ -18,13 +21,36 @@ API = f"{BASE_URL}/api/geo"
 
 ADMIN_KEY = os.environ.get("SECRET_KEY", "")
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 
 def H_admin():
     return {"X-Admin-Key": ADMIN_KEY}
 
 
+def H_holder(token):
+    return {"X-FREK-Session": token}
+
+
 def fresh_frek():
     return f"FREK-GEO-{secrets.token_hex(3).upper()}"
+
+
+@pytest.fixture()
+def holder_session():
+    from identity_engine import service as identity_service
+
+    r = requests.post(
+        f"{BASE_URL}/api/v1/identity/init",
+        json={"identity_type": "individual"},
+        timeout=5,
+    )
+    assert r.status_code == 200, r.text
+    frek_id = r.json()["frek_id"]
+    token = identity_service.issue_session_token(frek_id)
+    return frek_id, token
 
 
 class TestConsentWriteAuth:
@@ -43,6 +69,88 @@ class TestConsentWriteAuth:
         assert r.status_code == 200
         after = requests.get(f"{API}/consent/{fid}", timeout=5).json()
         assert after["level"] == "city"
+
+
+# ---------- P1: real per-holder authorization ----------
+# docs/architecture/FREK_ID_RECONCILIATION.md #3 / reports/FREKCORE_COMPLETION_BACKLOG.md
+# P1 #3 — mirrors test_fingerprint.py::TestHolderAuth for geo's own three
+# widened routes (consent write, trail read, notarize).
+class TestHolderAuth:
+    def test_consent_write_with_own_holder_session_works(self, holder_session):
+        frek_id, token = holder_session
+        r = requests.post(
+            f"{API}/consent/{frek_id}",
+            json={"level": "city"},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        assert r.status_code == 200, r.text
+
+    def test_consent_write_with_holder_session_for_a_different_frek_id_is_rejected(
+        self, holder_session
+    ):
+        _frek_id, token = holder_session
+        r = requests.post(
+            f"{API}/consent/{fresh_frek()}",
+            json={"level": "city"},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        assert r.status_code == 403
+
+    def test_consent_write_via_linked_object_works(self, holder_session):
+        _frek_id, token = holder_session
+        external_id = fresh_frek()
+        link = requests.post(
+            f"{BASE_URL}/api/v1/identity/link-object",
+            json={"object_id": external_id},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        assert link.status_code == 200, link.text
+        r = requests.post(
+            f"{API}/consent/{external_id}",
+            json={"level": "city"},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        assert r.status_code == 200, r.text
+
+    def test_trail_with_own_holder_session_works(self, holder_session):
+        frek_id, token = holder_session
+        requests.post(
+            f"{API}/consent/{frek_id}",
+            json={"level": "city"},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        requests.post(
+            f"{API}/observe",
+            json={"frek_id": frek_id, "lat": 5.35, "lon": -4.02, "skip_reverse": True},
+            timeout=5,
+        )
+        r = requests.get(f"{API}/trail/{frek_id}", headers=H_holder(token), timeout=5)
+        assert r.status_code == 200, r.text
+
+    def test_notarize_with_own_holder_session_works(self, holder_session):
+        """Unlike fingerprint's /match, /notarize is single-subject — a
+        holder self-attesting their own presence is coherent, so this
+        route (unlike /match) WAS widened — see geo/routes.py's
+        geo_notarize() docstring."""
+        frek_id, token = holder_session
+        requests.post(
+            f"{API}/consent/{frek_id}",
+            json={"level": "precise"},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        r = requests.post(
+            f"{API}/notarize",
+            json={"frek_id": frek_id, "lat": 5.35, "lon": -4.02},
+            headers=H_holder(token),
+            timeout=5,
+        )
+        assert r.status_code == 200, r.text
 
 
 class TestObserveConsentGate:

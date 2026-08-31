@@ -105,6 +105,30 @@ section and `backend/tests/test_identity_lifecycle.py`. Notes:
   as noted above, neither system has an existing implementation to model
   them from, so they remain open P1 backlog items, not done in this pass.
 
+## A second consumer of this map: fingerprint/geo per-holder authorization (2026-08-31)
+
+`reports/22_P0_SECURITY_CLOSURE.md` gated `fingerprint`/`geo`'s consent and
+sensitive-read routes behind a shared ADMIN key as an interim fix, flagging
+"true per-holder authorization" as blocked on this very document landing.
+It has, so this closes that gap
+(`reports/FREKCORE_COMPLETION_BACKLOG.md` P1 #3):
+`backend/fingerprint/routes.py` and `backend/geo/routes.py` both now
+accept `identity_engine`'s `X-FREK-Session` as primary authority (admin
+key kept only as override), using the exact split this document already
+describes — `frek_v1` has no holder-session concept to check against at
+all, so the only live per-holder proof mechanism is `identity_engine`'s.
+
+The realistic wrinkle this map's abstract split becomes concrete for:
+fingerprint/geo data is keyed by whatever `frek_id` an external caller
+supplies, commonly a `frek_v1`-minted UUID4 (a plain `uuid.uuid4()`
+string, `frek_v1/utils.py:generate_frek_id`) — a different, structurally
+distinguishable ID space from `identity_engine`'s own `id-{hex}-{hex}`
+FREK-IDs. A holder session can never *directly* match such a `frek_id`.
+The fix reuses `identity_engine`'s pre-existing `linked_objects` field
+(populated by the already-existing `POST /identity/link-object`, meant
+for exactly "this object is mine") as the second, indirect proof path —
+no new mechanism invented, an existing one applied to a new consumer.
+
 ## Explicit non-goals of this document
 
 - Does not decide whether `frek_v1` and `identity_engine` should ever merge into one collection (§5: still open, deferred to whoever makes that call with this map in hand).
