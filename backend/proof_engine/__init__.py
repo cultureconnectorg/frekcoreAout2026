@@ -12,15 +12,35 @@ onto what backend/notary/ and backend/passport/ *actually* do today (see
 capability, it makes the existing capability's maturity level explicit and
 machine-checkable. No new blockchain integration is added; Bitcoin/OpenTimestamps
 anchoring already exists in backend/notary/anchor.py and is left untouched.
+
+D6 (founder execution protocol, 2026-09-01): `evidence_semantics.py` adds
+Claim/Evidence/VerificationResult -- the two genuinely-missing primitives
+identified in `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md`
+SS E's audit of the founder's evolved trust model. Purely additive: no
+existing symbol in this package changes shape or behavior.
 """
 
 from .models import ProofReceipt, ProofState
 from .provider import ProofProvider
 from .notary_adapter import proof_state_from_notary_block
+from .evidence_semantics import (
+    Claim,
+    ClaimOrigin,
+    Evidence,
+    EvidenceKind,
+    AuthorityStatus,
+    VerificationResult,
+)
 
 __all__ = [
     "ProofReceipt",
     "ProofState",
     "ProofProvider",
     "proof_state_from_notary_block",
+    "Claim",
+    "ClaimOrigin",
+    "Evidence",
+    "EvidenceKind",
+    "AuthorityStatus",
+    "VerificationResult",
 ]

@@ -1,8 +1,10 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION ONLY. No runtime
-code changed. No implementation started. `backend/frek/` untouched.
-PR #1 not merged, not deployed.
+**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D1–D5.
+D6 (Evidence Semantics) is now IMPLEMENTED — see the 2026-09-01 update
+below — as a small, additive, fully-tested foundation
+(`backend/proof_engine/evidence_semantics.py`). D1–D5: no implementation
+started, `backend/frek/` untouched. PR #1 not merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -19,6 +21,25 @@ PR #1 unmerged. Previous verdict `FREEZE READY` (`reports/
 21_FREEZE_ASSESSMENT.md`) is reopened by this founder decision — see
 §T and the updated freeze report for why this is scope expansion by
 legitimate founder governance, not a regression.
+
+**Update (2026-09-01, D6/STATE_0 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: per the founder's strict, one-state-at-a-time execution
+protocol (`EXECUTE_D6=TRUE`, `EXECUTE_D1..D5=FALSE`), D6 — Evidence
+Semantics — is no longer documentation-only. §T step 0's plan ("CLAIM/
+EVIDENCE as first-class concepts... must exist before D1/D2/D3/D5 have
+anywhere correct to attach their assertions") is implemented:
+`backend/proof_engine/evidence_semantics.py` (new, 6 exported symbols:
+`Claim`, `ClaimOrigin`, `Evidence`, `EvidenceKind`, `AuthorityStatus`,
+`VerificationResult`), 24 new unit tests in `backend/tests/
+test_evidence_semantics.py` mapping 1:1 to the protocol's
+`D6_ACCEPTANCE_REQUIRED` list, 100% line coverage on the new file, full
+unit suite 195/195 passing (was 171), zero existing route/model/behavior
+changed (`proof_engine` has no caller anywhere in `backend/` outside
+tests — confirmed by grep — so this is provably backward-compatible).
+D1–D5 remain exactly as this document left them: reconciled on paper,
+**not started** — `backend/frek/` is untouched, no route anywhere
+changed. Per the protocol, this document now stops and waits for the
+founder to authorize STATE_1 (D1) before any further execution.
 
 ---
 
@@ -104,7 +125,7 @@ correction is the authoritative one going forward.
 | D3 | Relationship/Provenance Graph | PRESERVE + MIGRATE (split into D3-A Trust Graph, D3-B Cultural/Inferred Graph) |
 | D4 | Offline Proof Transport | PRESERVE + ADAPTER |
 | D5 | Human-Readable Technical Evidence | PRESERVE INTENT + ABSORB + LEGAL HARDENING |
-| D6 | Evidence Semantics | Cross-cutting rule, not a capability — governs how D1–D5 represent truth |
+| D6 | Evidence Semantics | Cross-cutting rule, not a capability — governs how D1–D5 represent truth. **IMPLEMENTED 2026-09-01** (`proof_engine/evidence_semantics.py`) |
 
 `DELETE_CONCEPT` is not used anywhere in this document — the founder has
 foreclosed it for all five capabilities.
@@ -1429,9 +1450,11 @@ Founder's preferred sequencing (§ "IMPLEMENTATION PLAN") checked against
 this pass's dependency evidence — **no reordering needed**, the proposed
 sequence matches what §D independently found:
 
-0. **Evidence semantics foundation (D6)** — CLAIM/EVIDENCE as first-class
-   concepts (§E's identified gap) must exist before D1/D2/D3/D5 have
-   anywhere correct to attach their assertions.
+0. **Evidence semantics foundation (D6) — DONE (2026-09-01)** —
+   CLAIM/EVIDENCE as first-class concepts (§E's identified gap) now exist
+   (`backend/proof_engine/evidence_semantics.py`, 24 tests, 100% coverage
+   on the new file) so D1/D2/D3/D5 have somewhere correct to attach their
+   assertions once each is separately authorized.
 1. **Canonical bindings/object model** — the `content_bindings[]`
    shape (§D1 point 8) that separates FREK-ID from Signal Fingerprint.
 2. **Fingerprint integration (D1)** — depends on 0 and 1.
@@ -1459,8 +1482,12 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document does not start step 0.** It exists so step 0 can start
-from a validated plan instead of re-deriving one.
+**This document did not start step 0 when first written; step 0 (D6)
+has since been executed** under the founder's explicit, separate
+authorization (`EXECUTE_D6=TRUE`) — see the 2026-09-01 update at the top
+of this document. Steps 1–11 (D1–D5 and everything downstream of them)
+remain exactly as planned here: not started, each requiring its own
+separate founder authorization before execution.
 
 ---
 

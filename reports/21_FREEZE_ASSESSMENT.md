@@ -46,6 +46,35 @@ changed. No implementation of D1–D6 has started. This pass does not
 proceed into Production Readiness, Red/Blue/Purple, or CVLN ecosystem
 wiring.
 
+**Update (2026-09-01, D6/STATE_0 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: the founder's follow-up directive introduced a strict,
+one-state-at-a-time execution protocol (`EXECUTE_D6=TRUE`,
+`EXECUTE_D1..D5=FALSE`, `AUTO_TRANSITION=FALSE`) and explicitly authorized
+exactly one step: D6 (Evidence Semantics), the cross-cutting foundation
+`reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` §T identified
+as step 0, required before D1/D2/D3/D5 have anywhere correct to attach
+their assertions. D6 is now **implemented**: `backend/proof_engine/
+evidence_semantics.py` (new) adds `Claim`/`Evidence`/`VerificationResult`
+as typed, additive Pydantic models — the exact two primitives §E's audit
+of the founder's evolved trust model found genuinely missing (7 of 9
+concepts in IDENTITY→AUTHORITY→OBJECT→EVENT→CLAIM→PROVENANCE→EVIDENCE→
+PROOF→VERIFICATION already existed under some name). 24 new unit tests
+(`backend/tests/test_evidence_semantics.py`) map 1:1 onto the protocol's
+own `D6_ACCEPTANCE_REQUIRED` list (`CLAIM_NE_EVIDENCE`, `EVIDENCE_NE_
+PROOF`, `PROOF_NE_VERIFICATION`, `INFERENCE_NE_VERIFIED_FACT`, `SIGNATURE_
+VALID_NE_CURRENT_AUTHORITY`, `ANCHOR_NE_LEGAL_OWNERSHIP`, `BACKWARD_
+COMPATIBILITY`) — each is a passing test, not an assertion. 100% line
+coverage on the new file; full unit suite 195/195 passing (up from 171);
+`proof_engine` confirmed to have zero callers anywhere in `backend/`
+outside tests (`grep -rln "from proof_engine\|import proof_engine"`), so
+this is provably backward-compatible — no existing route, model, or event
+producer changed behavior. `backend/frek/` remains completely untouched;
+D1–D5 remain not started, each requiring its own separate founder
+authorization before execution, per the protocol's own `STOP=TRUE,
+WAIT_FOR_FOUNDER=TRUE` gate at the end of every state. This pass does not
+proceed into Production Readiness, Red/Blue/Purple, or CVLN ecosystem
+wiring, and does not begin D1.
+
 ## Verdict
 
 # NOT READY FOR FINAL FREEZE — D1–D6 RECONCILIATION REQUIRED
@@ -111,7 +140,7 @@ Items previously listed here that this session could close without a founder dec
 2. **`backend/frek/`'s remaining founder-undecided routes — NARROWED to 0 by this reopening's founder decision, technical reconciliation now the open item (see item 5).** All 43 routes are individually classified (`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`); 20 PRESERVE, 3 ABSORB candidate, 1 ADAPTER candidate were already settled. The remaining 19 were `NEEDS_FOUNDER_DECISION`, sharing one root cause (non-persistent in-memory storage, `docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`'s central finding) — the founder has now explicitly decided the 5 capabilities those 19 routes express are all required, resolving the *decision* (see item 5 for the resulting *technical* work, which is not a blocker in the same sense — it is ordered, founder-approved backlog).
 3. **115 known dependency vulnerabilities — classified, not yet bumped, transitively blocked by item 1.** `reports/24_DEPENDENCY_SECURITY_CLASSIFICATION.md` sorts all 115 findings/20 packages into 5 evidence-based buckets (26 exploitable/reachable across `starlette`/`cryptography`/`pyjwt`/`python-multipart`; 12 potentially reachable; 30 transitive/unreachable; 41 blocked by the `emergentintegrations` private-dependency chain; 6 false-positive dev-tooling). Bumping the 4 reachable packages safely needs the real integration suite (item 1) to verify against, not just `mongomock`.
 4. **Docker Compose / container build never executed end-to-end — ENVIRONMENT-BLOCKED** (network-policy blocked, reconfirmed throughout this session).
-5. **D1–D6 historical capability reconciliation — FOUNDER-DECIDED, TECHNICAL WORK REQUIRED, not yet started.** `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` records the founder's decision that Signal/Audio Fingerprint (D1), Creative Lifecycle (D2), Relationship/Provenance Graph (D3), Offline Proof Transport (D4), and Human-Readable Technical Evidence (D5) must all be preserved and correctly reconciled into modern FREKCORE, governed by a sixth cross-cutting rule (D6, Evidence Semantics — CLAIM vs. EVIDENCE vs. PROOF vs. VERIFIED, so none of the five can silently overclaim). This is not environment-blocked and not founder-blocked (the founder decision is made) — it is ordered implementation work (`reports/FREKCORE_COMPLETION_BACKLOG.md` P1.5, 12 steps, §T of the reconciliation report) that has not started, per explicit instruction that this reconciliation pass is documentation-only.
+5. **D1–D6 historical capability reconciliation — FOUNDER-DECIDED, TECHNICAL WORK IN PROGRESS.** `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md` records the founder's decision that Signal/Audio Fingerprint (D1), Creative Lifecycle (D2), Relationship/Provenance Graph (D3), Offline Proof Transport (D4), and Human-Readable Technical Evidence (D5) must all be preserved and correctly reconciled into modern FREKCORE, governed by a sixth cross-cutting rule (D6, Evidence Semantics — CLAIM vs. EVIDENCE vs. PROOF vs. VERIFIED, so none of the five can silently overclaim). This is not environment-blocked and not founder-blocked (the founder decision is made) — it is ordered implementation work (`reports/FREKCORE_COMPLETION_BACKLOG.md` P1.5, 12 steps, §T of the reconciliation report). **Step 0 (D6) is DONE** (2026-09-01, `backend/proof_engine/evidence_semantics.py`, 24 tests, 100% coverage on the new file) — executed under the founder's own `FREKCORE_EXECUTION_PROTOCOL_V1`, which authorizes exactly one state at a time (`EXECUTE_D6=TRUE`, `EXECUTE_D1..D5=FALSE`) and requires the founder to explicitly authorize each next state (`STOP=TRUE, WAIT_FOR_FOUNDER=TRUE`). Steps 1–6 (D1–D5) remain not started, each awaiting its own separate authorization.
 
 **Explicitly not blockers, recorded so they aren't mistaken for open work**: Contradiction C6 (typed DID subjects) is DOCUMENTED_ONLY with no current consumer — not urgent, does not block freeze, should be resolved before hardware-capture (Luciole/FAP) work begins. The two large mission briefs (Red/Blue/Purple Team security assessment; UI/UX/SPA/Motion/3D/Accessibility overhaul) are explicitly out of scope for this pass by instruction, not blocked — they start only after a founder freeze decision, per the same instruction that ends this pass here.
 

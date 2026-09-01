@@ -42,10 +42,16 @@ longer a founder blocker — it is ordered technical work. Per the
 reconciliation report's §T (evaluated against §D's dependency evidence,
 no reordering needed):
 
-0. **Evidence semantics foundation (D6)** — add CLAIM/EVIDENCE as named,
-   first-class concepts alongside the existing `proof_engine.ProofState`
-   ladder (reused unmodified) and `eventbus`/`registry`/`permissions`
-   primitives (§E, §N of the reconciliation report). Blocks 2–6 below.
+0. **DONE (2026-09-01) — Evidence semantics foundation (D6)** — added
+   CLAIM/EVIDENCE as named, first-class concepts
+   (`backend/proof_engine/evidence_semantics.py`: `Claim`, `ClaimOrigin`,
+   `Evidence`, `EvidenceKind`, `AuthorityStatus`, `VerificationResult`)
+   alongside the existing `proof_engine.ProofState` ladder, reused
+   unmodified. 24 unit tests (`backend/tests/test_evidence_semantics.py`),
+   100% coverage on the new file, full suite 195/195. Executed under the
+   founder's explicit `FREKCORE_EXECUTION_PROTOCOL_V1` (`EXECUTE_D6=TRUE`,
+   `EXECUTE_D1..D5=FALSE`) — items 1–6 below remain not started, each
+   gated on its own separate founder authorization before execution.
 1. **Canonical bindings/object model** — separate FREK-ID (canonical
    object identity) from Signal Fingerprint (content/signal binding) as
    distinct, explicit concepts — resolves the historical conflation
