@@ -86,6 +86,7 @@ from eventbus.producers import (  # noqa: E402
     build_identity_recovered_event,
     build_identity_reconciled_event,
     build_object_created_event,
+    build_content_binding_created_event,
 )
 
 
@@ -169,6 +170,25 @@ def test_object_created_event_maps_to_a_correct_audit_event():
     assert audit_event.resource_type == "fk"
 
 
+def test_content_binding_created_event_maps_to_a_correct_audit_event():
+    envelope = build_content_binding_created_event(
+        {
+            "binding_id": "CB-1",
+            "frek_id": "id-fk-1",
+            "exact_hash": "a" * 64,
+            "signal_fingerprint": {
+                "algorithm": "frek_signal_v1",
+                "algorithm_version": "1.0.0",
+            },
+            "produced_by": "admin",
+            "proof_state": "fingerprint",
+        }
+    )
+    audit_event = event_envelope_to_audit_event(envelope)
+    assert audit_event.action == "content_binding.created"
+    assert audit_event.resource_type == "content_binding"
+
+
 def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
     """End-to-end through the real subscriber function (not just the pure
     mapping) — proves make_audit_trail_subscriber's async-write path works
@@ -202,6 +222,19 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
             reconciled_at="t",
             authorized_by="admin",
         ),
+        build_content_binding_created_event(
+            {
+                "binding_id": "CB-1",
+                "frek_id": "id-fk-1",
+                "exact_hash": "a" * 64,
+                "signal_fingerprint": {
+                    "algorithm": "frek_signal_v1",
+                    "algorithm_version": "1.0.0",
+                },
+                "produced_by": "admin",
+                "proof_state": "fingerprint",
+            }
+        ),
     ]
 
     async def _run():
@@ -221,10 +254,11 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
         "object.created",
         "identity.recovered",
         "identity.reconciled",
+        "content_binding.created",
     }
 
 
-def test_server_py_subscribes_all_six_real_producers_to_audit_trail():
+def test_server_py_subscribes_all_seven_real_producers_to_audit_trail():
     """Static check on server.py's own source — the actual regression this
     guards against is a future new producer (or this list) drifting without
     the other being updated, without needing to boot the full app to catch
@@ -238,5 +272,6 @@ def test_server_py_subscribes_all_six_real_producers_to_audit_trail():
         "object.created",
         "identity.recovered",
         "identity.reconciled",
+        "content_binding.created",
     ):
         assert f'"{event_type}"' in server_py, f"{event_type} not found in server.py"

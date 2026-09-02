@@ -130,6 +130,15 @@
       "implemented": false,
       "status": "MISSING",
       "evidence": "Le champ frek.artist.verified existe desormais dans backend/registry/schemas/v1/frek.artist.schema.json (cette livraison) mais aucun producteur d'evenement ne l'emet encore."
+    },
+    {
+      "event_type": "content_binding.created",
+      "version": "v1",
+      "description": "Nouveau content binding (exact-hash + signal fingerprint) cree pour un FREK Object existant.",
+      "producer": "content_binding",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D1 (2026-09-01, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/content_binding/routes.py:create_content_binding publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_content_binding_created_event(). Publish is best-effort (try/except, never blocks binding creation). Verified by backend/tests/test_content_binding_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
     }
   ],
   "legacy_stage_log": {

@@ -195,3 +195,42 @@ def build_identity_reconciled_event(
         },
         schema_version="1.0.0",
     )
+
+
+def build_content_binding_created_event(
+    binding_doc: Dict[str, Any], correlation_id: Optional[str] = None
+) -> EventEnvelope:
+    """Build the `content_binding.created` event (founder decision D1,
+    docs/decisions/0004-... -- see
+    reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D).
+
+    `binding_doc` is the same dict `backend/content_binding/routes.py:
+    create_content_binding` inserts into `db.content_bindings` -- this
+    function does not touch the database itself, matching every other
+    producer in this file (unit-testable with a plain dict). The payload
+    deliberately omits the full 528-float `signal_fingerprint.vector` --
+    it echoes the algorithm/version/dimensions metadata plus both hash
+    values, which is what a subscriber needs to know a binding exists and
+    what produced it, not the raw vector itself (available via
+    `GET /api/v1/content-binding/binding/{binding_id}` for anyone who
+    needs it)."""
+    fingerprint = binding_doc.get("signal_fingerprint") or {}
+    return EventEnvelope(
+        event_type="content_binding.created",
+        producer="content_binding",
+        subject=binding_doc["frek_id"],
+        correlation_id=correlation_id,
+        payload={
+            "binding_id": binding_doc["binding_id"],
+            "frek_id": binding_doc["frek_id"],
+            "exact_hash": binding_doc.get("exact_hash"),
+            "exact_hash_algorithm": binding_doc.get("exact_hash_algorithm"),
+            "signal_algorithm": fingerprint.get("algorithm"),
+            "signal_algorithm_version": fingerprint.get("algorithm_version"),
+            "signal_dimensions": fingerprint.get("dimensions"),
+            "produced_by": binding_doc.get("produced_by"),
+            "proof_state": binding_doc.get("proof_state"),
+            "computed_at": binding_doc.get("computed_at"),
+        },
+        schema_version="1.0.0",
+    )

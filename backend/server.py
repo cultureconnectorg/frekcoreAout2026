@@ -70,6 +70,15 @@ from core.scoring import seed_default_rules_if_empty as core_seed_rules
 # Import FREK Cultural Fingerprint Layer (Phase 5 — propriete CVLN)
 from fingerprint.routes import fp_router, set_db as fp_set_db, ensure_indexes as fp_ensure_indexes
 
+# D1 — Content Binding (founder decision D1, 2026-09-01): canonical,
+# hardened successor concept to backend/frek/'s historical certify/verify
+# routes (untouched, see content_binding/routes.py's own module docstring).
+from content_binding.routes import (
+    content_binding_router,
+    set_db as content_binding_set_db,
+    ensure_indexes as content_binding_ensure_indexes,
+)
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -165,6 +174,9 @@ core_set_db(db)
 
 # Initialize FREK Cultural Fingerprint Layer (Phase 5)
 fp_set_db(db)
+
+# Initialize D1 Content Binding (founder decision D1, 2026-09-01)
+content_binding_set_db(db)
 
 # Create the main app without a prefix
 # Doctrine IP protection : surface d'attaque minimale en production.
@@ -339,6 +351,11 @@ from fk.routes import fk_router, set_db as fk_set_db
 fk_set_db(db)
 app.include_router(fk_router, prefix="/api/v1")
 
+# D1 — Content Binding (founder decision D1, 2026-09-01): binds computed
+# exact-hash + signal-fingerprint evidence to an existing .fk Cultural
+# Object above — mounted alongside it under the same /api/v1 namespace.
+app.include_router(content_binding_router, prefix="/api/v1")
+
 # Identity Engine — Passkey/WebAuthn attache aux FREK-ID
 from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
 identity_set_db(db)
@@ -389,6 +406,7 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "object.created",
     "identity.recovered",
     "identity.reconciled",
+    "content_binding.created",
 )
 
 
@@ -655,6 +673,8 @@ async def seed_clients():
     await core_seed_rules()
     # FREK Cultural Fingerprint Layer — indexes
     await fp_ensure_indexes()
+    # D1 Content Binding — indexes (founder decision D1, 2026-09-01)
+    await content_binding_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
     # FREK Counter — indexes + seed regles

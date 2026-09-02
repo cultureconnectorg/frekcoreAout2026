@@ -52,17 +52,31 @@ no reordering needed):
    founder's explicit `FREKCORE_EXECUTION_PROTOCOL_V1` (`EXECUTE_D6=TRUE`,
    `EXECUTE_D1..D5=FALSE`) — items 1–6 below remain not started, each
    gated on its own separate founder authorization before execution.
-1. **Canonical bindings/object model** — separate FREK-ID (canonical
-   object identity) from Signal Fingerprint (content/signal binding) as
-   distinct, explicit concepts — resolves the historical conflation
+1. **DONE (2026-09-01) — Canonical bindings/object model** — separated
+   FREK-ID (canonical object identity, minted only by `.fk`'s
+   `POST /fk/create`) from Signal Fingerprint (content/signal binding,
+   `backend/content_binding/models.py:ContentBinding`) as distinct,
+   explicit concepts — resolves the historical conflation
    `node02_identity.py` created by naming a hash-derived ID "FREK-ID".
-2. **Fingerprint integration (D1)** — reuse `node01_extraction.py`'s DSP
-   pipeline; needs 0 and 1 first. Requires resolving the storage-shape
-   question (§M: vector similarity — MongoDB's own capability vs. a
-   dedicated store, not decided, not forced to either) before real use.
-   No "infalsifiable"/"irréfutable" claim without matching evidence
-   (golden vectors + measured false-positive/negative rates, same bar as
-   FAP's 16 golden vectors).
+   Realized as a standalone `db.content_bindings` record referencing an
+   existing `.fk` object's `frek_id`, not an array embedded inside the
+   object (considered and rejected — would require reopening `.fk`'s
+   already-signed `ProofLayer`, out of this step's scope).
+2. **DONE (2026-09-01) — Fingerprint integration (D1)** — reuses
+   `node01_extraction.py`'s real DSP pipeline verbatim (not
+   reimplemented). Storage-shape question (§M) resolved for these 3
+   routes specifically: plain MongoDB, no vector-similarity index needed
+   (exact lookup by `frek_id`/`binding_id` only — similarity search is
+   D3-B/resonance's concern, out of D1's scope). No "infalsifiable"/
+   "irréfutable" claim anywhere — `reports/FREKCORE_D1_VALIDATION_
+   EVIDENCE.md` records real DEMONSTRATED/PARTIALLY_DEMONSTRATED/
+   NOT_TESTED evidence per property (golden-vector-style synthetic
+   fixtures, not FAP's 16-vector bar exactly, but the same honesty
+   standard) and one real defect found+fixed (too-short audio producing
+   a silent `NaN` fingerprint). Full record: `docs/decisions/0004-
+   d1-signal-fingerprint-founder-decisions-implemented.md`. `backend/
+   frek/`'s 3 historical routes (`/certify`, `/certify/upload`,
+   `/verify/{frek_id}`) are unchanged — additive, not a replacement.
 3. **Creative Lifecycle (D2)** — Event/Claim records reusing the
    GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY vocabulary (already
    identical to `frek_v1`'s) and `notary.chain.append_block` for

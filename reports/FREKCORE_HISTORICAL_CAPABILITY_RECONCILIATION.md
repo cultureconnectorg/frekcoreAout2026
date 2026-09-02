@@ -1,10 +1,12 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D1–D5.
-D6 (Evidence Semantics) is now IMPLEMENTED — see the 2026-09-01 update
-below — as a small, additive, fully-tested foundation
-(`backend/proof_engine/evidence_semantics.py`). D1–D5: no implementation
-started, `backend/frek/` untouched. PR #1 not merged, not deployed.
+**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D2–D5.
+D6 (Evidence Semantics) and D1 (Signal Fingerprint / Content Binding) are
+now IMPLEMENTED — see the 2026-09-01 updates below —
+(`backend/proof_engine/evidence_semantics.py`,
+`backend/content_binding/`). D2–D5: no implementation started,
+`backend/frek/` untouched (D1 built additively alongside it, not inside
+it — see the D1 update below). PR #1 not merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -40,6 +42,37 @@ D1–D5 remain exactly as this document left them: reconciled on paper,
 **not started** — `backend/frek/` is untouched, no route anywhere
 changed. Per the protocol, this document now stops and waits for the
 founder to authorize STATE_1 (D1) before any further execution.
+
+**Update (2026-09-01, D1/STATE_1 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: per `EXECUTE_D1=TRUE, EXECUTE_D2..D5=FALSE`, D1 — Signal
+Fingerprint / Content Binding — is now IMPLEMENTED, not just reconciled.
+`docs/decisions/0004-d1-signal-fingerprint-founder-decisions-implemented.md`
+is the full record. In brief: `backend/content_binding/` (new module)
+binds computed exact-hash + signal-fingerprint evidence to an existing
+`.fk` Cultural Object, never minting an identifier of its own — the
+structural fix for `FREK_ID_EQUALS_SIGNAL_FINGERPRINT=FALSE`. Reuses,
+rather than reimplements: `frek/nodes/node01_extraction.py`'s real
+528D extraction pipeline (verbatim), `proof_engine.evidence_semantics`'s
+`Claim`/`Evidence` (D6, built the prior state — every binding is
+literally composed of a real `Claim` + two real `Evidence` records, not
+a lookalike type), `proof_engine.models.ProofState` (unmodified),
+`identity_engine`'s existing holder/`linked_objects` consent pattern, and
+plain MongoDB (no PostgreSQL/pgvector — these 3 routes never need
+similarity search). 33 new unit tests (`test_content_binding_unit.py`,
+`test_content_binding_extraction_unit.py`), full unit suite green (see
+§U for the exact count), coverage gate re-verified. A real, evidence-
+based validation pass (`reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`,
+librosa installed once manually in this sandbox — not in
+requirements-ci.txt) found and fixed one genuine defect (too-short audio
+silently producing a `NaN` fingerprint) and honestly records what is and
+is not demonstrated about the algorithm's robustness (compression/
+re-recording/collision-rate all stay `NOT_TESTED`). `backend/frek/`'s
+own 3 historical routes (`/certify`, `/certify/upload`, `/verify/
+{frek_id}`) are **untouched** — zero lines changed, per the explicit
+instruction against destructive route migration this state. D2–D5 remain
+exactly as before: reconciled on paper, not started. Per the protocol,
+this document now stops and waits for the founder to authorize STATE_2
+(D2) before any further execution.
 
 ---
 
@@ -120,7 +153,7 @@ correction is the authoritative one going forward.
 
 | # | Decision | Disposition |
 |---|---|---|
-| D1 | Signal/Audio Fingerprint | PRESERVE + VALIDATE + HARDEN + ABSORB |
+| D1 | Signal/Audio Fingerprint | PRESERVE + VALIDATE + HARDEN + ABSORB — **IMPLEMENTED 2026-09-01** (`backend/content_binding/`, `docs/decisions/0004-...`, `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`) |
 | D2 | Creative Lifecycle | PRESERVE + ABSORB |
 | D3 | Relationship/Provenance Graph | PRESERVE + MIGRATE (split into D3-A Trust Graph, D3-B Cultural/Inferred Graph) |
 | D4 | Offline Proof Transport | PRESERVE + ADAPTER |
@@ -1455,9 +1488,23 @@ sequence matches what §D independently found:
    (`backend/proof_engine/evidence_semantics.py`, 24 tests, 100% coverage
    on the new file) so D1/D2/D3/D5 have somewhere correct to attach their
    assertions once each is separately authorized.
-1. **Canonical bindings/object model** — the `content_bindings[]`
-   shape (§D1 point 8) that separates FREK-ID from Signal Fingerprint.
-2. **Fingerprint integration (D1)** — depends on 0 and 1.
+1. **Canonical bindings/object model — DONE (2026-09-01)** — realized as
+   `backend/content_binding/models.py:ContentBinding`, a standalone
+   record in its own `db.content_bindings` collection, referencing an
+   existing `.fk` object's `frek_id` — not the illustrative
+   `content_bindings[]` array-embedded-in-the-object shape originally
+   sketched in §D1 point 8. Considered and rejected: populating `.fk`'s
+   own `media.items[].sha256` (exact-hash axis, already exists) and
+   `intelligence.fingerprints` (signal axis, already reserved for
+   FREKANSLA per `fk/models.py`'s own docstring) directly — that would
+   require reopening `.fk`'s already-signed `ProofLayer` (its
+   `root_hash` covers every layer including `intelligence`), a materially
+   more invasive change to a working, tested, production path than this
+   state's scope justified. The standalone-record design keeps both axes
+   just as structurally distinct, at the cost of one extra lookup instead
+   of an inline field — a real, disclosed tradeoff, not an oversight.
+2. **Fingerprint integration (D1) — DONE (2026-09-01)** — see the
+   2026-09-01 D1 update above and `docs/decisions/0004-...`.
 3. **Creative Lifecycle (D2)** — depends on 0 (Event/Claim primitive);
    independent of D1/D3, could run in parallel with them.
 4. **Relationship/provenance graph (D3)** — depends on 0 (verification_
@@ -1482,12 +1529,13 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document did not start step 0 when first written; step 0 (D6)
-has since been executed** under the founder's explicit, separate
-authorization (`EXECUTE_D6=TRUE`) — see the 2026-09-01 update at the top
-of this document. Steps 1–11 (D1–D5 and everything downstream of them)
-remain exactly as planned here: not started, each requiring its own
-separate founder authorization before execution.
+**This document did not start step 0 when first written; steps 0–2 (D6,
+the canonical bindings model, and D1) have since been executed**, each
+under the founder's explicit, separate authorization
+(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`) — see the 2026-09-01 updates
+at the top of this document. Steps 3–11 (D2–D5 and everything downstream
+of them) remain exactly as planned here: not started, each requiring its
+own separate founder authorization before execution.
 
 ---
 

@@ -21,6 +21,7 @@ from eventbus.producers import (  # noqa: E402
     build_identity_recovered_event,
     build_identity_reconciled_event,
     build_object_created_event,
+    build_content_binding_created_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -223,6 +224,39 @@ def test_build_object_created_event_never_carries_storage_path():
     }
     env = build_object_created_event(fk_doc)
     assert "storage_path" not in env.payload
+
+
+def test_build_content_binding_created_event_matches_envelope_contract():
+    binding_doc = {
+        "binding_id": "CB-abc123",
+        "frek_id": "FK-1",
+        "exact_hash": "a" * 64,
+        "exact_hash_algorithm": "sha256",
+        "signal_fingerprint": {
+            "algorithm": "frek_signal_v1",
+            "algorithm_version": "1.0.0",
+            "dimensions": 528,
+            "vector": [0.1] * 528,
+            "sample_rate": 44100,
+            "duration_seconds": 1.23,
+        },
+        "produced_by": "admin",
+        "proof_state": "local_proof",
+        "computed_at": "2026-09-01T00:00:00+00:00",
+    }
+    env = build_content_binding_created_event(binding_doc, correlation_id="corr-4")
+
+    assert env.event_type == "content_binding.created"
+    assert env.producer == "content_binding"
+    assert env.subject == "FK-1"
+    assert env.correlation_id == "corr-4"
+    assert env.payload["binding_id"] == "CB-abc123"
+    assert env.payload["signal_algorithm"] == "frek_signal_v1"
+    assert env.payload["signal_algorithm_version"] == "1.0.0"
+    assert env.payload["proof_state"] == "local_proof"
+    # The raw 528-float vector is never echoed into the event payload.
+    assert "vector" not in env.payload
+    assert "signal_fingerprint" not in env.payload
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

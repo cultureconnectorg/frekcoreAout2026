@@ -34,6 +34,15 @@ DEFAULT_LIMITS = {
     "fingerprint_observe": (int(os.environ.get("FREK_RATE_FP_OBSERVE_PER_HOUR", "120")), 3600),
     "geo_observe": (int(os.environ.get("FREK_RATE_GEO_OBSERVE_PER_HOUR", "120")), 3600),
     "checkout_create": (int(os.environ.get("FREK_RATE_CHECKOUT_PER_HOUR", "20")), 3600),
+    # D1 content-binding creation (founder decision D1, 2026-09-01): an
+    # authenticated write (holder session or admin), but real compute
+    # cost per call (FFT/MFCC extraction) — bounded regardless, per the
+    # reconciliation report's own P27 finding that the historical
+    # /certify route had no rate limit at all.
+    "content_binding_create": (
+        int(os.environ.get("FREK_RATE_CONTENT_BINDING_PER_HOUR", "30")),
+        3600,
+    ),
 }
 
 

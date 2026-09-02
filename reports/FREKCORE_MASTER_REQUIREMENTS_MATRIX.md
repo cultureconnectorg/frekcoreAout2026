@@ -121,23 +121,29 @@ Fully covered in `reports/18_RUNTIME_VALIDATION.md` Priority 8 — summary: hash
 
 Full reconciliation: `reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md`.
 The founder has decided all 6 items below are **required** capabilities
-FREKCORE must eventually carry. None is marked IMPLEMENTED here merely
-because a historical `backend/frek/` prototype exists for it — per the
-reconciliation report's own evidence, none of the five persists data
-durably, none is authenticated, and none has been demonstrated (not
-merely asserted) to have the properties its own historical docstrings
-claim (e.g. "infalsifiable" fingerprint robustness — unproven; IVFFlat-
+FREKCORE must eventually carry. **Update (2026-09-01)**: D6 and D1 are
+now IMPLEMENTED (executed one state at a time under the founder's own
+`FREKCORE_EXECUTION_PROTOCOL_V1`, each requiring separate authorization)
+— see their rows below and `docs/decisions/0004-...`,
+`reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`. D2–D5 remain
+DOCUMENTED_ONLY: none is marked IMPLEMENTED merely because a historical
+`backend/frek/` prototype exists for it — per the reconciliation report's
+own evidence, none of the four persists data durably, none is
+authenticated, and none has been demonstrated (not merely asserted) to
+have the properties its own historical docstrings claim (e.g.
+"infalsifiable" fingerprint robustness — D1's own real validation pass
+found this claim unsupported and explicitly avoided the word; IVFFlat-
 accelerated similarity search — the code always falls back to a linear
 in-Python scan regardless of backend, contradicting its own docstring).
 
 | Capability | Status | Evidence |
 |---|---|---|
-| Signal / Audio Fingerprinting (D1) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node01_extraction.py`/`node02_identity.py` — real DSP extraction code, no durable storage, no auth, fingerprint-vs-identity conflation not yet resolved in code. Not IMPLEMENTED against the target model (§D1 of the reconciliation report) |
-| Creative Lifecycle (D2) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node03_cycle.py` — real 5-stage vocabulary (matches `frek_v1`'s exactly), in-memory only, no auth, no idempotency |
-| Relationship / Provenance Graph (D3) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node06_reseau.py` — real 17-relation taxonomy, in-memory only, all 7 read routes unauthenticated (the most acute privacy gap of the five per the reconciliation report §P) |
-| Offline Proof Transport (D4) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node07_transmission.py` — real packet wire format and protocol registry, transports simulated in-memory only (no actual BLE/NFC/etc. I/O), watermark encoding unvalidated experimentally |
-| Human-Readable Technical Evidence (D5) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED** | `backend/frek/nodes/node09_juridique.py:create_attestation` — formats caller-supplied, unverified data as an official-sounding document; verifies nothing against actual FREKCORE state. `backend/notary/` remains the real, modern attestation mechanism this route does not use |
-| Evidence Semantics (D6) | **GAP, cross-cutting rule, FOUNDER-REQUIRED** | Not a capability with its own routes — a rule needed so D1–D5 (and everything else) never silently promote a CLAIM to a VERIFIED fact. `proof_engine.ProofState` already covers "how strong is this proof"; CLAIM/EVIDENCE as named concepts is the one genuinely new primitive the evolved canonical model (§E of the reconciliation report) requires |
+| Signal / Audio Fingerprinting (D1) | **IMPLEMENTED 2026-09-01** | `backend/content_binding/` — real, MongoDB-persisted, authenticated (holder/admin), rate-limited, idempotent binding of exact-hash + signal-fingerprint evidence to an existing `.fk` object, reusing `node01_extraction.py`'s real DSP pipeline verbatim and D6's `Claim`/`Evidence` primitives. FREK-ID/fingerprint conflation resolved structurally (never mints an identifier). Robustness claims are evidence-scoped, not asserted: `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md` records DEMONSTRATED (determinism, exact-match, fail-safe on malformed/too-short input — the latter a real defect found and fixed this pass), PARTIALLY_DEMONSTRATED (gain/noise/resample robustness on narrow synthetic fixtures), and NOT_TESTED (lossy compression, re-recording, collision rate) per property. `backend/frek/`'s own 3 historical routes are unchanged |
+| Creative Lifecycle (D2) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node03_cycle.py` — real 5-stage vocabulary (matches `frek_v1`'s exactly), in-memory only, no auth, no idempotency |
+| Relationship / Provenance Graph (D3) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node06_reseau.py` — real 17-relation taxonomy, in-memory only, all 7 read routes unauthenticated (the most acute privacy gap of the five per the reconciliation report §P) |
+| Offline Proof Transport (D4) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node07_transmission.py` — real packet wire format and protocol registry, transports simulated in-memory only (no actual BLE/NFC/etc. I/O), watermark encoding unvalidated experimentally |
+| Human-Readable Technical Evidence (D5) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node09_juridique.py:create_attestation` — formats caller-supplied, unverified data as an official-sounding document; verifies nothing against actual FREKCORE state. `backend/notary/` remains the real, modern attestation mechanism this route does not use |
+| Evidence Semantics (D6) | **IMPLEMENTED 2026-09-01** | `backend/proof_engine/evidence_semantics.py` — `Claim`/`Evidence`/`AuthorityStatus`/`VerificationResult`, additive, zero existing callers changed. `proof_engine.ProofState` unmodified; CLAIM/EVIDENCE were the one genuinely new primitive the evolved canonical model (§E of the reconciliation report) required. Real reuse confirmed: D1's `content_binding` module composes these types directly, not lookalikes |
 
 ## Scope note
 
