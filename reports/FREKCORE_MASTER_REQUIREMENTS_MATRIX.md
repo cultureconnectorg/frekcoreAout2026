@@ -128,14 +128,16 @@ now IMPLEMENTED (executed one state at a time under the founder's own
 `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`. **Update (2026-09-02)**: D2,
 D3, and D4 are now IMPLEMENTED too — see their rows below and
 `docs/decisions/0005-...`, `docs/decisions/0006-...`,
-`docs/decisions/0007-...`.
-D5 remains DOCUMENTED_ONLY: it is not marked IMPLEMENTED merely because a
-historical `backend/frek/` prototype exists for it — per the
-reconciliation report's own evidence, it does not persist data durably,
-is not authenticated, and has not been demonstrated (not merely
-asserted) to have the properties its own historical docstring claims
-(the same "infalsifiable"-style overclaim pattern D1's own real
-validation pass found and explicitly avoided).
+`docs/decisions/0007-...`. **Update (2026-09-02)**: D5 is now IMPLEMENTED
+too — see its row below and `docs/decisions/0008-...`. It was not marked
+IMPLEMENTED merely because a historical `backend/frek/` prototype existed
+for it — the historical route's own overclaim pattern (formatting
+caller-supplied, unverified data into an "irrefutable"-worded document
+with no independent verification against FREKCORE state) is exactly what
+D5's own implementation replaces: reports are now generated only from
+resource ID references, resolved server-side from D1–D4/D6's canonical
+state, with a negation-aware forbidden-phrase guard structurally blocking
+that same overclaim pattern from any canonical D5 output.
 
 | Capability | Status | Evidence |
 |---|---|---|
@@ -143,7 +145,7 @@ validation pass found and explicitly avoided).
 | Creative Lifecycle (D2) | **IMPLEMENTED 2026-09-02** | `backend/creative_lifecycle/` — real, MongoDB-persisted, event-sourced (history never destroyed), authenticated (holder/admin), rate-limited GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY lifecycle, structurally separate from `frek_v1`'s participant/badge use of the same vocabulary (verified collision, not assumed). State-machine shape derived from `node03_cycle.py`'s own guard logic (`LIFECYCLE_MODEL = HYBRID`, not invented) — a real re-entry defect this state's own tests found and fixed. Reuses D1's extraction functions (never recomputes) and D6's `Claim`/`Evidence` primitives directly. EMISSION only ever references an existing `.fk` object, never mints one. `backend/frek/`'s own 2 historical routes are unchanged |
 | Relationship / Provenance Graph (D3) | **IMPLEMENTED 2026-09-02** | `backend/relationship_graph/` — real, MongoDB-persisted, authenticated (holder self-assertion or admin), bounded-traversal-only, structurally separates TRUST (verifiable) from CULTURAL (inferred) relationships via a closed, predicate-derived `layer` field. A CULTURAL relationship can never reach `VERIFIED` status (enforced structurally, checked by test, 409 on attempt). Of the historical 17 declared relation types, only 5 were ever actually emitted by `register_emission` — confirmed by reading every call site, not assumed. Reuses D6's `Claim`/`Evidence`, D2's real lifecycle events (referenceable, never re-executed), and `permissions.models.Scope`/`ScopeType` directly for visibility. `backend/frek/`'s own 7 historical réseau routes are unchanged |
 | Offline Proof Transport (D4) | **IMPLEMENTED 2026-09-02** | `backend/offline_transport/` — real, MongoDB-persisted, authenticated, cryptographically verifiable (Ed25519 via `passport.keys`, the same signer behind `.fk`'s own `ProofLayer.signature`) transport envelope + sync/reconciliation service, transport-independent by construction (verified by test: identical signable core across every adapter). Genuinely reuses `frek_v3/reference_verifier/` (FAP) — previously confirmed fully isolated from `backend/` — for real ECDSA device attestation, the first live caller into it. A valid signature alone can never reach `LOCALLY_ACCEPTABLE` without explicit, unexpired authority freshness (structurally enforced). `backend/frek/`'s own 6 historical transmission routes are unchanged |
-| Human-Readable Technical Evidence (D5) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node09_juridique.py:create_attestation` — formats caller-supplied, unverified data as an official-sounding document; verifies nothing against actual FREKCORE state. `backend/notary/` remains the real, modern attestation mechanism this route does not use |
+| Technical Evidence Report / Human-Readable Juridical Framing (D5) | **IMPLEMENTED 2026-09-02** | `backend/technical_evidence_report/` — a legally-hardened, structured evidence report generated only from resource ID references (`GenerateReportRequest` carries exactly `subject_type`+`subject_id`), resolved server-side against D1/D2/D3/D4/D6's own canonical state — never caller-supplied "facts". Sections are labeled CLAIMED/OBSERVED/ATTESTED/COMPUTED/INFERRED/EVIDENCE/PROOF/VERIFIED/UNKNOWN/NOT_VERIFIED/LEGAL_CONCLUSION_NOT_MADE, never flattened to a boolean; a negation-aware forbidden-phrase guard blocks IRREFUTABLE/PROVES OWNERSHIP/PROVES AUTHORSHIP/OFFICIAL NOTARIAL ACT/QUALIFIED EIDAS TIMESTAMP/GUARANTEED ORIGINAL/UNFORGEABLE/ABSOLUTE PROOF (and French equivalents) at pydantic-construction time, catching the exact overclaim `node09_juridique.py`'s historical `to_legal_text()` produced. Public verification (`GET .../verify`) returns shape only, never section content; authorized retrieval is redacted per-section via reused `permissions.models.Scope`. `backend/frek/`'s own 1 historical `/juridique/attestation` route is unchanged |
 | Evidence Semantics (D6) | **IMPLEMENTED 2026-09-01** | `backend/proof_engine/evidence_semantics.py` — `Claim`/`Evidence`/`AuthorityStatus`/`VerificationResult`, additive, zero existing callers changed. `proof_engine.ProofState` unmodified; CLAIM/EVIDENCE were the one genuinely new primitive the evolved canonical model (§E of the reconciliation report) required. Real reuse confirmed: D1's `content_binding` module composes these types directly, not lookalikes |
 
 ## Scope note

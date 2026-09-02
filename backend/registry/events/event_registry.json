@@ -166,6 +166,15 @@
       "implemented": true,
       "status": "EXISTS",
       "evidence": "Founder decision D4 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/offline_transport/routes.py's create/receive/sync endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_offline_transport_event(). One unified event type covers create/receive/sync (payload.transition and payload.sync_status distinguish). Publish is best-effort (try/except, never blocks the write). Verified by backend/tests/test_offline_transport_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "technical_evidence_report.recorded",
+      "version": "v1",
+      "description": "Un rapport de preuve technique (D5) a ete genere, consulte, ou verifie publiquement.",
+      "producer": "technical_evidence_report",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D5 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/technical_evidence_report/routes.py's generate/get/verify endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_technical_evidence_report_event(). One unified event type covers generate/access/verify (payload.transition distinguishes). Payload is deliberately minimal identifying metadata only -- report sections (which may carry private evidence/relationship/credential content) are never echoed into the event. Publish is best-effort (try/except, never blocks). Verified by backend/tests/test_technical_evidence_report_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
     }
   ],
   "legacy_stage_log": {

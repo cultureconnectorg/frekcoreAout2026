@@ -362,3 +362,44 @@ def build_offline_transport_event(
         },
         schema_version="1.0.0",
     )
+
+
+def build_technical_evidence_report_event(
+    report_doc: Dict[str, Any],
+    *,
+    transition: str,
+    correlation_id: Optional[str] = None,
+) -> EventEnvelope:
+    """Build the `technical_evidence_report.recorded` event (founder
+    decision D5, 2026-09-02 -- see reports/FREKCORE_HISTORICAL_
+    CAPABILITY_RECONCILIATION.md section D "D5 -- Technical Evidence
+    Report / Juridical Framing").
+
+    `report_doc` is the same dict `backend/technical_evidence_report/
+    routes.py` inserts into `db.technical_evidence_reports` -- this
+    function does not touch the database itself, matching every other
+    producer in this file. One unified event type covers generate/
+    access/verify (`payload["transition"]` distinguishes which just
+    happened), same reasoning as every other D-state's single-event
+    convention in this file. `subject` is the report's own `report_id`,
+    never the referenced `subject_id` entity itself. The payload is
+    deliberately minimal identifying metadata only (report_id,
+    subject_type, subject_id, report_hash, transition) -- `sections`
+    (which may carry private evidence/relationship/credential content)
+    is NEVER echoed here, matching D5's own privacy guidance ("never put
+    sensitive evidence content directly into generic audit events").
+    """
+    return EventEnvelope(
+        event_type="technical_evidence_report.recorded",
+        producer="technical_evidence_report",
+        subject=report_doc["report_id"],
+        correlation_id=correlation_id,
+        payload={
+            "report_id": report_doc["report_id"],
+            "subject_type": report_doc.get("subject_type"),
+            "subject_id": report_doc.get("subject_id"),
+            "report_hash": report_doc.get("report_hash"),
+            "transition": transition,
+        },
+        schema_version="1.0.0",
+    )

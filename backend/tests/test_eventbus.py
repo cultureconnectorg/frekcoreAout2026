@@ -25,6 +25,7 @@ from eventbus.producers import (  # noqa: E402
     build_creative_lifecycle_event,
     build_relationship_event,
     build_offline_transport_event,
+    build_technical_evidence_report_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -336,6 +337,28 @@ def test_build_offline_transport_event_matches_envelope_contract():
     # Never echoes the full claim/signature/device_attestation payload.
     assert "claim" not in env.payload
     assert "signature" not in env.payload
+
+
+def test_build_technical_evidence_report_event_matches_envelope_contract():
+    report_doc = {
+        "report_id": "rpt-1",
+        "subject_type": "frek_object",
+        "subject_id": "fk-1",
+        "report_hash": "a" * 64,
+        "sections": [{"statements": ["should not be echoed"]}],
+    }
+    env = build_technical_evidence_report_event(
+        report_doc, transition="generated", correlation_id="corr-9"
+    )
+
+    assert env.event_type == "technical_evidence_report.recorded"
+    assert env.producer == "technical_evidence_report"
+    assert env.subject == "rpt-1"
+    assert env.correlation_id == "corr-9"
+    assert env.payload["subject_id"] == "fk-1"
+    assert env.payload["transition"] == "generated"
+    # Never echoes the full sections (statements/data) payload.
+    assert "sections" not in env.payload
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

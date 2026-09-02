@@ -90,6 +90,7 @@ from eventbus.producers import (  # noqa: E402
     build_creative_lifecycle_event,
     build_relationship_event,
     build_offline_transport_event,
+    build_technical_evidence_report_event,
 )
 
 
@@ -246,6 +247,22 @@ def test_offline_transport_envelope_recorded_event_maps_to_a_correct_audit_event
     assert audit_event.actor_frek_id == "env-1"
 
 
+def test_technical_evidence_report_recorded_event_maps_to_a_correct_audit_event():
+    envelope = build_technical_evidence_report_event(
+        {
+            "report_id": "rpt-1",
+            "subject_type": "frek_object",
+            "subject_id": "fk-1",
+            "report_hash": "a" * 64,
+        },
+        transition="generated",
+    )
+    audit_event = event_envelope_to_audit_event(envelope)
+    assert audit_event.action == "technical_evidence_report.recorded"
+    assert audit_event.resource_type == "technical_evidence_report"
+    assert audit_event.actor_frek_id == "rpt-1"
+
+
 def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
     """End-to-end through the real subscriber function (not just the pure
     mapping) — proves make_audit_trail_subscriber's async-write path works
@@ -325,6 +342,15 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
             },
             transition="synced",
         ),
+        build_technical_evidence_report_event(
+            {
+                "report_id": "rpt-1",
+                "subject_type": "frek_object",
+                "subject_id": "fk-1",
+                "report_hash": "a" * 64,
+            },
+            transition="generated",
+        ),
     ]
 
     async def _run():
@@ -348,10 +374,11 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
         "creative_lifecycle.recorded",
         "relationship.recorded",
         "offline_transport.envelope_recorded",
+        "technical_evidence_report.recorded",
     }
 
 
-def test_server_py_subscribes_all_ten_real_producers_to_audit_trail():
+def test_server_py_subscribes_all_eleven_real_producers_to_audit_trail():
     """Static check on server.py's own source — the actual regression this
     guards against is a future new producer (or this list) drifting without
     the other being updated, without needing to boot the full app to catch
@@ -369,5 +396,6 @@ def test_server_py_subscribes_all_ten_real_producers_to_audit_trail():
         "creative_lifecycle.recorded",
         "relationship.recorded",
         "offline_transport.envelope_recorded",
+        "technical_evidence_report.recorded",
     ):
         assert f'"{event_type}"' in server_py, f"{event_type} not found in server.py"

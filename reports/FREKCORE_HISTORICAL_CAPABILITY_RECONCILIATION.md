@@ -1,15 +1,18 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D5.
-D6 (Evidence Semantics), D1 (Signal Fingerprint / Content Binding), D2
-(Creative Lifecycle), D3 (Relationship / Provenance Graph), and D4
-(Offline Proof Transport) are now IMPLEMENTED — see the 2026-09-01/
+**Status**: All of D1–D6 are now IMPLEMENTED. D6 (Evidence Semantics), D1
+(Signal Fingerprint / Content Binding), D2 (Creative Lifecycle), D3
+(Relationship / Provenance Graph), D4 (Offline Proof Transport), and D5
+(Technical Evidence Report / Juridical Framing) — see the 2026-09-01/
 2026-09-02 updates below — (`backend/proof_engine/evidence_semantics.py`,
 `backend/content_binding/`, `backend/creative_lifecycle/`,
-`backend/relationship_graph/`, `backend/offline_transport/`). D5: no
-implementation started, `backend/frek/` untouched (D1/D2/D3/D4 built
-additively alongside it, not inside it — see the D1/D2/D3/D4 updates
-below). PR #1 not merged, not deployed.
+`backend/relationship_graph/`, `backend/offline_transport/`,
+`backend/technical_evidence_report/`). `backend/frek/` remains untouched
+throughout — every D-state module was built additively alongside it, not
+inside it (see the D1/D2/D3/D4/D5 updates below). D5 completion does
+**not** by itself authorize final freeze: the founder's own next-named
+state is `STATE_6_HISTORICAL_COMPATIBILITY_RECONCILIATION`, not yet
+authorized. PR #1 not merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -199,6 +202,92 @@ real BLE/NFC/QR/ultrasonic hardware. D5 remains exactly as before:
 reconciled on paper, not started. Per the protocol, this document now
 stops and waits for the founder to authorize STATE_5 (D5) before any
 further execution.
+
+**Update (2026-09-02, D5/STATE_5 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: per `EXECUTE_D5=TRUE, EXECUTE_STATE_6=FALSE`, D5 —
+Technical Evidence Report / Juridical Framing — is now IMPLEMENTED, not
+just reconciled. `docs/decisions/0008-d5-technical-evidence-report-
+founder-decisions-implemented.md` is the full record. In brief:
+`backend/technical_evidence_report/` (new module) preserves the
+historical "notaire de fait, jamais juge de droit" *intent*
+(`node09_juridique.py`'s own `NEVER_STATEMENTS`/`ALWAYS_STATEMENTS`
+lists, real and largely correct) while replacing its blind-trust
+*behavior*: `AttestationRequest` took `sha256_signal`/`vector_dimensions`/
+`artiste_id`/`timestamp_ms`/GPS values directly from the request body
+with no database lookup and no verification of any kind — confirmed by
+reading `create_attestation` directly, not assumed — and
+`to_legal_text()` rendered the unqualified overclaim "Ce fait est
+mathematiquement certain et temporellement irrefutable." D5 is a pure
+**consumer** of D1–D4 and D6, never creating new truth: a report is
+composed only from a `subject_type`+`subject_id` resource reference
+(`GenerateReportRequest` carries exactly that pair — verified by test
+that extra caller-supplied fields never surface anywhere in the
+generated report), resolved server-side against `db.frek_persons`/
+`db.fk_objects`/`db.content_bindings`/`db.creative_lifecycle_events`/
+`db.relationships`/`db.transport_envelopes`/`db.notary_blocks`. Sections
+are labeled CLAIMED/OBSERVED/ATTESTED/COMPUTED/INFERRED/EVIDENCE/PROOF/
+VERIFIED/UNKNOWN/NOT_VERIFIED/LEGAL_CONCLUSION_NOT_MADE — never flattened
+to a single boolean, per D6's own requirement — and each D-state's own
+legal-hardening rule is individually preserved in the report renderer: D1
+validation stays labeled PARTIAL; D2's GENESIS/WORKSHOP/METAMORPHOSE/
+EMISSION/LEGACY history always pairs with an explicit "not a legal
+determination of authorship, ownership, or priority" statement; a D3
+CULTURAL-layer relationship can never render as VERIFIED in the report
+either (mirroring D3's own structural invariant, re-verified here by
+test even against a hypothetically mislabeled record); a D4 SYNCED
+envelope renders VERIFIED scoped explicitly to "transport-level integrity
+and authority freshness for the envelope itself", never to the
+underlying subject's ownership or authorship. A negation-aware
+forbidden-phrase guard
+(`technical_evidence_report/models.py:assert_no_forbidden_language`)
+blocks IRREFUTABLE, PROVES OWNERSHIP, PROVES AUTHORSHIP, OFFICIAL
+NOTARIAL ACT, QUALIFIED EIDAS TIMESTAMP, GUARANTEED ORIGINAL, UNFORGEABLE,
+ABSOLUTE PROOF, and their French equivalents (case-insensitive) as a
+pydantic field validator on every `ReportSection` — a section literally
+cannot be constructed with an overclaim in it — verified against the
+exact historical phrase as a regression fixture, and confirmed
+negation-aware enough that the report's own fixed `LEGAL_DISCLAIMER` can
+explicitly name and disclaim these same concepts ("It is NOT a notarial
+act... NOT a qualified electronic timestamp...") without itself tripping
+the guard, while a positive assertion of the identical phrase is still
+rejected. Reuses, rather than reimplements: D6's `Claim`/`Evidence`
+origin/kind fields directly to choose each section's `kind`;
+`proof_engine.notary_adapter.proof_state_from_notary_block` against real
+`db.notary_blocks` documents for the proof section, never reimplementing
+the proof-state ladder; `permissions.models.Scope`/`ScopeType` directly,
+per report section (not one report-level flag), for disclosure —
+`PROOF_VISIBILITY != EVIDENCE_VISIBILITY`, `RELATIONSHIP_VISIBILITY !=
+SUBJECT_METADATA_VISIBILITY`, `OBJECT_PUBLIC != ALL_PROVENANCE_PUBLIC`
+are all structurally possible outcomes, not policy prose — the same
+disclosed tradeoff D3 already made (`permissions.engine.decide()` not
+wired, no `RoleGrant` persistence exists anywhere in this codebase).
+`GET .../verify` is public and unauthenticated but returns shape only
+(section kind/title, never statements/data, never raw evidence/
+relationship/credential content) plus a recomputed integrity-hash match
+(`VERIFICATION_MAY_BE_PUBLIC=TRUE` without violating
+`DISCLOSURE_IS_AUTHORIZATION_SCOPED`); authorized retrieval redacts per
+section and returns 404 (not a partial/empty body) when nothing is
+visible, matching D3's own "404, not 403" privacy discipline. An
+unresolvable resource reference returns 404, never a hollow report
+describing nothing (`ARBITRARY_CALLER_SUPPLIED_FACTS_AS_CANONICAL_TRUTH
+=FALSE`, fail-closed). Report integrity is a deterministic sha256 over a
+canonical-JSON content subset (`technical_evidence_report/canonical.py`,
+the same formula already independently kept in `fk/packager.py`,
+`notary/chain.py`, and `offline_transport/canonical.py`), excluding
+`verification_time` so re-verifying unchanged content never changes the
+hash. 46 new unit tests, full unit suite green (400, up from 352 after
+D4), coverage gate re-verified at 96.70%. `backend/frek/`'s own 1
+historical `/juridique/attestation` route is **untouched** — zero lines
+changed, confirmed by a static route-presence test and a static-import
+guard (`BACKEND_FREK_CHANGED=NO`). All 5 preserved historical
+capabilities (D1–D5) are now implemented; D6 (Evidence Semantics)
+underlies all of them. Per the founder's own explicit instruction, D5
+completion does **not** automatically authorize final freeze: the next
+state the founder named is `STATE_6_HISTORICAL_COMPATIBILITY_
+RECONCILIATION` (`EXECUTE_STATE_6=FALSE` this pass), explicitly not
+Production Readiness, Wiring, or Deployment. Per the protocol, this
+document now stops and waits for the founder to authorize STATE_6 before
+any further execution.
 
 ---
 
@@ -1637,11 +1726,15 @@ sequence matches what §D independently found:
    2026-09-02 D3 update above and `docs/decisions/0006-...`.
 5. **Offline transport envelope + sync (D4) — DONE (2026-09-02)** — see
    the 2026-09-02 D4 update above and `docs/decisions/0007-...`.
-6. **Technical evidence report (D5)** — depends on everything above
-   existing in verifiable form (it reports on them) — correctly last
-   among the five capabilities.
+6. **Technical evidence report (D5) — DONE (2026-09-02)** — see the
+   2026-09-02 D5 update above and `docs/decisions/0008-...`. Depended on
+   everything above existing in verifiable form (it reports on them) —
+   correctly last among the five capabilities, and it is a pure consumer
+   of D1–D4/D6, never a sixth independent truth source.
 7. **Compatibility adapters for historical routes** — only meaningful
-   once 1–6 exist; low priority given §Q's "no confirmed caller" finding.
+   once 1–6 exist (they now do); this is the founder's own next-named
+   state, `STATE_6_HISTORICAL_COMPATIBILITY_RECONCILIATION`, not yet
+   authorized.
 8. **Migration/persistence** — confirmed near-empty scope by §Q (nothing
    durable to migrate); mostly a "pick and wire the actual storage engine"
    step per §M's still-open D1/D3 technical question.
@@ -1653,14 +1746,17 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document did not start step 0 when first written; steps 0–5 (D6,
-the canonical bindings model, D1, D2, D3, and D4) have since been
+**This document did not start step 0 when first written; steps 0–6 (D6,
+the canonical bindings model, D1, D2, D3, D4, and D5) have since been
 executed**, each under the founder's explicit, separate authorization
 (`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then
-`EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`) — see the 2026-09-01/2026-09-02
-updates at the top of this document. Step 6 (D5) remains exactly as
+`EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`, then `EXECUTE_D5=TRUE`) — see
+the 2026-09-01/2026-09-02 updates at the top of this document. Step 7
+(compatibility adapters for the historical routes,
+`STATE_6_HISTORICAL_COMPATIBILITY_RECONCILIATION`) remains exactly as
 planned here: not started, requiring its own separate founder
-authorization before execution.
+authorization before execution — `EXECUTE_STATE_6=FALSE` as of this
+update.
 
 ---
 

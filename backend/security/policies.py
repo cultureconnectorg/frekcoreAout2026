@@ -66,6 +66,21 @@ DEFAULT_LIMITS = {
         int(os.environ.get("FREK_RATE_OFFLINE_TRANSPORT_PER_HOUR", "120")),
         3600,
     ),
+    # D5 technical-evidence-report generation (founder decision D5,
+    # 2026-09-02): authenticated (holder or admin), resolves and composes
+    # canonical state across every prior D-state, so bounded more tightly
+    # than a plain read. Public verification is a separate, distinct
+    # limit -- mission's own explicit "mandatory rate limiting on public
+    # verification/report endpoints", keyed by report_id rather than
+    # caller identity since the endpoint has no auth to key on.
+    "technical_evidence_report_generate": (
+        int(os.environ.get("FREK_RATE_TECHNICAL_EVIDENCE_REPORT_GENERATE_PER_HOUR", "30")),
+        3600,
+    ),
+    "technical_evidence_report_verify": (
+        int(os.environ.get("FREK_RATE_TECHNICAL_EVIDENCE_REPORT_VERIFY_PER_HOUR", "300")),
+        3600,
+    ),
 }
 
 

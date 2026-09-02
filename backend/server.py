@@ -113,6 +113,20 @@ from offline_transport.routes import (
     ensure_indexes as offline_transport_ensure_indexes,
 )
 
+# D5 — Technical Evidence Report (founder decision D5, 2026-09-02):
+# PRESERVE_INTENT_ABSORB_LEGAL_HARDEN the historical "notaire de fait"
+# principle (backend/frek/nodes/node09_juridique.py) as a canonical,
+# legally-hardened report generator that only ever describes existing
+# D1/D2/D3/D4/D6 state, never caller-supplied "facts" (see
+# technical_evidence_report/models.py's own module docstring for the
+# historical finding). backend/frek/'s /juridique/attestation route is
+# untouched.
+from technical_evidence_report.routes import (
+    technical_evidence_report_router,
+    set_db as technical_evidence_report_set_db,
+    ensure_indexes as technical_evidence_report_ensure_indexes,
+)
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -217,6 +231,7 @@ creative_lifecycle_set_db(db)
 
 # Initialize D3 Relationship / Provenance Graph (founder decision D3, 2026-09-02)
 relationship_graph_set_db(db)
+technical_evidence_report_set_db(db)
 
 # Initialize D4 Offline Proof Transport (founder decision D4, 2026-09-02)
 offline_transport_set_db(db)
@@ -415,6 +430,12 @@ app.include_router(relationship_graph_router, prefix="/api/v1")
 # vision.
 app.include_router(offline_transport_router, prefix="/api/v1")
 
+# D5 — Technical Evidence Report (founder decision D5, 2026-09-02):
+# legally-hardened, structured evidence reports composed only from
+# resource ID references, resolved server-side from D1/D2/D3/D4/D6's own
+# canonical storage.
+app.include_router(technical_evidence_report_router, prefix="/api/v1")
+
 # Identity Engine — Passkey/WebAuthn attache aux FREK-ID
 from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
 identity_set_db(db)
@@ -469,6 +490,7 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "creative_lifecycle.recorded",
     "relationship.recorded",
     "offline_transport.envelope_recorded",
+    "technical_evidence_report.recorded",
 )
 
 
@@ -743,6 +765,8 @@ async def seed_clients():
     await relationship_graph_ensure_indexes()
     # D4 Offline Proof Transport — indexes (founder decision D4, 2026-09-02)
     await offline_transport_ensure_indexes()
+    # D5 Technical Evidence Report — indexes (founder decision D5, 2026-09-02)
+    await technical_evidence_report_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
     # FREK Counter — indexes + seed regles

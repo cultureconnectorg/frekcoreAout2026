@@ -124,14 +124,27 @@ no reordering needed):
    proof-transport-founder-decisions-implemented.md`. `backend/frek/`'s
    6 historical transmission routes are unchanged — additive, not a
    replacement.
-6. **Technical evidence report (D5)** — full rewrite of
-   `create_attestation`'s behavior: look up and verify referenced
-   evidence/proof/credential IDs against actual FREKCORE state (reusing
-   `notary`/`proof_engine`/`registry`), never format caller-supplied,
-   unverified claims as if verified. Preserves the historical legal
-   doctrine's wording (NEVER/ALWAYS lists); does not preserve the
-   historical route's behavior. Depends on 0–5 existing in verifiable
-   form — correctly last.
+6. **DONE (2026-09-02) — Technical evidence report (D5)** —
+   `backend/technical_evidence_report/`: a legally-hardened, structured
+   report composed only from resource ID references, resolving and
+   rendering D1/D2/D3/D4/D6's own canonical state (never formatting
+   caller-supplied, unverified claims as if verified) — the historical
+   `create_attestation`'s blind-trust behavior is not preserved, its
+   "notaire de fait, jamais juge de droit" intent is. Sections labeled
+   CLAIMED/OBSERVED/ATTESTED/COMPUTED/INFERRED/EVIDENCE/PROOF/VERIFIED/
+   UNKNOWN/NOT_VERIFIED/LEGAL_CONCLUSION_NOT_MADE, never flattened. A
+   negation-aware forbidden-phrase guard (`assert_no_forbidden_language`)
+   structurally blocks the exact overclaim class (IRREFUTABLE and
+   similar) `node09_juridique.py`'s `to_legal_text()` produced, enforced
+   at pydantic-construction time on every section. Public verification
+   endpoint returns shape only; authorized retrieval is redacted
+   per-section via reused `permissions.models.Scope`
+   (`CREATE_REPORT_PERMISSION_SYSTEM=FALSE`, same disclosed tradeoff as
+   D3). 46 new tests, full suite green (400, up from 352 after D4). Full
+   record: `docs/decisions/0008-d5-technical-evidence-report-founder-
+   decisions-implemented.md`. `backend/frek/`'s 1 historical
+   `/juridique/attestation` route is unchanged — additive, not a
+   replacement.
 7. **Compatibility adapters for the 19 historical routes** — low
    priority: no confirmed external caller found (`memory/INVENTORY.md`'s
    "current production core" list does not name `backend/frek/`).
