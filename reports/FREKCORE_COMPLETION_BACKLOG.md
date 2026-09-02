@@ -90,13 +90,23 @@ no reordering needed):
    founder-decisions-implemented.md`. `backend/frek/`'s 2 historical
    routes (`/genesis`, `/workshop`) are unchanged — additive, not a
    replacement.
-4. **Relationship/Provenance Graph (D3)** — split into D3-A (Trust/
-   Provenance, near-core) and D3-B (Cultural/Inferred, derived-
-   intelligence, never auto-promoted to D3-A). Reuse
-   `permissions.ScopeType` for relation visibility instead of a new
-   visibility system. The 7 read routes' current zero-auth exposure is
-   the single most acute security gap among all five capabilities
-   (reconciliation report §P) — priority within this item once started.
+4. **DONE (2026-09-02) — Relationship/Provenance Graph (D3)** —
+   `backend/relationship_graph/` splits TRUST (Layer A, near-core,
+   verifiable) from CULTURAL (Layer B, inferred, never auto-promotable
+   to TRUST — enforced structurally: a CULTURAL relationship can never
+   reach `VERIFIED`) via a closed, predicate-derived `layer` field.
+   Reuses `permissions.models.Scope`/`ScopeType` directly for relation
+   visibility instead of a new visibility system (`permissions.engine.
+   decide()` itself deliberately not wired in — no `RoleGrant`
+   persistence exists anywhere to feed it honestly, a disclosed
+   tradeoff). Authenticated writes close the historical zero-auth
+   exposure the reconciliation report's §P flagged as the single most
+   acute security gap among all five capabilities. Bounded traversal
+   throughout (neighbors/path all capped). 41 new tests, full suite
+   green (315, up from 272 after D2). Full record: `docs/decisions/0006-
+   d3-relationship-provenance-graph-founder-decisions-implemented.md`.
+   `backend/frek/`'s 7 historical réseau routes are unchanged —
+   additive, not a replacement.
 5. **Offline transport envelope + sync (D4)** — a core envelope
    (signature, replay/nonce protection reusing FAP's existing concept,
    reconciliation state) with every transport (BLE/NFC/WiFi/ultrasound/

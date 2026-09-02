@@ -88,6 +88,7 @@ from eventbus.producers import (  # noqa: E402
     build_object_created_event,
     build_content_binding_created_event,
     build_creative_lifecycle_event,
+    build_relationship_event,
 )
 
 
@@ -209,6 +210,24 @@ def test_creative_lifecycle_recorded_event_maps_to_a_correct_audit_event():
     assert audit_event.actor_frek_id == "PRE-1"
 
 
+def test_relationship_recorded_event_maps_to_a_correct_audit_event():
+    envelope = build_relationship_event(
+        {
+            "relationship_id": "rel-1",
+            "subject_id": "OBJ-1",
+            "predicate": "similar_to",
+            "object_id": "OBJ-2",
+            "layer": "cultural",
+            "status": "computed",
+            "assertions": [{"assertion_id": "a-1"}],
+        }
+    )
+    audit_event = event_envelope_to_audit_event(envelope)
+    assert audit_event.action == "relationship.recorded"
+    assert audit_event.resource_type == "relationship_graph"
+    assert audit_event.actor_frek_id == "rel-1"
+
+
 def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
     """End-to-end through the real subscriber function (not just the pure
     mapping) — proves make_audit_trail_subscriber's async-write path works
@@ -267,6 +286,17 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
                 "proof_state": "fingerprint",
             }
         ),
+        build_relationship_event(
+            {
+                "relationship_id": "rel-1",
+                "subject_id": "OBJ-1",
+                "predicate": "similar_to",
+                "object_id": "OBJ-2",
+                "layer": "cultural",
+                "status": "computed",
+                "assertions": [{"assertion_id": "a-1"}],
+            }
+        ),
     ]
 
     async def _run():
@@ -288,10 +318,11 @@ def test_subscriber_actually_writes_each_new_event_type_to_the_recorder():
         "identity.reconciled",
         "content_binding.created",
         "creative_lifecycle.recorded",
+        "relationship.recorded",
     }
 
 
-def test_server_py_subscribes_all_eight_real_producers_to_audit_trail():
+def test_server_py_subscribes_all_nine_real_producers_to_audit_trail():
     """Static check on server.py's own source — the actual regression this
     guards against is a future new producer (or this list) drifting without
     the other being updated, without needing to boot the full app to catch
@@ -307,5 +338,6 @@ def test_server_py_subscribes_all_eight_real_producers_to_audit_trail():
         "identity.reconciled",
         "content_binding.created",
         "creative_lifecycle.recorded",
+        "relationship.recorded",
     ):
         assert f'"{event_type}"' in server_py, f"{event_type} not found in server.py"

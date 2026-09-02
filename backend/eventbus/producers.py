@@ -278,3 +278,44 @@ def build_creative_lifecycle_event(
         },
         schema_version="1.0.0",
     )
+
+
+def build_relationship_event(
+    relationship_doc: Dict[str, Any], correlation_id: Optional[str] = None
+) -> EventEnvelope:
+    """Build the `relationship.recorded` event (founder decision D3,
+    2026-09-02 -- see reports/FREKCORE_HISTORICAL_CAPABILITY_
+    RECONCILIATION.md section D "D3 -- Relationship / Provenance Graph").
+
+    `relationship_doc` is the same dict `backend/relationship_graph/
+    routes.py`'s `_notarize_and_store` inserts/replaces into
+    `db.relationships` -- this function does not touch the database
+    itself, matching every other producer in this file. One unified
+    event type covers create, verify, and revoke (`payload["status"]`
+    reflects whichever just happened) rather than three near-identical
+    producer functions -- same reasoning as
+    `build_creative_lifecycle_event`'s single event for five stages.
+    `subject` is the relationship's own `relationship_id`, never the
+    referenced `subject_id`/`object_id` entities themselves (those stay
+    in the payload). The full `assertions` list (claims/evidence) is NOT
+    echoed here (same reasoning as `build_content_binding_created_
+    event`'s omission of the raw fingerprint vector) -- a subscriber
+    that needs the full record reads it back via
+    `GET /api/v1/relationships/{relationship_id}`.
+    """
+    return EventEnvelope(
+        event_type="relationship.recorded",
+        producer="relationship_graph",
+        subject=relationship_doc["relationship_id"],
+        correlation_id=correlation_id,
+        payload={
+            "relationship_id": relationship_doc["relationship_id"],
+            "subject_id": relationship_doc.get("subject_id"),
+            "predicate": relationship_doc.get("predicate"),
+            "object_id": relationship_doc.get("object_id"),
+            "layer": relationship_doc.get("layer"),
+            "status": relationship_doc.get("status"),
+            "assertion_count": len(relationship_doc.get("assertions", [])),
+        },
+        schema_version="1.0.0",
+    )

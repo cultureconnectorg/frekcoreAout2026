@@ -51,6 +51,14 @@ DEFAULT_LIMITS = {
         int(os.environ.get("FREK_RATE_CREATIVE_LIFECYCLE_PER_HOUR", "60")),
         3600,
     ),
+    # D3 relationship-graph writes (founder decision D3, 2026-09-02):
+    # authenticated (holder self-assertion or admin), real compute cost
+    # negligible per call but the graph itself is durable and public-
+    # readable by default -- bounded regardless.
+    "relationship_write": (
+        int(os.environ.get("FREK_RATE_RELATIONSHIP_PER_HOUR", "120")),
+        3600,
+    ),
 }
 
 

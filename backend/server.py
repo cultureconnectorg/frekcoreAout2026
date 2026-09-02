@@ -90,6 +90,17 @@ from creative_lifecycle.routes import (
     ensure_indexes as creative_lifecycle_ensure_indexes,
 )
 
+# D3 — Relationship / Provenance Graph (founder decision D3, 2026-09-02):
+# PRESERVE_MIGRATE the historical FREK Network (backend/frek/nodes/
+# node06_reseau.py) as two structurally-separate layers (TRUST vs.
+# CULTURAL, see relationship_graph/models.py's own module docstring).
+# backend/frek/'s 7 historical réseau routes are untouched.
+from relationship_graph.routes import (
+    relationship_graph_router,
+    set_db as relationship_graph_set_db,
+    ensure_indexes as relationship_graph_ensure_indexes,
+)
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -191,6 +202,9 @@ content_binding_set_db(db)
 
 # Initialize D2 Creative Lifecycle (founder decision D2, 2026-09-02)
 creative_lifecycle_set_db(db)
+
+# Initialize D3 Relationship / Provenance Graph (founder decision D3, 2026-09-02)
+relationship_graph_set_db(db)
 
 # Create the main app without a prefix
 # Doctrine IP protection : surface d'attaque minimale en production.
@@ -375,6 +389,11 @@ app.include_router(content_binding_router, prefix="/api/v1")
 # structurally separate from frek_v1's participant/badge stage lifecycle.
 app.include_router(creative_lifecycle_router, prefix="/api/v1")
 
+# D3 — Relationship / Provenance Graph (founder decision D3, 2026-09-02):
+# TRUST (verifiable/attestable) and CULTURAL (inferred) relationships,
+# structurally separate from and preserving the historical FREK Network.
+app.include_router(relationship_graph_router, prefix="/api/v1")
+
 # Identity Engine — Passkey/WebAuthn attache aux FREK-ID
 from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
 identity_set_db(db)
@@ -427,6 +446,7 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "identity.reconciled",
     "content_binding.created",
     "creative_lifecycle.recorded",
+    "relationship.recorded",
 )
 
 
@@ -697,6 +717,8 @@ async def seed_clients():
     await content_binding_ensure_indexes()
     # D2 Creative Lifecycle — indexes (founder decision D2, 2026-09-02)
     await creative_lifecycle_ensure_indexes()
+    # D3 Relationship / Provenance Graph — indexes (founder decision D3, 2026-09-02)
+    await relationship_graph_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
     # FREK Counter — indexes + seed regles

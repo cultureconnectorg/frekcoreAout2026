@@ -23,6 +23,7 @@ from eventbus.producers import (  # noqa: E402
     build_object_created_event,
     build_content_binding_created_event,
     build_creative_lifecycle_event,
+    build_relationship_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -283,6 +284,31 @@ def test_build_creative_lifecycle_event_matches_envelope_contract():
     assert env.payload["proof_state"] == "fingerprint"
     assert "vector" not in env.payload
     assert "signal_fingerprint" not in env.payload
+
+
+def test_build_relationship_event_matches_envelope_contract():
+    relationship_doc = {
+        "relationship_id": "rel-1",
+        "subject_id": "OBJ-1",
+        "predicate": "similar_to",
+        "object_id": "OBJ-2",
+        "layer": "cultural",
+        "status": "computed",
+        "assertions": [{"assertion_id": "a-1"}],
+    }
+    env = build_relationship_event(relationship_doc, correlation_id="corr-6")
+
+    assert env.event_type == "relationship.recorded"
+    assert env.producer == "relationship_graph"
+    assert env.subject == "rel-1"
+    assert env.correlation_id == "corr-6"
+    assert env.payload["predicate"] == "similar_to"
+    assert env.payload["layer"] == "cultural"
+    assert env.payload["status"] == "computed"
+    assert env.payload["assertion_count"] == 1
+    # Never echoes the full assertions/claims/evidence payload.
+    assert "assertions" not in env.payload
+    assert "claim" not in env.payload
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

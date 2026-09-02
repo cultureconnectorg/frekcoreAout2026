@@ -148,6 +148,15 @@
       "implemented": true,
       "status": "EXISTS",
       "evidence": "Founder decision D2 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/creative_lifecycle/routes.py's five stage endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_creative_lifecycle_event(). One unified event type covers all five stages (payload.stage distinguishes). Publish is best-effort (try/except, never blocks the lifecycle write). Verified by backend/tests/test_creative_lifecycle_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "relationship.recorded",
+      "version": "v1",
+      "description": "Une relation canonique (creation, verification ou revocation d'assertion) a ete enregistree dans le graphe TRUST/CULTURAL.",
+      "producer": "relationship_graph",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D3 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/relationship_graph/routes.py's create/verify/revoke endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_relationship_event(). One unified event type covers create/verify/revoke (payload.status distinguishes). Publish is best-effort (try/except, never blocks the write). Verified by backend/tests/test_relationship_graph_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
     }
   ],
   "legacy_stage_log": {

@@ -1,13 +1,14 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D3–D5.
-D6 (Evidence Semantics), D1 (Signal Fingerprint / Content Binding), and D2
-(Creative Lifecycle) are now IMPLEMENTED — see the 2026-09-01/2026-09-02
-updates below — (`backend/proof_engine/evidence_semantics.py`,
-`backend/content_binding/`, `backend/creative_lifecycle/`). D3–D5: no
-implementation started, `backend/frek/` untouched (D1/D2 built additively
-alongside it, not inside it — see the D1/D2 updates below). PR #1 not
-merged, not deployed.
+**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D4–D5.
+D6 (Evidence Semantics), D1 (Signal Fingerprint / Content Binding), D2
+(Creative Lifecycle), and D3 (Relationship / Provenance Graph) are now
+IMPLEMENTED — see the 2026-09-01/2026-09-02 updates below —
+(`backend/proof_engine/evidence_semantics.py`, `backend/content_binding/`,
+`backend/creative_lifecycle/`, `backend/relationship_graph/`). D4–D5: no
+implementation started, `backend/frek/` untouched (D1/D2/D3 built
+additively alongside it, not inside it — see the D1/D2/D3 updates below).
+PR #1 not merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -113,6 +114,44 @@ exactly as before: reconciled on paper, not started. Per the protocol,
 this document now stops and waits for the founder to authorize STATE_3
 (D3) before any further execution.
 
+**Update (2026-09-02, D3/STATE_3 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: per `EXECUTE_D3=TRUE, EXECUTE_D4..D5=FALSE`, D3 —
+Relationship / Provenance Graph — is now IMPLEMENTED, not just
+reconciled. `docs/decisions/0006-d3-relationship-provenance-graph-
+founder-decisions-implemented.md` is the full record. In brief:
+`backend/relationship_graph/` (new module) preserves the historical FREK
+Network's real taxonomy (5 node types; of the 17 declared relation types,
+only 5 were ever actually emitted by `register_emission` — confirmed by
+reading every call site, not assumed from the module's own docstring),
+split structurally into TRUST and CULTURAL layers via a closed,
+predicate-derived `layer` field a caller can never override. A CULTURAL
+relationship (e.g. `similar_to`, `influenced_by`) can **never** reach
+`RelationshipStatus.VERIFIED` — enforced in `service.derive_status` and
+re-checked with a 409 in the verify endpoint, not merely documented.
+Reuses, rather than reimplements: D6's `Claim`/`Evidence` (every
+`Assertion` is literally composed of them), D2's real
+`creative_lifecycle_events` (referenceable via `source_event_id`, never
+re-executed), `permissions.models.Scope`/`ScopeType` (reused directly,
+not a lookalike enum, for relationship visibility — `permissions.engine.
+decide()` itself was deliberately NOT wired in, since no `RoleGrant`
+persistence exists anywhere in the codebase to feed it honestly, a
+disclosed tradeoff). Plain MongoDB (`db.relationships`, one collection
+for both layers since `layer` is derived not caller-supplied), no
+Neo4j/PostgreSQL/pgvector. Traversal is bounded (`max_depth` hard-capped
+at 10 matching the historical route's own bound, plus a total-nodes-
+visited cap the historical in-memory graph never needed). 41 new unit
+tests, full unit suite green (315, up from 272 after D2), coverage gate
+re-verified at 96.68%. `backend/frek/`'s own 7 historical réseau routes
+are **untouched** — zero lines changed, confirmed by a static-import
+test and a route-count regression guard, per the explicit instruction
+against destructive route migration this state. D1's own verification
+status is **not** silently upgraded (`D1_VERIFIED` stays `PARTIAL`). No
+cultural-fingerprint/recommender/reputation/AI-influence pipeline was
+built — the relationship shape supports these as future consumers only.
+D4–D5 remain exactly as before: reconciled on paper, not started. Per
+the protocol, this document now stops and waits for the founder to
+authorize STATE_4 (D4) before any further execution.
+
 ---
 
 ## A. Executive summary
@@ -127,7 +166,7 @@ represented anywhere in modern FREKCORE at all:
 |---|---|---|---|
 | **D1 — Signal/Audio Fingerprint** | 3 | Turn an audio signal into a perceptual fingerprint, distinct from a cryptographic hash | NONE — `.fk`/`notary` hash files and manifests, never signal content |
 | **D2 — Creative Lifecycle** | 2 | Prove intent and process before/during creation (GENESIS→WORKSHOP→...) — **IMPLEMENTED 2026-09-02** (`backend/creative_lifecycle/`) | PARTIAL — `frek_v1` has the same 5-stage vocabulary, but for event badges, not works (kept structurally separate) |
-| **D3 — Relationship/Provenance Graph** | 7 | Auto-built graph of who-created-what-where-when | NONE — `registry/` stores objects, never relations between them |
+| **D3 — Relationship/Provenance Graph** | 7 | Auto-built graph of who-created-what-where-when — **IMPLEMENTED 2026-09-02** (`backend/relationship_graph/`) | NONE — `registry/` stores objects, never relations between them |
 | **D4 — Offline Proof Transport** | 6 | Move a certification across BLE/NFC/WiFi/ultrasound without network | NONE — the closest is FREK V3/FAP's device-attestation model, which is complementary, not overlapping |
 | **D5 — Human-Readable Technical Evidence** | 1 | Format a proof as a document a human/institution can read | PARTIAL — `notary` produces the real proof; this route formats unverified caller-supplied text |
 
@@ -194,7 +233,7 @@ correction is the authoritative one going forward.
 |---|---|---|
 | D1 | Signal/Audio Fingerprint | PRESERVE + VALIDATE + HARDEN + ABSORB — **IMPLEMENTED 2026-09-01** (`backend/content_binding/`, `docs/decisions/0004-...`, `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`) |
 | D2 | Creative Lifecycle | PRESERVE + ABSORB — **IMPLEMENTED 2026-09-02** (`backend/creative_lifecycle/`, `docs/decisions/0005-...`) |
-| D3 | Relationship/Provenance Graph | PRESERVE + MIGRATE (split into D3-A Trust Graph, D3-B Cultural/Inferred Graph) |
+| D3 | Relationship/Provenance Graph | PRESERVE + MIGRATE (split into D3-A Trust Graph, D3-B Cultural/Inferred Graph) — **IMPLEMENTED 2026-09-02** (`backend/relationship_graph/`, `docs/decisions/0006-...`) |
 | D4 | Offline Proof Transport | PRESERVE + ADAPTER |
 | D5 | Human-Readable Technical Evidence | PRESERVE INTENT + ABSORB + LEGAL HARDENING |
 | D6 | Evidence Semantics | Cross-cutting rule, not a capability — governs how D1–D5 represent truth. **IMPLEMENTED 2026-09-01** (`proof_engine/evidence_semantics.py`) |
@@ -1546,9 +1585,8 @@ sequence matches what §D independently found:
    2026-09-01 D1 update above and `docs/decisions/0004-...`.
 3. **Creative Lifecycle (D2) — DONE (2026-09-02)** — see the 2026-09-02
    D2 update above and `docs/decisions/0005-...`.
-4. **Relationship/provenance graph (D3)** — depends on 0 (verification_
-   status needs CLAIM/EVIDENCE) and benefits from D1 existing (D3-B
-   consumes D1's vectors) but does not strictly require it first.
+4. **Relationship/provenance graph (D3) — DONE (2026-09-02)** — see the
+   2026-09-02 D3 update above and `docs/decisions/0006-...`.
 5. **Offline transport envelope + sync (D4)** — depends on 0 (its
    acceptance-state vocabulary is D6-shaped); otherwise independent,
    could run in parallel with D2/D3.
@@ -1568,14 +1606,14 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document did not start step 0 when first written; steps 0–3 (D6,
-the canonical bindings model, D1, and D2) have since been executed**, each
-under the founder's explicit, separate authorization
-(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`) — see
-the 2026-09-01/2026-09-02 updates at the top of this document. Steps 4–11
-(D3–D5 and everything downstream of them) remain exactly as planned here:
-not started, each requiring its own separate founder authorization before
-execution.
+**This document did not start step 0 when first written; steps 0–4 (D6,
+the canonical bindings model, D1, D2, and D3) have since been executed**,
+each under the founder's explicit, separate authorization
+(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then
+`EXECUTE_D3=TRUE`) — see the 2026-09-01/2026-09-02 updates at the top of
+this document. Steps 5–11 (D4–D5 and everything downstream of them)
+remain exactly as planned here: not started, each requiring its own
+separate founder authorization before execution.
 
 ---
 
