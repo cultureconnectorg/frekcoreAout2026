@@ -77,10 +77,19 @@ no reordering needed):
    d1-signal-fingerprint-founder-decisions-implemented.md`. `backend/
    frek/`'s 3 historical routes (`/certify`, `/certify/upload`,
    `/verify/{frek_id}`) are unchanged — additive, not a replacement.
-3. **Creative Lifecycle (D2)** — Event/Claim records reusing the
-   GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY vocabulary (already
-   identical to `frek_v1`'s) and `notary.chain.append_block` for
-   durability. Can run in parallel with 4/5.
+3. **DONE (2026-09-02) — Creative Lifecycle (D2)** — Event/Claim records
+   (`backend/creative_lifecycle/`) reusing the GENESIS/WORKSHOP/
+   METAMORPHOSE/EMISSION/LEGACY vocabulary (already identical to
+   `frek_v1`'s, kept structurally separate — verified collision) and
+   `notary.service.notarize_event` for durability. State-machine shape
+   (`LIFECYCLE_MODEL = HYBRID`) derived from `node03_cycle.py`'s own guard
+   logic, not invented; a real re-entry idempotency defect found and fixed
+   by this step's own tests. Reuses D1's extraction functions and D6's
+   Claim/Evidence directly. 40 new tests, full suite green (272, up from
+   230 after D1). Full record: `docs/decisions/0005-d2-creative-lifecycle-
+   founder-decisions-implemented.md`. `backend/frek/`'s 2 historical
+   routes (`/genesis`, `/workshop`) are unchanged — additive, not a
+   replacement.
 4. **Relationship/Provenance Graph (D3)** — split into D3-A (Trust/
    Provenance, near-core) and D3-B (Cultural/Inferred, derived-
    intelligence, never auto-promoted to D3-A). Reuse

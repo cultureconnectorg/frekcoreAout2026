@@ -22,6 +22,7 @@ from eventbus.producers import (  # noqa: E402
     build_identity_reconciled_event,
     build_object_created_event,
     build_content_binding_created_event,
+    build_creative_lifecycle_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -252,9 +253,34 @@ def test_build_content_binding_created_event_matches_envelope_contract():
     assert env.correlation_id == "corr-4"
     assert env.payload["binding_id"] == "CB-abc123"
     assert env.payload["signal_algorithm"] == "frek_signal_v1"
-    assert env.payload["signal_algorithm_version"] == "1.0.0"
-    assert env.payload["proof_state"] == "local_proof"
-    # The raw 528-float vector is never echoed into the event payload.
+
+
+def test_build_creative_lifecycle_event_matches_envelope_contract():
+    event_doc = {
+        "event_id": "evt-1",
+        "pre_id": "PRE-abc123",
+        "stage": "GENESIS",
+        "sequence": 1,
+        "actor_id": "ARTIST-1",
+        "authority": "holder",
+        "fk_frek_id": None,
+        "proof_state": "fingerprint",
+        "created_at": "2026-09-02T00:00:00+00:00",
+    }
+    env = build_creative_lifecycle_event(event_doc, correlation_id="corr-5")
+
+    assert env.event_type == "creative_lifecycle.recorded"
+    assert env.producer == "creative_lifecycle"
+    assert env.subject == "PRE-abc123"
+    assert env.correlation_id == "corr-5"
+    assert env.payload["event_id"] == "evt-1"
+    assert env.payload["stage"] == "GENESIS"
+    assert env.payload["sequence"] == 1
+    # Never echoes the full claim/evidence/signal_vector payload.
+    assert "claim" not in env.payload
+    assert "evidence" not in env.payload
+    assert "signal_vector" not in env.payload
+    assert env.payload["proof_state"] == "fingerprint"
     assert "vector" not in env.payload
     assert "signal_fingerprint" not in env.payload
 

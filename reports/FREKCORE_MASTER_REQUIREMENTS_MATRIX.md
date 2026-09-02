@@ -125,21 +125,23 @@ FREKCORE must eventually carry. **Update (2026-09-01)**: D6 and D1 are
 now IMPLEMENTED (executed one state at a time under the founder's own
 `FREKCORE_EXECUTION_PROTOCOL_V1`, each requiring separate authorization)
 — see their rows below and `docs/decisions/0004-...`,
-`reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`. D2–D5 remain
-DOCUMENTED_ONLY: none is marked IMPLEMENTED merely because a historical
-`backend/frek/` prototype exists for it — per the reconciliation report's
-own evidence, none of the four persists data durably, none is
-authenticated, and none has been demonstrated (not merely asserted) to
-have the properties its own historical docstrings claim (e.g.
-"infalsifiable" fingerprint robustness — D1's own real validation pass
-found this claim unsupported and explicitly avoided the word; IVFFlat-
-accelerated similarity search — the code always falls back to a linear
-in-Python scan regardless of backend, contradicting its own docstring).
+`reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`. **Update (2026-09-02)**: D2
+is now IMPLEMENTED too — see its row below and `docs/decisions/0005-...`.
+D3–D5 remain DOCUMENTED_ONLY: none is marked IMPLEMENTED merely because a
+historical `backend/frek/` prototype exists for it — per the
+reconciliation report's own evidence, none of the three persists data
+durably, none is authenticated, and none has been demonstrated (not
+merely asserted) to have the properties its own historical docstrings
+claim (e.g. "infalsifiable" fingerprint robustness — D1's own real
+validation pass found this claim unsupported and explicitly avoided the
+word; IVFFlat-accelerated similarity search — the code always falls back
+to a linear in-Python scan regardless of backend, contradicting its own
+docstring).
 
 | Capability | Status | Evidence |
 |---|---|---|
 | Signal / Audio Fingerprinting (D1) | **IMPLEMENTED 2026-09-01** | `backend/content_binding/` — real, MongoDB-persisted, authenticated (holder/admin), rate-limited, idempotent binding of exact-hash + signal-fingerprint evidence to an existing `.fk` object, reusing `node01_extraction.py`'s real DSP pipeline verbatim and D6's `Claim`/`Evidence` primitives. FREK-ID/fingerprint conflation resolved structurally (never mints an identifier). Robustness claims are evidence-scoped, not asserted: `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md` records DEMONSTRATED (determinism, exact-match, fail-safe on malformed/too-short input — the latter a real defect found and fixed this pass), PARTIALLY_DEMONSTRATED (gain/noise/resample robustness on narrow synthetic fixtures), and NOT_TESTED (lossy compression, re-recording, collision rate) per property. `backend/frek/`'s own 3 historical routes are unchanged |
-| Creative Lifecycle (D2) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node03_cycle.py` — real 5-stage vocabulary (matches `frek_v1`'s exactly), in-memory only, no auth, no idempotency |
+| Creative Lifecycle (D2) | **IMPLEMENTED 2026-09-02** | `backend/creative_lifecycle/` — real, MongoDB-persisted, event-sourced (history never destroyed), authenticated (holder/admin), rate-limited GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY lifecycle, structurally separate from `frek_v1`'s participant/badge use of the same vocabulary (verified collision, not assumed). State-machine shape derived from `node03_cycle.py`'s own guard logic (`LIFECYCLE_MODEL = HYBRID`, not invented) — a real re-entry defect this state's own tests found and fixed. Reuses D1's extraction functions (never recomputes) and D6's `Claim`/`Evidence` primitives directly. EMISSION only ever references an existing `.fk` object, never mints one. `backend/frek/`'s own 2 historical routes are unchanged |
 | Relationship / Provenance Graph (D3) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node06_reseau.py` — real 17-relation taxonomy, in-memory only, all 7 read routes unauthenticated (the most acute privacy gap of the five per the reconciliation report §P) |
 | Offline Proof Transport (D4) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node07_transmission.py` — real packet wire format and protocol registry, transports simulated in-memory only (no actual BLE/NFC/etc. I/O), watermark encoding unvalidated experimentally |
 | Human-Readable Technical Evidence (D5) | **DOCUMENTED_ONLY (prototype), FOUNDER-REQUIRED, not yet authorized for execution** | `backend/frek/nodes/node09_juridique.py:create_attestation` — formats caller-supplied, unverified data as an official-sounding document; verifies nothing against actual FREKCORE state. `backend/notary/` remains the real, modern attestation mechanism this route does not use |

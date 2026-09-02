@@ -43,6 +43,14 @@ DEFAULT_LIMITS = {
         int(os.environ.get("FREK_RATE_CONTENT_BINDING_PER_HOUR", "30")),
         3600,
     ),
+    # D2 creative-lifecycle mutations (founder decision D2, 2026-09-02):
+    # shared across genesis/workshop/metamorphose/emission/legacy —
+    # authenticated writes, some with real compute cost (workshop/
+    # metamorphose reuse D1's extraction), historical routes had none.
+    "creative_lifecycle_write": (
+        int(os.environ.get("FREK_RATE_CREATIVE_LIFECYCLE_PER_HOUR", "60")),
+        3600,
+    ),
 }
 
 

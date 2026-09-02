@@ -139,6 +139,15 @@
       "implemented": true,
       "status": "EXISTS",
       "evidence": "Founder decision D1 (2026-09-01, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/content_binding/routes.py:create_content_binding publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_content_binding_created_event(). Publish is best-effort (try/except, never blocks binding creation). Verified by backend/tests/test_content_binding_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "creative_lifecycle.recorded",
+      "version": "v1",
+      "description": "Un evenement de cycle de vie creatif (GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY) a ete enregistre pour un pre_id.",
+      "producer": "creative_lifecycle",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D2 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/creative_lifecycle/routes.py's five stage endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_creative_lifecycle_event(). One unified event type covers all five stages (payload.stage distinguishes). Publish is best-effort (try/except, never blocks the lifecycle write). Verified by backend/tests/test_creative_lifecycle_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
     }
   ],
   "legacy_stage_log": {

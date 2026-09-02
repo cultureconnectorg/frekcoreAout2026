@@ -1,12 +1,13 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D2–D5.
-D6 (Evidence Semantics) and D1 (Signal Fingerprint / Content Binding) are
-now IMPLEMENTED — see the 2026-09-01 updates below —
-(`backend/proof_engine/evidence_semantics.py`,
-`backend/content_binding/`). D2–D5: no implementation started,
-`backend/frek/` untouched (D1 built additively alongside it, not inside
-it — see the D1 update below). PR #1 not merged, not deployed.
+**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D3–D5.
+D6 (Evidence Semantics), D1 (Signal Fingerprint / Content Binding), and D2
+(Creative Lifecycle) are now IMPLEMENTED — see the 2026-09-01/2026-09-02
+updates below — (`backend/proof_engine/evidence_semantics.py`,
+`backend/content_binding/`, `backend/creative_lifecycle/`). D3–D5: no
+implementation started, `backend/frek/` untouched (D1/D2 built additively
+alongside it, not inside it — see the D1/D2 updates below). PR #1 not
+merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -74,6 +75,44 @@ exactly as before: reconciled on paper, not started. Per the protocol,
 this document now stops and waits for the founder to authorize STATE_2
 (D2) before any further execution.
 
+**Update (2026-09-02, D2/STATE_2 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: per `EXECUTE_D2=TRUE, EXECUTE_D3..D5=FALSE`, D2 — Creative
+Lifecycle — is now IMPLEMENTED, not just reconciled.
+`docs/decisions/0005-d2-creative-lifecycle-founder-decisions-implemented.md`
+is the full record. In brief: `backend/creative_lifecycle/` (new module)
+preserves the historical GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY
+vocabulary verbatim, structurally separate from `frek_v1`'s
+participant/badge stage lifecycle (own collection, own notarization
+`payload_type`, own authority model — the collision was verified by direct
+code reading this state, not assumed). The lifecycle's state-machine shape
+was derived from `node03_cycle.py`'s own guard logic, not invented:
+`LIFECYCLE_MODEL = HYBRID` — WORKSHOP repeatable-but-bounded, METAMORPHOSE
+unguarded, EMISSION strictly current-stage-gated, which together allow a
+real, supported METAMORPHOSE → EMISSION → METAMORPHOSE → EMISSION
+re-entry. A defect in this exact re-entry flow was found and fixed by this
+state's own test suite (an early EMISSION idempotency check silently
+defeated legitimate re-entry by scanning the full event history instead of
+the current position — see the ADR). Reuses, rather than reimplements:
+D1's `content_binding.extraction` functions for exact-hash/signal-
+fingerprint computation (`D2_CONSUMES_D1=TRUE`, confirmed structurally, not
+just claimed), D6's `Claim`/`Evidence` primitives (every lifecycle event is
+literally composed of them), `identity_engine`'s holder-session pattern,
+and plain MongoDB (`db.creative_lifecycle_events`, no PostgreSQL/pgvector
+— D2 never needs similarity search). EMISSION requires and only ever
+references an existing `.fk` Cultural Object — this module never mints a
+FREK Object identity itself. 40 new unit tests
+(`test_creative_lifecycle_unit.py`), full unit suite green (272, up from
+230 after D1), coverage gate re-verified at 96.67%. `backend/frek/`'s own
+2 historical routes (`/genesis`, `/workshop`) are **untouched** — zero
+lines changed, confirmed by a static-import test, per the explicit
+instruction against destructive route migration this state. D1's own
+verification status is **not** silently upgraded: `D1_VERIFIED` stays
+`PARTIAL` (D2 consumes D1's extraction functions but produces no new
+evidence about the signal algorithm's own robustness). D3–D5 remain
+exactly as before: reconciled on paper, not started. Per the protocol,
+this document now stops and waits for the founder to authorize STATE_3
+(D3) before any further execution.
+
 ---
 
 ## A. Executive summary
@@ -87,7 +126,7 @@ represented anywhere in modern FREKCORE at all:
 | Capability | Routes | One-line description | Modern FREKCORE equivalent |
 |---|---|---|---|
 | **D1 — Signal/Audio Fingerprint** | 3 | Turn an audio signal into a perceptual fingerprint, distinct from a cryptographic hash | NONE — `.fk`/`notary` hash files and manifests, never signal content |
-| **D2 — Creative Lifecycle** | 2 | Prove intent and process before/during creation (GENESIS→WORKSHOP→...) | PARTIAL — `frek_v1` has the same 5-stage vocabulary, but for event badges, not works |
+| **D2 — Creative Lifecycle** | 2 | Prove intent and process before/during creation (GENESIS→WORKSHOP→...) — **IMPLEMENTED 2026-09-02** (`backend/creative_lifecycle/`) | PARTIAL — `frek_v1` has the same 5-stage vocabulary, but for event badges, not works (kept structurally separate) |
 | **D3 — Relationship/Provenance Graph** | 7 | Auto-built graph of who-created-what-where-when | NONE — `registry/` stores objects, never relations between them |
 | **D4 — Offline Proof Transport** | 6 | Move a certification across BLE/NFC/WiFi/ultrasound without network | NONE — the closest is FREK V3/FAP's device-attestation model, which is complementary, not overlapping |
 | **D5 — Human-Readable Technical Evidence** | 1 | Format a proof as a document a human/institution can read | PARTIAL — `notary` produces the real proof; this route formats unverified caller-supplied text |
@@ -154,7 +193,7 @@ correction is the authoritative one going forward.
 | # | Decision | Disposition |
 |---|---|---|
 | D1 | Signal/Audio Fingerprint | PRESERVE + VALIDATE + HARDEN + ABSORB — **IMPLEMENTED 2026-09-01** (`backend/content_binding/`, `docs/decisions/0004-...`, `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`) |
-| D2 | Creative Lifecycle | PRESERVE + ABSORB |
+| D2 | Creative Lifecycle | PRESERVE + ABSORB — **IMPLEMENTED 2026-09-02** (`backend/creative_lifecycle/`, `docs/decisions/0005-...`) |
 | D3 | Relationship/Provenance Graph | PRESERVE + MIGRATE (split into D3-A Trust Graph, D3-B Cultural/Inferred Graph) |
 | D4 | Offline Proof Transport | PRESERVE + ADAPTER |
 | D5 | Human-Readable Technical Evidence | PRESERVE INTENT + ABSORB + LEGAL HARDENING |
@@ -1505,8 +1544,8 @@ sequence matches what §D independently found:
    of an inline field — a real, disclosed tradeoff, not an oversight.
 2. **Fingerprint integration (D1) — DONE (2026-09-01)** — see the
    2026-09-01 D1 update above and `docs/decisions/0004-...`.
-3. **Creative Lifecycle (D2)** — depends on 0 (Event/Claim primitive);
-   independent of D1/D3, could run in parallel with them.
+3. **Creative Lifecycle (D2) — DONE (2026-09-02)** — see the 2026-09-02
+   D2 update above and `docs/decisions/0005-...`.
 4. **Relationship/provenance graph (D3)** — depends on 0 (verification_
    status needs CLAIM/EVIDENCE) and benefits from D1 existing (D3-B
    consumes D1's vectors) but does not strictly require it first.
@@ -1529,13 +1568,14 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document did not start step 0 when first written; steps 0–2 (D6,
-the canonical bindings model, and D1) have since been executed**, each
+**This document did not start step 0 when first written; steps 0–3 (D6,
+the canonical bindings model, D1, and D2) have since been executed**, each
 under the founder's explicit, separate authorization
-(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`) — see the 2026-09-01 updates
-at the top of this document. Steps 3–11 (D2–D5 and everything downstream
-of them) remain exactly as planned here: not started, each requiring its
-own separate founder authorization before execution.
+(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`) — see
+the 2026-09-01/2026-09-02 updates at the top of this document. Steps 4–11
+(D3–D5 and everything downstream of them) remain exactly as planned here:
+not started, each requiring its own separate founder authorization before
+execution.
 
 ---
 

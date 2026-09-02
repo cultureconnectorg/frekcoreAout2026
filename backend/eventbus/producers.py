@@ -234,3 +234,47 @@ def build_content_binding_created_event(
         },
         schema_version="1.0.0",
     )
+
+
+def build_creative_lifecycle_event(
+    event_doc: Dict[str, Any], correlation_id: Optional[str] = None
+) -> EventEnvelope:
+    """Build the `creative_lifecycle.recorded` event (founder decision D2,
+    2026-09-02 -- see reports/FREKCORE_HISTORICAL_CAPABILITY_
+    RECONCILIATION.md section D "D2 -- Creative Lifecycle").
+
+    `event_doc` is the same dict `backend/creative_lifecycle/routes.py`'s
+    `_notarize_and_store` inserts into `db.creative_lifecycle_events` --
+    this function does not touch the database itself, matching every
+    other producer in this file. One unified event type covers all five
+    stages (GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY, carried in
+    `payload["stage"]`) rather than five near-identical producer
+    functions -- the stage is itself just a value of the same underlying
+    "a lifecycle event was recorded" fact, and every consumer (Audit
+    Trail included) needs the same shape regardless of which stage.
+    `subject` is `pre_id` -- a provisional creative-lifecycle identity,
+    NEVER a FREK-ID (see creative_lifecycle/models.py's module
+    docstring). The full `claim`/`evidence`/`signal_vector` payloads are
+    NOT echoed here (same reasoning as `build_content_binding_created_
+    event`'s omission of the raw fingerprint vector) -- a subscriber
+    that needs the full record reads it back via
+    `GET /api/v1/creative-lifecycle/{pre_id}`.
+    """
+    return EventEnvelope(
+        event_type="creative_lifecycle.recorded",
+        producer="creative_lifecycle",
+        subject=event_doc["pre_id"],
+        correlation_id=correlation_id,
+        payload={
+            "event_id": event_doc["event_id"],
+            "pre_id": event_doc["pre_id"],
+            "stage": event_doc.get("stage"),
+            "sequence": event_doc.get("sequence"),
+            "actor_id": event_doc.get("actor_id"),
+            "authority": event_doc.get("authority"),
+            "fk_frek_id": event_doc.get("fk_frek_id"),
+            "proof_state": event_doc.get("proof_state"),
+            "created_at": event_doc.get("created_at"),
+        },
+        schema_version="1.0.0",
+    )

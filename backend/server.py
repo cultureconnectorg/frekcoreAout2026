@@ -79,6 +79,17 @@ from content_binding.routes import (
     ensure_indexes as content_binding_ensure_indexes,
 )
 
+# D2 — Creative Lifecycle (founder decision D2, 2026-09-02): PRESERVE +
+# ABSORB the historical GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY
+# provenance vocabulary as a structurally-separate module from frek_v1's
+# participant/badge stage lifecycle (see creative_lifecycle/models.py's
+# own module docstring). backend/frek/'s historical routes are untouched.
+from creative_lifecycle.routes import (
+    creative_lifecycle_router,
+    set_db as creative_lifecycle_set_db,
+    ensure_indexes as creative_lifecycle_ensure_indexes,
+)
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -177,6 +188,9 @@ fp_set_db(db)
 
 # Initialize D1 Content Binding (founder decision D1, 2026-09-01)
 content_binding_set_db(db)
+
+# Initialize D2 Creative Lifecycle (founder decision D2, 2026-09-02)
+creative_lifecycle_set_db(db)
 
 # Create the main app without a prefix
 # Doctrine IP protection : surface d'attaque minimale en production.
@@ -356,6 +370,11 @@ app.include_router(fk_router, prefix="/api/v1")
 # Object above — mounted alongside it under the same /api/v1 namespace.
 app.include_router(content_binding_router, prefix="/api/v1")
 
+# D2 — Creative Lifecycle (founder decision D2, 2026-09-02): the
+# GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY provenance capability,
+# structurally separate from frek_v1's participant/badge stage lifecycle.
+app.include_router(creative_lifecycle_router, prefix="/api/v1")
+
 # Identity Engine — Passkey/WebAuthn attache aux FREK-ID
 from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
 identity_set_db(db)
@@ -407,6 +426,7 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "identity.recovered",
     "identity.reconciled",
     "content_binding.created",
+    "creative_lifecycle.recorded",
 )
 
 
@@ -675,6 +695,8 @@ async def seed_clients():
     await fp_ensure_indexes()
     # D1 Content Binding — indexes (founder decision D1, 2026-09-01)
     await content_binding_ensure_indexes()
+    # D2 Creative Lifecycle — indexes (founder decision D2, 2026-09-02)
+    await creative_lifecycle_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
     # FREK Counter — indexes + seed regles
