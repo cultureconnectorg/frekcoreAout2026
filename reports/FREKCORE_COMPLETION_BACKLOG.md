@@ -107,12 +107,23 @@ no reordering needed):
    d3-relationship-provenance-graph-founder-decisions-implemented.md`.
    `backend/frek/`'s 7 historical réseau routes are unchanged —
    additive, not a replacement.
-5. **Offline transport envelope + sync (D4)** — a core envelope
-   (signature, replay/nonce protection reusing FAP's existing concept,
-   reconciliation state) with every transport (BLE/NFC/WiFi/ultrasound/
-   cellular) as a pluggable adapter, never a kernel dependency. No
-   robustness/inaudibility claim for the ultrasonic watermark without
-   experimental validation (none exists today).
+5. **DONE (2026-09-02) — Offline transport envelope + sync (D4)** —
+   `backend/offline_transport/`: a core envelope (Ed25519 signature via
+   `passport.keys`, replay/nonce protection, real FAP device attestation
+   genuinely reused via `frek_v3/reference_verifier/` — the first live
+   caller into what a prior pass confirmed was fully isolated —
+   reconciliation state) with every transport (BLE/NFC/WiFi/QR/
+   ultrasound/cellular/local-file/local-network/device-to-device) as a
+   pluggable adapter attaching only metadata, never touching the signed
+   core (verified by test). No robustness/inaudibility claim for the
+   ultrasonic watermark — the historical generator is reused verbatim,
+   wrapped with an honest `NOT_TESTED` validation status;
+   `WATERMARK_EQUALS_PROOF=FALSE` enforced structurally (no other module
+   imports the watermark one). 35 new tests, full suite green (352, up
+   from 315 after D3). Full record: `docs/decisions/0007-d4-offline-
+   proof-transport-founder-decisions-implemented.md`. `backend/frek/`'s
+   6 historical transmission routes are unchanged — additive, not a
+   replacement.
 6. **Technical evidence report (D5)** — full rewrite of
    `create_attestation`'s behavior: look up and verify referenced
    evidence/proof/credential IDs against actual FREKCORE state (reusing

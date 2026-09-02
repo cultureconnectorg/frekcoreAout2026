@@ -59,6 +59,13 @@ DEFAULT_LIMITS = {
         int(os.environ.get("FREK_RATE_RELATIONSHIP_PER_HOUR", "120")),
         3600,
     ),
+    # D4 offline-transport writes (founder decision D4, 2026-09-02):
+    # authenticated (holder self-assertion or admin), shared across
+    # create/receive/sync -- historical transmission routes had none.
+    "offline_transport_write": (
+        int(os.environ.get("FREK_RATE_OFFLINE_TRANSPORT_PER_HOUR", "120")),
+        3600,
+    ),
 }
 
 

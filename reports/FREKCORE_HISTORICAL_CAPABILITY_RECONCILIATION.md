@@ -1,14 +1,15 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D4–D5.
+**Status**: DOCUMENTATION + ARCHITECTURAL RECONCILIATION for D5.
 D6 (Evidence Semantics), D1 (Signal Fingerprint / Content Binding), D2
-(Creative Lifecycle), and D3 (Relationship / Provenance Graph) are now
-IMPLEMENTED — see the 2026-09-01/2026-09-02 updates below —
-(`backend/proof_engine/evidence_semantics.py`, `backend/content_binding/`,
-`backend/creative_lifecycle/`, `backend/relationship_graph/`). D4–D5: no
-implementation started, `backend/frek/` untouched (D1/D2/D3 built
-additively alongside it, not inside it — see the D1/D2/D3 updates below).
-PR #1 not merged, not deployed.
+(Creative Lifecycle), D3 (Relationship / Provenance Graph), and D4
+(Offline Proof Transport) are now IMPLEMENTED — see the 2026-09-01/
+2026-09-02 updates below — (`backend/proof_engine/evidence_semantics.py`,
+`backend/content_binding/`, `backend/creative_lifecycle/`,
+`backend/relationship_graph/`, `backend/offline_transport/`). D5: no
+implementation started, `backend/frek/` untouched (D1/D2/D3/D4 built
+additively alongside it, not inside it — see the D1/D2/D3/D4 updates
+below). PR #1 not merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -152,6 +153,53 @@ D4–D5 remain exactly as before: reconciled on paper, not started. Per
 the protocol, this document now stops and waits for the founder to
 authorize STATE_4 (D4) before any further execution.
 
+**Update (2026-09-02, D4/STATE_4 executed under FREKCORE_EXECUTION_
+PROTOCOL_V1)**: per `EXECUTE_D4=TRUE, EXECUTE_D5=FALSE`, D4 — Offline
+Proof Transport — is now IMPLEMENTED, not just reconciled.
+`docs/decisions/0007-d4-offline-proof-transport-founder-decisions-
+implemented.md` is the full record. In brief: `backend/offline_transport/`
+(new module) preserves the historical multi-channel transmission vision
+(5 declared protocols, confirmed) as a transport-independent,
+cryptographically verifiable envelope + sync/reconciliation service. The
+historical "packet" carried no real signature at all (`signature_short`
+is an unverified 8-character hash prefix, not a signature over anything
+— confirmed by reading the whole file, not assumed) — this state adds an
+entirely new trust layer on top: a canonical, deterministically-
+serialized envelope, Ed25519-signed via `passport.keys` (the same
+institutional signer behind `.fk`'s own `ProofLayer.signature`, not a
+second signer). `frek_v3/reference_verifier/` — a real, complete,
+independently tested FREK Attestation Protocol implementation confirmed
+by a prior pass to be fully isolated from `backend/` — is genuinely
+called for the first time (`offline_transport/fap_adapter.py`), reusing
+its real ECDSA verification, counter/replay/nonce/firmware checks
+end-to-end for an optional device-attestation layer, never
+reimplementing any of it. A cultural relation's inability to reach
+VERIFIED (D3) has its own D4 analogue: a valid signature alone can never
+reach `LOCALLY_ACCEPTABLE` — only `CRYPTO_VALID_BUT_STATUS_STALE` —
+unless authority freshness is explicitly current and unexpired
+(`OFFLINE_VERIFIED_EQUALS_ONLINE_STATUS_FRESH=FALSE`, enforced
+structurally). Reuses, rather than reimplements: D6's `Claim`/`Evidence`
+(every envelope is literally composed of them), D1 content bindings/D2
+lifecycle events/D3 relationships (referenceable, validated to exist,
+never re-executed). Plain MongoDB (`db.transport_envelopes`,
+`db.offline_issuer_state`, `db.fap_devices`), no new database technology
+— a persistent queue verified by test to survive across separate app
+instances sharing the same database. The historical ultrasonic
+watermark generator is reused verbatim, wrapped with an honest
+`NOT_TESTED` validation status; `WATERMARK_EQUALS_PROOF=FALSE` is
+enforced structurally (no other module in `offline_transport/` imports
+the watermark module at all). 35 new unit tests, full unit suite green
+(352, up from 315 after D3), coverage gate re-verified at 96.69%.
+`backend/frek/`'s own 6 historical transmission routes are **untouched**
+— zero lines changed, confirmed by a static-import test and a
+route-count regression guard. D1's own verification status is **not**
+silently upgraded (`D1_VERIFIED` stays `PARTIAL`). No hardware
+verification is claimed for any transport adapter — this sandbox has no
+real BLE/NFC/QR/ultrasonic hardware. D5 remains exactly as before:
+reconciled on paper, not started. Per the protocol, this document now
+stops and waits for the founder to authorize STATE_5 (D5) before any
+further execution.
+
 ---
 
 ## A. Executive summary
@@ -167,7 +215,7 @@ represented anywhere in modern FREKCORE at all:
 | **D1 — Signal/Audio Fingerprint** | 3 | Turn an audio signal into a perceptual fingerprint, distinct from a cryptographic hash | NONE — `.fk`/`notary` hash files and manifests, never signal content |
 | **D2 — Creative Lifecycle** | 2 | Prove intent and process before/during creation (GENESIS→WORKSHOP→...) — **IMPLEMENTED 2026-09-02** (`backend/creative_lifecycle/`) | PARTIAL — `frek_v1` has the same 5-stage vocabulary, but for event badges, not works (kept structurally separate) |
 | **D3 — Relationship/Provenance Graph** | 7 | Auto-built graph of who-created-what-where-when — **IMPLEMENTED 2026-09-02** (`backend/relationship_graph/`) | NONE — `registry/` stores objects, never relations between them |
-| **D4 — Offline Proof Transport** | 6 | Move a certification across BLE/NFC/WiFi/ultrasound without network | NONE — the closest is FREK V3/FAP's device-attestation model, which is complementary, not overlapping |
+| **D4 — Offline Proof Transport** | 6 | Move a certification across BLE/NFC/WiFi/ultrasound without network — **IMPLEMENTED 2026-09-02** (`backend/offline_transport/`) | NONE — the closest is FREK V3/FAP's device-attestation model, complementary, now genuinely reused (not just complementary in theory) |
 | **D5 — Human-Readable Technical Evidence** | 1 | Format a proof as a document a human/institution can read | PARTIAL — `notary` produces the real proof; this route formats unverified caller-supplied text |
 
 Every one of the 5 shares the **same root technical defect**: none of
@@ -234,7 +282,7 @@ correction is the authoritative one going forward.
 | D1 | Signal/Audio Fingerprint | PRESERVE + VALIDATE + HARDEN + ABSORB — **IMPLEMENTED 2026-09-01** (`backend/content_binding/`, `docs/decisions/0004-...`, `reports/FREKCORE_D1_VALIDATION_EVIDENCE.md`) |
 | D2 | Creative Lifecycle | PRESERVE + ABSORB — **IMPLEMENTED 2026-09-02** (`backend/creative_lifecycle/`, `docs/decisions/0005-...`) |
 | D3 | Relationship/Provenance Graph | PRESERVE + MIGRATE (split into D3-A Trust Graph, D3-B Cultural/Inferred Graph) — **IMPLEMENTED 2026-09-02** (`backend/relationship_graph/`, `docs/decisions/0006-...`) |
-| D4 | Offline Proof Transport | PRESERVE + ADAPTER |
+| D4 | Offline Proof Transport | PRESERVE + ADAPTER — **IMPLEMENTED 2026-09-02** (`backend/offline_transport/`, `docs/decisions/0007-...`) |
 | D5 | Human-Readable Technical Evidence | PRESERVE INTENT + ABSORB + LEGAL HARDENING |
 | D6 | Evidence Semantics | Cross-cutting rule, not a capability — governs how D1–D5 represent truth. **IMPLEMENTED 2026-09-01** (`proof_engine/evidence_semantics.py`) |
 
@@ -1587,9 +1635,8 @@ sequence matches what §D independently found:
    D2 update above and `docs/decisions/0005-...`.
 4. **Relationship/provenance graph (D3) — DONE (2026-09-02)** — see the
    2026-09-02 D3 update above and `docs/decisions/0006-...`.
-5. **Offline transport envelope + sync (D4)** — depends on 0 (its
-   acceptance-state vocabulary is D6-shaped); otherwise independent,
-   could run in parallel with D2/D3.
+5. **Offline transport envelope + sync (D4) — DONE (2026-09-02)** — see
+   the 2026-09-02 D4 update above and `docs/decisions/0007-...`.
 6. **Technical evidence report (D5)** — depends on everything above
    existing in verifiable form (it reports on them) — correctly last
    among the five capabilities.
@@ -1606,14 +1653,14 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document did not start step 0 when first written; steps 0–4 (D6,
-the canonical bindings model, D1, D2, and D3) have since been executed**,
-each under the founder's explicit, separate authorization
+**This document did not start step 0 when first written; steps 0–5 (D6,
+the canonical bindings model, D1, D2, D3, and D4) have since been
+executed**, each under the founder's explicit, separate authorization
 (`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then
-`EXECUTE_D3=TRUE`) — see the 2026-09-01/2026-09-02 updates at the top of
-this document. Steps 5–11 (D4–D5 and everything downstream of them)
-remain exactly as planned here: not started, each requiring its own
-separate founder authorization before execution.
+`EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`) — see the 2026-09-01/2026-09-02
+updates at the top of this document. Step 6 (D5) remains exactly as
+planned here: not started, requiring its own separate founder
+authorization before execution.
 
 ---
 

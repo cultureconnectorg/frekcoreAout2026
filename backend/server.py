@@ -101,6 +101,18 @@ from relationship_graph.routes import (
     ensure_indexes as relationship_graph_ensure_indexes,
 )
 
+# D4 — Offline Proof Transport / Synchronization (founder decision D4,
+# 2026-09-02): PRESERVE_ADAPTER the historical multi-channel
+# transmission vision (backend/frek/nodes/node07_transmission.py) as a
+# transport-independent, cryptographically verifiable envelope + sync
+# service (see offline_transport/models.py's own module docstring).
+# backend/frek/'s 6 historical transmission routes are untouched.
+from offline_transport.routes import (
+    offline_transport_router,
+    set_db as offline_transport_set_db,
+    ensure_indexes as offline_transport_ensure_indexes,
+)
+
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
 
@@ -205,6 +217,9 @@ creative_lifecycle_set_db(db)
 
 # Initialize D3 Relationship / Provenance Graph (founder decision D3, 2026-09-02)
 relationship_graph_set_db(db)
+
+# Initialize D4 Offline Proof Transport (founder decision D4, 2026-09-02)
+offline_transport_set_db(db)
 
 # Create the main app without a prefix
 # Doctrine IP protection : surface d'attaque minimale en production.
@@ -394,6 +409,12 @@ app.include_router(creative_lifecycle_router, prefix="/api/v1")
 # structurally separate from and preserving the historical FREK Network.
 app.include_router(relationship_graph_router, prefix="/api/v1")
 
+# D4 — Offline Proof Transport / Synchronization (founder decision D4,
+# 2026-09-02): transport-independent envelope + sync/reconciliation,
+# structurally separate from and preserving the historical transmission
+# vision.
+app.include_router(offline_transport_router, prefix="/api/v1")
+
 # Identity Engine — Passkey/WebAuthn attache aux FREK-ID
 from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
 identity_set_db(db)
@@ -447,6 +468,7 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "content_binding.created",
     "creative_lifecycle.recorded",
     "relationship.recorded",
+    "offline_transport.envelope_recorded",
 )
 
 
@@ -719,6 +741,8 @@ async def seed_clients():
     await creative_lifecycle_ensure_indexes()
     # D3 Relationship / Provenance Graph — indexes (founder decision D3, 2026-09-02)
     await relationship_graph_ensure_indexes()
+    # D4 Offline Proof Transport — indexes (founder decision D4, 2026-09-02)
+    await offline_transport_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
     # FREK Counter — indexes + seed regles

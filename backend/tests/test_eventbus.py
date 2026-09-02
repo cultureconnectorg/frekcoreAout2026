@@ -24,6 +24,7 @@ from eventbus.producers import (  # noqa: E402
     build_content_binding_created_event,
     build_creative_lifecycle_event,
     build_relationship_event,
+    build_offline_transport_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -309,6 +310,32 @@ def test_build_relationship_event_matches_envelope_contract():
     # Never echoes the full assertions/claims/evidence payload.
     assert "assertions" not in env.payload
     assert "claim" not in env.payload
+
+
+def test_build_offline_transport_event_matches_envelope_contract():
+    envelope_doc = {
+        "envelope_id": "env-1",
+        "issuer_id": "ARTIST-1",
+        "sequence": 3,
+        "sync_status": "synced",
+        "local_validation": "locally_acceptable",
+        "signature": "deadbeef",
+        "claim": {"statement": "should not be echoed"},
+    }
+    env = build_offline_transport_event(
+        envelope_doc, transition="synced", correlation_id="corr-7"
+    )
+
+    assert env.event_type == "offline_transport.envelope_recorded"
+    assert env.producer == "offline_transport"
+    assert env.subject == "env-1"
+    assert env.correlation_id == "corr-7"
+    assert env.payload["sequence"] == 3
+    assert env.payload["sync_status"] == "synced"
+    assert env.payload["transition"] == "synced"
+    # Never echoes the full claim/signature/device_attestation payload.
+    assert "claim" not in env.payload
+    assert "signature" not in env.payload
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

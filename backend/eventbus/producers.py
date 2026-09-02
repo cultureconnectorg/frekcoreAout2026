@@ -319,3 +319,46 @@ def build_relationship_event(
         },
         schema_version="1.0.0",
     )
+
+
+def build_offline_transport_event(
+    envelope_doc: Dict[str, Any],
+    *,
+    transition: str,
+    correlation_id: Optional[str] = None,
+) -> EventEnvelope:
+    """Build the `offline_transport.envelope_recorded` event (founder
+    decision D4, 2026-09-02 -- see reports/FREKCORE_HISTORICAL_
+    CAPABILITY_RECONCILIATION.md section D "D4 -- Offline Proof
+    Transport").
+
+    `envelope_doc` is the same dict `backend/offline_transport/
+    routes.py` inserts/replaces into `db.transport_envelopes` -- this
+    function does not touch the database itself, matching every other
+    producer in this file. One unified event type covers create/
+    receive/sync (`payload["transition"]` and `payload["sync_status"]`
+    distinguish which just happened), same reasoning as
+    `build_creative_lifecycle_event`'s single event for five stages and
+    `build_relationship_event`'s single event for create/verify/revoke.
+    `subject` is the envelope's own `envelope_id`, never the referenced
+    `subject_ref`/`object_ref` entities themselves. The full
+    `claim`/`evidence`/`signature`/`device_attestation` payload is NOT
+    echoed here (same reasoning as every other producer's omission of
+    raw sensitive/large content) -- a subscriber that needs the full
+    record reads it back via `GET /api/v1/offline/envelopes/{id}`.
+    """
+    return EventEnvelope(
+        event_type="offline_transport.envelope_recorded",
+        producer="offline_transport",
+        subject=envelope_doc["envelope_id"],
+        correlation_id=correlation_id,
+        payload={
+            "envelope_id": envelope_doc["envelope_id"],
+            "issuer_id": envelope_doc.get("issuer_id"),
+            "sequence": envelope_doc.get("sequence"),
+            "sync_status": envelope_doc.get("sync_status"),
+            "local_validation": envelope_doc.get("local_validation"),
+            "transition": transition,
+        },
+        schema_version="1.0.0",
+    )
