@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from frek_v1.utils import now_iso
+from security.policies import check_rate_limit
 
 stripe_router = APIRouter(prefix="/payments", tags=["CC2026 Paiements"])
 logger = logging.getLogger("frek.payments")
@@ -45,9 +46,33 @@ class CheckoutRequest(BaseModel):
 
 @stripe_router.post("/checkout")
 async def create_checkout(request: CheckoutRequest):
+    """P0 review (docs/decisions/0001-founder-decisions-2026-08-31.md):
+    left PUBLIC — CC2026 participants have no account/session system at
+    all (badge_id, scanned or typed at a kiosk, is the only thing they
+    hold), so requiring a credential here would break the real self-service
+    top-up flow this route exists for. This is also lower real-world risk
+    than it first looks: no jetons are ever credited from this endpoint —
+    get_checkout_status() only credits after Stripe itself reports
+    payment_status=="paid", so initiating a session for someone else's
+    badge_id cannot move funds or credit jetons, only create a pending,
+    unpaid payment_transactions row and an unused Stripe session (Stripe
+    Checkout sessions expire on their own). Residual risk: badge_id has
+    low entropy (badges/nomenclature.py:generate_badge_id — 4 random
+    alphanumeric chars + a predictable trailing digit, ~1.6M keyspace per
+    badge type), so it is guessable/enumerable, not a real bearer secret.
+    Hardened with a rate limit per badge_id (bounds enumeration/pollution
+    volume) rather than authentication (would break the real flow).
+    Required change for a stronger fix: a real participant session/claim
+    mechanism (e.g. a short-lived signed token issued at badge scan-in);
+    not implemented here — new capability, not a route-level hardening,
+    tracked in reports/FREKCORE_COMPLETION_BACKLOG.md.
+    """
     pack = JETON_PACKS.get(request.pack_id)
     if not pack:
         raise HTTPException(status_code=400, detail=f"Pack invalide. Choix: {list(JETON_PACKS.keys())}")
+
+    if not await check_rate_limit(scope=request.badge_id, action="checkout_create"):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
 
     badge = await db.badges.find_one({"badge_id": request.badge_id}, {"_id": 0, "badge_id": 1, "prenom": 1, "frek_id": 1})
     if not badge:

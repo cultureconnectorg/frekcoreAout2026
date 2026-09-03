@@ -6,6 +6,17 @@ Strategie :
   pour eviter les timeouts du proxy ingress externe.
 - Au demarrage de la session (et avant chaque test) on purge la collection
   `rate_limits` pour eviter les faux positifs lies aux runs precedents.
+
+Phase 2 (voir reports/10_TEST_INFRASTRUCTURE.md) :
+- `unit` vs `integration` : tout test qui ne se declare pas explicitement
+  `unit` (via `pytestmark = pytest.mark.unit` en tete de module) est marque
+  `integration` automatiquement ici. `pytest.ini` deselectionne `integration`
+  par defaut (`addopts = -m "not integration"`), donc `pytest` seul reste
+  rapide et ne necessite ni backend live ni MongoDB.
+- `_purge_rate_limits` verifie MONGO_URL/DB_NAME *avant* d'importer pymongo :
+  un import inconditionnel avait ete identifie comme cause d'un crash de
+  collection (pyo3/_cffi_backend) dans un environnement sandbox sans MongoDB
+  configure — voir reports/10_TEST_INFRASTRUCTURE.md pour la preuve.
 """
 import os
 from pathlib import Path
@@ -22,13 +33,22 @@ TEST_BASE_URL = os.environ.get("TEST_BACKEND_URL") or "http://localhost:8001"
 os.environ["REACT_APP_BACKEND_URL"] = TEST_BASE_URL
 
 
+def pytest_collection_modifyitems(config, items):
+    """Auto-marque `integration` tout test qui ne se declare pas `unit`."""
+    for item in items:
+        if item.get_closest_marker("unit") is None:
+            item.add_marker(pytest.mark.integration)
+
+
 def _purge_rate_limits():
+    mongo_url = os.environ.get("MONGO_URL")
+    db_name = os.environ.get("DB_NAME")
+    if not mongo_url or not db_name:
+        # Pas de MongoDB configure (ex: run `unit`-only) : rien a purger, et on
+        # evite surtout d'importer pymongo/cryptography pour rien (voir docstring).
+        return
     try:
         from pymongo import MongoClient
-        mongo_url = os.environ.get("MONGO_URL")
-        db_name = os.environ.get("DB_NAME")
-        if not mongo_url or not db_name:
-            return
         mc = MongoClient(mongo_url, serverSelectionTimeoutMS=2000)
         # purge generic counters (test_security_hardening installe son propre quota)
         mc[db_name].rate_limits.delete_many({"scope": {"$nin": []}})

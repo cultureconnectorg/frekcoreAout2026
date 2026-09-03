@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.wallet.schema.json",
+  "title": "FREK Wallet Link",
+  "description": "Enregistrement de liaison Identite <-> Wallet CVLN. FREKCORE ne stocke ni solde ni ledger : ce schema decrit uniquement l'evenement/artefact de rattachement identitaire consomme par CVLN Wallet (voir docs/interfaces/CVLN_WALLET.md). Aucune logique financiere n'est implementee ici.",
+  "x-frek-namespace": "frek.wallet",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "holder_id": {
+          "type": "string",
+          "description": "FREK-ID reference to another registry object.",
+          "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+        },
+        "wallet_provider": {
+          "type": "string",
+          "default": "cvln-wallet"
+        },
+        "external_wallet_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Opaque reference owned by CVLN Wallet, never a balance."
+        },
+        "linked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "holder_id",
+        "linked_at"
+      ]
+    }
+  ]
+}

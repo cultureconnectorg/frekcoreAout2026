@@ -1,8 +1,9 @@
 """FREK Counter — Routes /api/core/count*."""
 import logging
+import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from . import service
@@ -14,6 +15,14 @@ counter_router = APIRouter(prefix="/count", tags=["FREK Counter — Compteur sou
 
 def set_db(database):
     service.set_db(database)
+
+
+def _admin_or_403(x_admin_key: str):
+    """Same pattern as fingerprint/routes.py's helper of the same name.
+    docs/decisions/0001-founder-decisions-2026-08-31.md."""
+    expected = os.environ.get("SECRET_KEY")
+    if not expected or x_admin_key != expected:
+        raise HTTPException(status_code=403, detail="invalid_admin_key")
 
 
 class CountEntry(BaseModel):
@@ -31,12 +40,23 @@ class CountBatchRequest(BaseModel):
 
 
 @counter_router.post("")
-async def count_batch(req: CountBatchRequest):
+async def count_batch(req: CountBatchRequest, x_admin_key: str = Header(default="")):
     """Ingest batch — comptage souverain pour tout flux humain CVLN.
 
     Pas de badge_type obligatoire. Genere FREK-ID stable a partir
     de external_ref (hash deterministe). Idempotent.
+
+    P0 fix (docs/decisions/0001-...): previously reachable with no credential
+    at all — anyone could submit batches falsely attributed to any of the 9
+    CVLN_SOURCES, polluting the cultural-impact scoring this feeds. Callers
+    are other backend/partner systems (not end-user devices), so an admin-key
+    gate does not break a legitimate high-frequency client the way it would
+    for fingerprint/geo's device-originated /observe routes. Per-source API
+    keys (rather than one shared key for all 9 sources) would be the more
+    precise fix; tracked in reports/FREKCORE_COMPLETION_BACKLOG.md as this
+    review did not find an existing per-source credential store to build on.
     """
+    _admin_or_403(x_admin_key)
     res = await service.ingest_batch([e.model_dump() for e in req.entries])
     return res
 

@@ -24,7 +24,27 @@ API = f"{BASE_URL}/api/v1"
 CLIENT_ID = os.environ.get("FREK_CLIENT_KILTIKONET_ID", "kiltikonet-cc2026")
 CLIENT_SECRET = os.environ.get("FREK_CLIENT_KILTIKONET_SECRET", "")
 
-VERIFIER_PATH = Path("/app/verifier/python/verify_passport.py")
+
+def _find_verifier_path() -> Path:
+    """Locate verify_passport.py.
+
+    Historically hardcoded to `/app/verifier/python/verify_passport.py` —
+    the original deployment container's mount path. That path does not
+    exist in every environment this suite runs in (e.g. a checkout at
+    `/home/user/...`), even though the script itself is present in the
+    repo (`reports/16_INTEGRATION_TEST_BASELINE.md`, Priority 3 — verified
+    the file exists, only the absolute path assumption was wrong). Prefer
+    the deployment path when it's actually there (keeps existing container
+    behavior identical); otherwise resolve it relative to this test file's
+    location in the repo, which works from any checkout path.
+    """
+    deployment_path = Path("/app/verifier/python/verify_passport.py")
+    if deployment_path.exists():
+        return deployment_path
+    return Path(__file__).resolve().parents[2] / "verifier" / "python" / "verify_passport.py"
+
+
+VERIFIER_PATH = _find_verifier_path()
 
 
 @pytest.fixture(scope="module")

@@ -48,7 +48,7 @@
       "role": "attestation_chain",
       "status": "active",
       "version": "1.0",
-      "protocol": "Ed25519 signed blocks + OpenTimestamps + Bitcoin anchoring",
+      "protocol": "SHA-256 hash-chained blocks + OpenTimestamps + Bitcoin anchoring (correction, Phase 2: no Ed25519 signature field exists on a block itself — see backend/notary/models.py:BlockResponse and reports/13_PHASE2_GAP_ANALYSIS.md; Ed25519 signing happens one layer up, in backend/passport/service.py's passport envelope)",
       "location": "/app/backend/notary/",
       "capabilities": ["block_creation", "block_signing", "timestamp_anchoring", "bitcoin_anchoring", "chain_verification"],
       "integration_points": ["/api/v1/notary/*"],
@@ -107,6 +107,20 @@
       "dependencies": [],
       "verification_method": "python -m pytest /app/frek_v3/reference_verifier/test_frek_verifier.py",
       "note": "Isolated from /app/backend/. Phase 2 = Rust re-implementation. Phase 3 = FPGA. Phase 4 = ASIC. NO backend endpoint yet."
+    },
+    {
+      "id": "frek_registry",
+      "name": "FREK Registry",
+      "role": "cultural_object_schema_catalog",
+      "status": "active",
+      "version": "1.0",
+      "protocol": "REST/HTTPS + JSON Schema (draft 2020-12)",
+      "location": "/app/backend/registry/",
+      "capabilities": ["namespace_catalog", "schema_serving", "payload_validation", "event_registry_catalog"],
+      "integration_points": ["/api/v1/registry/versions", "/api/v1/registry/namespaces", "/api/v1/registry/namespaces/{namespace}", "/api/v1/registry/validate", "/api/v1/registry/events"],
+      "dependencies": [],
+      "verification_method": "GET /api/v1/registry/namespaces",
+      "note": "Bloc 1 (FREK Registry) of the FREKCORE v1.0 Master Prompt. Schema catalog only: no persisted instance store yet (see reports/02_GAP_ANALYSIS.md). Namespaces: frek.artist, frek.track, frek.album, frek.work, frek.certificate, frek.organization, frek.wallet, frek.event."
     },
     {
       "id": "frekraw",

@@ -5,6 +5,23 @@ et retourne une chronologie lisible francais avec etiquettes humaines.
 
 Different de /api/v1/notary/* qui est cryptographique.
 Ici : "qui a fait quoi quand" pour ops + audit reglementaire.
+
+Audit-event separation (P2, 2026-08-31 — reports/FREKCORE_COMPLETION_
+BACKLOG.md P2 #4): this module is a READ-ONLY, non-authoritative
+convenience aggregation for humans — it writes nothing, and its
+underlying sources retain whatever integrity guarantee they already had
+(notary_blocks stays hash-chained; frek_stages/scans/transactions stay
+plain operational records) regardless of how this endpoint presents them.
+The authoritative, immutable, security-audit WRITE path is
+`backend/audit_trail/` (Phase 2/3) — it subscribes to the Event Bus and
+writes append-only `AuditEvent` records to `audit_trail_events`,
+independently of this module. This file mixed identity-security,
+work-lifecycle, operational-access, and financial events into one
+undifferentiated timeline with no way to tell them apart programmatically
+— that was the actual, evidenced gap (not the underlying data's
+integrity, which was never at risk). Closed by adding an explicit
+`category` field per event (see `_category()` below) — additive, every
+existing field unchanged.
 """
 import logging
 from typing import Optional, List
@@ -28,6 +45,7 @@ def set_db(database):
 class TimelineEvent(BaseModel):
     timestamp: str
     kind: str
+    category: str
     label: str
     actor: Optional[str] = None
     details: Optional[dict] = None
@@ -43,6 +61,8 @@ LABELS = {
     "revocation": "Identite revoquee",
     "renewal": "Identite renouvelee",
     "transfer": "Transmission identite",
+    "identity_recovery": "Identite recuperee (recovery)",
+    "identity_reconciliation": "Identite reconciliee",
     "GENESIS": "Premiere apparition (GENESIS)",
     "WORKSHOP": "Atelier (WORKSHOP)",
     "METAMORPHOSE": "Mutation (METAMORPHOSE)",
@@ -57,6 +77,38 @@ LABELS = {
 
 def _label(kind: str) -> str:
     return LABELS.get(kind, kind)
+
+
+# Audit-event separation (P2, 2026-08-31): which category each `kind`
+# belongs to, so a consumer that needs only security-relevant events (or
+# only financial ones) can filter this timeline programmatically instead
+# of re-deriving the mapping itself. Four categories, matching what this
+# module's own sources actually are — not an invented taxonomy:
+# - identity_security: identity lifecycle events (also independently
+#   recorded, authoritatively, by backend/audit_trail/ via the Event Bus).
+# - work_lifecycle: a cultural work's GENESIS->LEGACY stage progression —
+#   business/domain, not security-sensitive.
+# - operational_access: physical/terrain access control (badge scans).
+# - financial: jeton/cashless transactions.
+CATEGORIES = {
+    "identity_emit": "identity_security",
+    "revocation": "identity_security",
+    "renewal": "identity_security",
+    "transfer": "identity_security",
+    "identity_recovery": "identity_security",
+    "identity_reconciliation": "identity_security",
+    "stage": "work_lifecycle",
+    "stage_transition": "work_lifecycle",
+    "scan": "operational_access",
+    "access_scan": "operational_access",
+    "transaction": "financial",
+    "jeton_tx": "financial",
+    "walkin_emit": "operational_access",
+}
+
+
+def _category(kind: str) -> str:
+    return CATEGORIES.get(kind, "operational_access")
 
 
 @audit_router.get("/{frek_id}", response_model=List[TimelineEvent])
@@ -77,6 +129,7 @@ async def audit_frek_id(
         events.append({
             "timestamp": s.get("timestamp"),
             "kind": "stage",
+            "category": _category("stage"),
             "label": f"{_label(s['stage'])} — seq #{s.get('sequence')}",
             "actor": s.get("client_id"),
             "details": {
@@ -93,6 +146,7 @@ async def audit_frek_id(
         events.append({
             "timestamp": sc.get("timestamp"),
             "kind": "scan",
+            "category": _category("scan"),
             "label": f"Acces zone {sc.get('zone')}",
             "actor": sc.get("agent_id") or sc.get("client_id"),
             "details": {
@@ -108,6 +162,7 @@ async def audit_frek_id(
         events.append({
             "timestamp": tx.get("timestamp"),
             "kind": "transaction",
+            "category": _category("transaction"),
             "label": f"{_label(tx.get('type', 'tx'))} — {tx.get('montant_jetons', 0)}J",
             "actor": tx.get("agent_id") or tx.get("marchand_id") or tx.get("client_id"),
             "details": {
@@ -120,9 +175,26 @@ async def audit_frek_id(
             },
         })
 
-    # 4. Notary blocks (revocation, renewal, transfer, walkin_emit)
+    # 4. Notary blocks (revocation, renewal, transfer, walkin_emit, and —
+    # added 2026-08-31 — identity_recovery/identity_reconciliation, the two
+    # new payload_types this session's RECOVERY/MERGE work added to
+    # notary.chain: this timeline was silently omitting them, a real,
+    # concrete instance of the separation gap this pass was asked to
+    # investigate, not a hypothetical one).
     blocks = await db.notary_blocks.find(
-        {"payload_id": frek_id, "payload_type": {"$in": ["revocation", "renewal", "transfer", "walkin_emit"]}},
+        {
+            "payload_id": frek_id,
+            "payload_type": {
+                "$in": [
+                    "revocation",
+                    "renewal",
+                    "transfer",
+                    "walkin_emit",
+                    "identity_recovery",
+                    "identity_reconciliation",
+                ]
+            },
+        },
         {"_id": 0, "ots_proof": 0},
     ).sort("timestamp", 1).to_list(500)
     for b in blocks:
@@ -136,6 +208,7 @@ async def audit_frek_id(
         events.append({
             "timestamp": b.get("timestamp"),
             "kind": kind,
+            "category": _category(kind),
             "label": label,
             "actor": (b.get("metadata") or {}).get("client_id") or pd.get("revoked_by"),
             "details": {
@@ -151,6 +224,7 @@ async def audit_frek_id(
     events.append({
         "timestamp": identity["created_at"],
         "kind": "identity_emit",
+        "category": _category("identity_emit"),
         "label": _label("identity_emit"),
         "actor": identity.get("client_id"),
         "details": {
@@ -177,6 +251,7 @@ async def audit_agent(
         events.append({
             "timestamp": sc.get("timestamp"),
             "kind": "scan",
+            "category": _category("scan"),
             "label": f"Scan {sc.get('zone')} - {sc.get('badge_id')}",
             "actor": agent_id,
             "details": {"scan_id": sc.get("scan_id"), "frek_id": sc.get("frek_id"), "zone": sc.get("zone")},
@@ -186,6 +261,7 @@ async def audit_agent(
         events.append({
             "timestamp": tx.get("timestamp"),
             "kind": "transaction",
+            "category": _category("transaction"),
             "label": f"{_label(tx.get('type', 'tx'))} {tx.get('montant_jetons', 0)}J",
             "actor": agent_id,
             "details": {"tx_id": tx.get("tx_id"), "badge_id": tx.get("badge_id"), "marchand_id": tx.get("marchand_id"), "montant_jetons": tx.get("montant_jetons")},
@@ -195,6 +271,7 @@ async def audit_agent(
         events.append({
             "timestamp": w.get("created_at"),
             "kind": "walkin_emit",
+            "category": _category("walkin_emit"),
             "label": f"Emission walk-in - {w.get('prenom', '')} {w.get('nom', '')}",
             "actor": agent_id,
             "details": {"badge_id": w.get("badge_id"), "frek_id": w.get("frek_id"), "type_badge": w.get("type_badge")},
@@ -220,6 +297,7 @@ async def audit_event(
         events.append({
             "timestamp": sc.get("timestamp"),
             "kind": "scan",
+            "category": _category("scan"),
             "label": f"Scan {sc.get('zone')} - {sc.get('prenom', '')} {sc.get('nom', '')}",
             "actor": sc.get("agent_id") or sc.get("client_id"),
             "details": {"frek_id": sc.get("frek_id"), "zone": sc.get("zone"), "badge_id": sc.get("badge_id")},
@@ -229,6 +307,7 @@ async def audit_event(
         events.append({
             "timestamp": tx.get("timestamp"),
             "kind": "transaction",
+            "category": _category("transaction"),
             "label": f"{_label(tx.get('type', 'tx'))} {tx.get('montant_jetons', 0)}J",
             "actor": tx.get("agent_id") or tx.get("marchand_id"),
             "details": {"frek_id": tx.get("frek_id"), "tx_id": tx.get("tx_id"), "marchand_id": tx.get("marchand_id")},

@@ -1,4 +1,5 @@
 """FREK CFL — Endpoints HTTP /api/core/fingerprint/*."""
+
 import logging
 import os
 from typing import Optional
@@ -12,11 +13,15 @@ from . import affinity as affinity_mod
 from . import device as device_mod
 from . import layers as layers_mod
 from .consent import LAYERS, has_consent
+from identity_engine import service as identity_service
+from security.policies import check_rate_limit
 
 logger = logging.getLogger("frek.fingerprint.routes")
 
 # Sous-namespace de /core (souverainete CVLN)
-fp_router = APIRouter(prefix="/core/fingerprint", tags=["FREK Cultural Fingerprint Layer"])
+fp_router = APIRouter(
+    prefix="/core/fingerprint", tags=["FREK Cultural Fingerprint Layer"]
+)
 
 db = None
 
@@ -44,6 +49,50 @@ def _admin_or_403(x_admin_key: str):
         raise HTTPException(status_code=403, detail="invalid_admin_key")
 
 
+async def _is_holder(frek_id: str, x_frek_session: Optional[str]) -> bool:
+    """True per-holder proof (P1 backlog #3, closes the interim-admin-key
+    caveat every route below used to carry — see
+    docs/architecture/FREK_ID_RECONCILIATION.md and
+    reports/FREKCORE_COMPLETION_BACKLOG.md P1 #3).
+
+    Two ways a session proves it owns `frek_id`:
+    1. `frek_id` IS the session's own identity_engine FREK-ID (this
+       fingerprint record belongs to an identity_engine person directly).
+    2. The session's identity has `frek_id` in `linked_objects` — the
+       already-existing mechanism (`POST /identity/link-object`,
+       `identity_engine/routes.py`) for "this object is mine," which is
+       what actually applies for the realistic case: fingerprint/geo data
+       is keyed by whatever `frek_id` an external caller supplies (often
+       a `frek_v1`-minted UUID4 — a different ID space `frek_v1` has no
+       holder-session concept for at all, see Contradiction C1), and a
+       person later links that external ID to their own identity_engine
+       identity to claim it.
+
+    No admin fallback here by design — callers combine this with their
+    own admin-key check (see `_holder_or_admin` below) so the two
+    authority paths stay individually auditable.
+    """
+    if not x_frek_session:
+        return False
+    session_frek_id = identity_service.verify_session_token(x_frek_session)
+    if not session_frek_id:
+        return False
+    if session_frek_id == frek_id:
+        return True
+    identity = await db.frek_persons.find_one(
+        {"frek_id": session_frek_id}, {"_id": 0, "linked_objects": 1}
+    )
+    return bool(identity and frek_id in identity.get("linked_objects", []))
+
+
+async def _holder_or_admin(
+    frek_id: str, x_frek_session: Optional[str], x_admin_key: str
+):
+    if await _is_holder(frek_id, x_frek_session):
+        return
+    _admin_or_403(x_admin_key)
+
+
 # ---------- Consent ----------
 class ConsentUpdate(BaseModel):
     layers: dict = Field(..., description="Mapping layer_name -> bool (opt-in/out)")
@@ -55,15 +104,29 @@ async def get_consent(frek_id: str):
 
 
 @fp_router.post("/consent/{frek_id}")
-async def update_consent(frek_id: str, payload: ConsentUpdate):
-    """Le porteur (ou un client autorise mandate par lui) met a jour ses choix.
+async def update_consent(
+    frek_id: str,
+    payload: ConsentUpdate,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
+    """Le porteur met a jour ses choix — vraie autorisation per-holder
+    (P1 backlog #3, `docs/architecture/FREK_ID_RECONCILIATION.md`).
 
     Toute revocation declenche un purge_layer_data (RGPD/AfCFTA).
+
+    P0 fix (docs/decisions/0001-founder-decisions-2026-08-31.md) closed the
+    "reachable by anyone" gap with an interim admin-key gate. This P1 pass
+    replaces the interim with real holder authority (`_holder_or_admin`,
+    see its docstring): the admin key remains only as the documented
+    override for cases the holder can't self-serve.
     """
+    await _holder_or_admin(frek_id, x_frek_session, x_admin_key)
     # Quelles couches sont desactivees par cette update ?
     current = await consent_mod.get_consent(frek_id)
     revoked = [
-        layer for layer, granted in (payload.layers or {}).items()
+        layer
+        for layer, granted in (payload.layers or {}).items()
         if layer in LAYERS and current["layers"].get(layer) and not granted
     ]
     updated = await consent_mod.update_consent(frek_id, payload.layers)
@@ -79,12 +142,26 @@ class DeviceObservation(BaseModel):
     surface: str = Field(default="verify")
 
 
+async def _fp_rate_limited(frek_id: str) -> bool:
+    """Rate-limit /observe/* per FREK-ID (docs/decisions/0001-...): these routes
+    are called directly by an end-user's own device/browser reporting on
+    itself, so gating them behind a client credential would break the real
+    flow (no session system exists for that caller). Consent-gating already
+    stops silent data collection; this bounds abuse volume against a
+    frek_id that HAS granted consent."""
+    return not await check_rate_limit(scope=frek_id, action="fingerprint_observe")
+
+
 @fp_router.post("/observe/device")
 async def observe_device(payload: DeviceObservation):
     if not await has_consent(payload.frek_id, "device"):
         # Silence : on accuse reception sans collecter (zero fuite info)
         return {"recorded": False, "reason": "consent_required"}
-    return await device_mod.observe(payload.frek_id, payload.raw_device_hash, payload.surface)
+    if await _fp_rate_limited(payload.frek_id):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
+    return await device_mod.observe(
+        payload.frek_id, payload.raw_device_hash, payload.surface
+    )
 
 
 class NFCScan(BaseModel):
@@ -97,7 +174,11 @@ class NFCScan(BaseModel):
 async def observe_nfc(payload: NFCScan):
     if not await has_consent(payload.frek_id, "coupling"):
         return {"recorded": False, "reason": "consent_required"}
-    return await layers_mod.record_nfc_scan(payload.frek_id, payload.nfc_scan_id, payload.surface)
+    if await _fp_rate_limited(payload.frek_id):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
+    return await layers_mod.record_nfc_scan(
+        payload.frek_id, payload.nfc_scan_id, payload.surface
+    )
 
 
 class WebVerify(BaseModel):
@@ -109,17 +190,24 @@ class WebVerify(BaseModel):
 async def observe_web_verify(payload: WebVerify):
     if not await has_consent(payload.frek_id, "coupling"):
         return {"coupled": False, "reason": "consent_required"}
+    if await _fp_rate_limited(payload.frek_id):
+        raise HTTPException(status_code=429, detail="Trop de requetes")
     return await layers_mod.record_web_verify(payload.frek_id, payload.nfc_scan_id)
 
 
-# ---------- Read fingerprint (admin) ----------
+# ---------- Read fingerprint (holder or admin) ----------
 @fp_router.get("/{frek_id}")
-async def get_fingerprint(frek_id: str, x_admin_key: str = Header(default="")):
-    """Lecture COMPLETE — admin uniquement. Respecte le consent par couche.
+async def get_fingerprint(
+    frek_id: str,
+    x_frek_session: Optional[str] = Header(None),
+    x_admin_key: str = Header(default=""),
+):
+    """Lecture COMPLETE — le titulaire (P1, `_holder_or_admin`) ou l'admin.
+    Respecte le consent par couche.
 
     Les couches non-consenties retournent `{available: false, reason: 'consent_required'}`.
     """
-    _admin_or_403(x_admin_key)
+    await _holder_or_admin(frek_id, x_frek_session, x_admin_key)
 
     consent = await consent_mod.get_consent(frek_id)
     layers_data = {}
@@ -174,9 +262,19 @@ class MatchRequest(BaseModel):
 
 @fp_router.post("/match")
 async def match(payload: MatchRequest, x_admin_key: str = Header(default="")):
+    """Deliberately stays admin-only (P1, `_holder_or_admin` was NOT applied
+    here): this compares TWO subjects, and a single holder session can only
+    prove ownership of one of them — proving frek_id_a's holder-ship is not
+    proof of authority to run a cross-subject comparison involving
+    frek_id_b too. This is a genuinely different shape of operation than
+    every other route in this file (all single-subject), so it keeps the
+    SYSTEM/ADMIN authority level rather than being widened alongside them."""
     _admin_or_403(x_admin_key)
     # Necessite consent affinity sur les 2 sujets
-    if not (await has_consent(payload.frek_id_a, "affinity") and await has_consent(payload.frek_id_b, "affinity")):
+    if not (
+        await has_consent(payload.frek_id_a, "affinity")
+        and await has_consent(payload.frek_id_b, "affinity")
+    ):
         raise HTTPException(status_code=403, detail="consent_required_on_both")
     va = await affinity_mod.compute(payload.frek_id_a)
     vb = await affinity_mod.compute(payload.frek_id_b)
@@ -186,10 +284,9 @@ async def match(payload: MatchRequest, x_admin_key: str = Header(default="")):
     return {
         "similarity": sim,
         "interpretation": (
-            "tres similaire" if sim > 0.8 else
-            "similaire" if sim > 0.5 else
-            "distinct" if sim > 0.2 else
-            "orthogonal"
+            "tres similaire"
+            if sim > 0.8
+            else "similaire" if sim > 0.5 else "distinct" if sim > 0.2 else "orthogonal"
         ),
         "available": True,
     }
@@ -197,14 +294,21 @@ async def match(payload: MatchRequest, x_admin_key: str = Header(default="")):
 
 # ---------- Export RGPD ----------
 @fp_router.get("/export/{frek_id}")
-async def export_self(frek_id: str, x_export_key: str = Header(default="")):
+async def export_self(
+    frek_id: str,
+    x_frek_session: Optional[str] = Header(None),
+    x_export_key: str = Header(default=""),
+):
     """Export RGPD : le porteur recupere tout ce que FREKCORE detient sur son fingerprint.
 
-    Protege par X-Export-Key (token jetable a generer cote /verify, hors-scope ici :
-    on accepte la SECRET_KEY pour la v1 — sera remplace par un token specifique a
-    la Phase 5.5 quand le flux porteur sera defini).
+    P1 (2026-08-31): this route's own docstring always said "le porteur" —
+    now it actually is. `X-FREK-Session` (real per-holder proof, see
+    `_holder_or_admin`) is the primary path; `X-Export-Key` (matching
+    `SECRET_KEY`, this route's pre-existing admin-key placeholder) remains
+    as the override, unchanged in name/behavior for existing callers.
     """
-    _admin_or_403(x_export_key)  # placeholder porteur-key
+    if not await _is_holder(frek_id, x_frek_session):
+        _admin_or_403(x_export_key)
     consent = await consent_mod.get_consent(frek_id)
     payload = {
         "frek_id": frek_id,

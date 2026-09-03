@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.album.schema.json",
+  "title": "FREK Album",
+  "description": "Album — regroupement de frek.track (Bloc 1).",
+  "x-frek-namespace": "frek.album",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artist_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "FREK-ID reference to another registry object.",
+            "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+          },
+          "minItems": 1
+        },
+        "track_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "FREK-ID reference to another registry object.",
+            "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+          },
+          "default": []
+        },
+        "upc": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "release_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        }
+      },
+      "required": [
+        "title",
+        "artist_ids"
+      ]
+    }
+  ]
+}

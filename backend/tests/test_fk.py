@@ -12,6 +12,11 @@ import pytest
 from fk.packager import create_fk, canonical_json, sha256_hex
 from fk.validator import validate_fk, summary
 
+# Bloc "unit" (Phase 2) : ce module n'appelle ni MongoDB ni un backend live —
+# voir reports/10_TEST_INFRASTRUCTURE.md. Verifie par run standalone
+# (11/11 passed) avant l'ajout de ce marqueur.
+pytestmark = pytest.mark.unit
+
 
 @pytest.mark.asyncio
 async def test_create_fk_minimal():

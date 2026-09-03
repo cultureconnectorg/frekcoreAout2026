@@ -1,0 +1,109 @@
+# CI-only dependency set (Phase 2 — see reports/10_TEST_INFRASTRUCTURE.md).
+#
+# This is deliberately NOT `pip install -r backend/requirements.txt`. Two real,
+# reproduced blockers make the full file uninstallable on a clean environment
+# (verified with a single `pip install -r requirements.txt` on 2026-08-30):
+#
+#   1. `emergentintegrations==0.1.0` (requirements.txt:26) is a private package,
+#      not published on PyPI ("No matching distribution found"). It is a real
+#      runtime dependency of backend/services/webhook.py:8 (Stripe checkout
+#      integration) — not dead code — so it cannot simply be deleted from
+#      requirements.txt without breaking that feature.
+#   2. `cryptography==46.0.4` (requirements.txt:20) conflicts with
+#      `webauthn==3.0.0` (requirements.txt:144), which requires
+#      `cryptography>=49.0.0`. pip's resolver reports this directly:
+#        "webauthn 3.0.0 depends on cryptography>=49.0.0"
+#      This is an internal inconsistency in requirements.txt itself, not an
+#      artifact of this file — it reproduces on a clean resolver.
+#
+# Update (Phase 3, reports/15_DEPENDENCY_REMEDIATION.md): both are now fixed
+# in backend/requirements.txt itself (cryptography bumped to 49.0.0; the
+# emergentintegrations import made lazy in services/webhook.py so its absence
+# no longer blocks importing the app). `pip install -r backend/requirements.txt`
+# (minus the one still-private emergentintegrations line) now works on a clean
+# environment — verified there. This file still exists because GitHub Actions'
+# runner has no access to the private index either, same as this session's
+# sandbox, so CI still needs a curated, fully-public-PyPI subset.
+#
+# This file instead pins the exact set proven (by running the real test
+# suite in this repo) to be necessary and sufficient to:
+#   - collect all of backend/tests/ EXCEPT tests/test_ecosystem.py (the one
+#     module that imports server.py -> services/webhook.py -> emergentintegrations,
+#     see backend/pytest.ini's --ignore for the same reason)
+#   - run every `unit`-marked test (21/21 passing as of this writing)
+#   - run flake8 / black --check / mypy against backend/registry/
+#
+# It is NOT a replacement for backend/requirements.txt and must never be used
+# to run the actual FREKCORE service.
+#
+# Update (P1, 2026-08-31): backend/registry/routes.py's new /objects
+# instance-store write-authority check imports identity_engine.service (for
+# X-FREK-Session verification) — a single monolithic module that imports
+# `webauthn` at module level for its WebAuthn-ceremony functions, even
+# though the one function registry/routes.py actually calls
+# (verify_session_token) is pure HMAC and needs none of that. Since
+# `identity_engine` is now a real transitive import of registry/ (a
+# blocking-scope module), `webauthn` and its own dependencies are added
+# below — pinned to the exact versions already proven compatible in the
+# real backend/requirements.txt (cryptography bumped from 41.0.7 to
+# 49.0.0 to satisfy webauthn==3.0.0's own `cryptography>=49.0.0`
+# requirement — the same conflict this file's own header comment already
+# documented, now resolved in the curated set the same way it already was
+# in the real one). Verified in a fresh venv: pip install succeeds with no
+# resolver conflicts, and every blocking-scope test still passes.
+#
+# Update (2026-08-31, same pass, found via the resulting CI failure this
+# file's own missing entries caused — reports/FREKCORE_COMPLETION_BACKLOG.md
+# P1 #8's object.created work): tests/test_fk_object_created_event.py is a
+# real `unit`-marked test (isolated FastAPI app + TestClient, no live
+# external server or real MongoDB — matches this file's own "unit" bar) but
+# needs mongomock_motor/mongomock to substitute MongoDB in-process, same
+# technique scripts/run_dev_server_mongomock.py already documents. `pytest
+# -v`'s default collection (this file's own "Unit tests + coverage" job,
+# see .github/workflows/ci.yml) imports every test module before filtering
+# by marker, so a missing import here aborted collection for the ENTIRE
+# job with zero tests run, not just this one file's tests — hence added
+# here even though the test itself only ever runs under the `unit` marker.
+
+fastapi==0.110.1
+pydantic==2.12.5
+starlette==0.37.2
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+httpx==0.28.1
+python-multipart==0.0.22
+python-dotenv==1.2.1
+pymongo==4.5.0
+motor==3.3.1
+# dnspython: required by pymongo to resolve `mongodb+srv://` URIs (DNS SRV
+# lookup) -- MongoDB Atlas connection strings are always srv://. Present
+# in the real backend/requirements.txt already (same pin); added here too
+# (2026-09-03, FREKCORE_REAL_MONGO_VALIDATION_PROTOCOL) because the
+# real-mongo-validation CI job installs only this file, and without it
+# `AsyncIOMotorClient(<atlas srv uri>)` raises a configuration error
+# before ever attempting a network connection.
+dnspython==2.8.0
+PyJWT==2.7.0
+qrcode==8.2
+stripe==14.3.0
+boto3==1.42.42
+numpy
+bcrypt==4.1.3
+cryptography==49.0.0
+opentimestamps==0.4.5
+webauthn==3.0.0
+pyasn1==0.6.2
+pyasn1_modules==0.4.2
+cbor2==6.1.3
+mongomock==4.3.0
+mongomock-motor==0.0.36
+
+pytest==9.0.2
+pytest-asyncio==1.4.0
+pytest-cov
+prometheus_client==0.26.0
+
+flake8==7.3.0
+black==26.1.0
+mypy==1.19.1
+pip-audit

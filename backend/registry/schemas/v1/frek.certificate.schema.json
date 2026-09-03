@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/frek.certificate.schema.json",
+  "title": "FREK Certificate",
+  "description": "Diplome / certification CVLN Academy — genere par le Certificate Engine (Bloc 5), signe via Passport (backend/passport/service.py).",
+  "x-frek-namespace": "frek.certificate",
+  "x-frek-schema-version": "1.0.0",
+  "allOf": [
+    {
+      "$ref": "_base.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "holder_id": {
+          "type": "string",
+          "description": "FREK-ID reference to another registry object.",
+          "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Issuing organization, e.g. 'CVLN Academy'."
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "jcc_credits": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Credits Culture Connect awarded."
+        },
+        "verification_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "qr_payload": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "signature": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "base64 Ed25519 signature (see Proof Engine)."
+        }
+      },
+      "required": [
+        "title",
+        "holder_id",
+        "issuer",
+        "issued_at"
+      ]
+    }
+  ]
+}

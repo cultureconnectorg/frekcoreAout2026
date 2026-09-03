@@ -1,0 +1,214 @@
+# FREKCORE — Completion Backlog
+
+Every item traces to a specific finding in `reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md`, `reports/FREKCORE_CONTRADICTIONS.md`, `docs/PERMISSION_MATRIX.md`, or a numbered Phase 1/2/3 report — no invented roadmap items.
+
+## P0 — Required for correctness/security
+
+1. **CLOSED** (docs/decisions/0001-founder-decisions-2026-08-31.md, reports/22_P0_SECURITY_CLOSURE.md): the unauthenticated mutating routes flagged in `docs/PERMISSION_MATRIX.md`'s FLAG section — `fingerprint/consent`, `geo/consent|notarize`, `geo/trail` (read) and `counter`'s batch ingest are now ADMIN-gated; `fingerprint/observe/*` and `geo/observe` are rate-limited (auth would have broken their real device-originated callers); `checkout` was reviewed and left public by design (documented why) with a rate limit added. 12 new regression tests, all passing live against a real (mongomock-backed) server. True per-holder (owner-scoped, not admin-key) authorization for fingerprint/geo consent was left open by this P0 pass, tracked as P1 below — **CLOSED 2026-08-31**, see P1 #3.
+2. **CLOSED (2026-08-31)**: dual-identity-system split (`reports/FREKCORE_CONTRADICTIONS.md` C1) — `docs/decisions/0001-founder-decisions-2026-08-31.md` ("reconcile, don't replace") plus `docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md` (MERGE/RENEW/RECOVERY, see P1 #2 below). Authoritative system per capability is mapped in `docs/architecture/FREK_ID_RECONCILIATION.md`, proven live via the cross-system `linked_objects` pattern (fingerprint/geo per-holder auth, Registry write-authority). No external CVLN system has been granted write access via `docs/interfaces/` in this session.
+3. **CLASSIFIED, not yet bumped (2026-08-31)**: `reports/24_DEPENDENCY_SECURITY_CLASSIFICATION.md` sorts all 115 findings across all 20 packages (grown from the earlier "21 packages" estimate in `reports/17_SECURITY_FINAL.md`) into 5 evidence-based buckets: 26 exploitable/reachable (4 packages — `starlette`, `cryptography`, `pyjwt`, `python-multipart`), 12 potentially reachable, 30 transitive/unreachable in practice, 41 blocked by the `emergentintegrations` private-dependency chain, 6 false-positive dev-tooling. Bumping the 4 reachable packages needs the real-Mongo integration suite (P1 #1) to verify against, not just `mongomock` — order and rationale recorded in that report.
+
+## P1 — Required for FREKCORE v1
+
+1. **Get the 335-test integration suite to a fully known, green state against a real MongoDB** (not the `mongomock` substitute used this phase — see `reports/16_INTEGRATION_TEST_BASELINE.md` for exactly what blocked a real MongoDB here: Docker registry pulls return `403 Forbidden` from this sandbox's network policy). This is the single highest-leverage next step — almost everything else in this backlog benefits from being verifiable against it.
+2. **PARTIALLY CLOSED (2026-08-31)**: `identity_engine` lifecycle endpoints — `revoke`, `update`, `archive` are now implemented (`backend/identity_engine/routes.py`, holder-initiated-by-default with an admin override, per `docs/architecture/FREK_ID_RECONCILIATION.md`'s P1 update section), notarized where a security event (revoke) applies, event-producer-backed (`identity.revoked`/`identity.updated`, see item #8 below), and live-tested (`backend/tests/test_identity_lifecycle.py`, 13 passing). Found and fixed along the way: a silent `frek_v1`/`identity_engine` route collision on `POST /{frek_id}/revoke` (both routers shared that exact path; `identity_engine`'s is now `/revocation` — see the reconciliation doc for the full writeup), and a real pre-existing security gap in `register_begin`/`register_complete` (unauthenticated Passkey re-registration could take over an already-credentialed identity). **`search` CLOSED (2026-08-31)**: `GET /identity/search` (`backend/identity_engine/routes.py`), admin-only by design (a bulk-listing/enumeration surface has no per-holder analog — every other gated route in this module is a single-subject operation a holder can legitimately perform on their own record; search across many identities is structurally an operator/support tool, not a holder action). Filters: `display_name` (case-insensitive substring), `status`, `identity_type`; paginated. Registered before the existing `GET /{frek_id}` catch-all to avoid the exact class of route-shadowing bug found and fixed in the `/revocation` rename above. Live-tested: `backend/tests/test_identity_lifecycle.py::TestSearch` (7 tests). **MERGE/RENEW/RECOVERY — CLOSED (2026-08-31)**: `docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md` records the founder's approval for all three, scoped per `docs/architecture/FREK_ID_ENTITY_TAXONOMY.md` to Person/Institution identities (the entity types this session found to actually have credentials + holder-session authority). RECOVERY: `register_begin`/`register_complete` accept an `X-Admin-Key` override when credentials already exist (7 unit tests, `identity.recovered` event). RENEW: a documentation/regression-test finding, not a code change — `frek_v1`'s existing renew already never regenerates `frek_id` (4 unit tests lock in the invariant). MERGE: `POST /{frek_id}/reconcile` + `GET /{frek_id}/reconciliations` — append-only, never deletes/overwrites either identity, dual holder-session consent for same-system targets, admin-only for cross-system targets, idempotent, notarized, `identity.reconciled` event (9 unit tests). All three wired into the Audit Trail (P2 #7 below).
+3. **CLOSED (2026-08-31)**: real per-holder (owner-scoped) authorization for fingerprint/geo consent. The P0 closure (`reports/22_P0_SECURITY_CLOSURE.md`) gated these behind the shared ADMIN key as an interim fix; this pass adds the real holder path (`identity_engine`'s `X-FREK-Session`) as primary, admin-key kept only as the documented override — same shape as the identity_engine lifecycle work's `_holder_or_admin`. Widened: `fingerprint`'s `POST /consent/{frek_id}`, `GET /{frek_id}`, `GET /export/{frek_id}` (dropped its old "placeholder porteur-key" admin-only gate entirely); `geo`'s `POST /consent/{frek_id}`, `GET /trail/{frek_id}`, `POST /notarize`. Deliberately NOT widened: `fingerprint`'s `POST /match` (cross-subject — a single holder session can't prove authority over both frek_ids being compared, documented in the route itself). Solves the real Contradiction-C1-shaped gap this item used to describe: fingerprint/geo's `frek_id` is often not an `identity_engine` person at all (commonly a `frek_v1`-minted UUID, a space with no holder-session concept of its own) — the fix uses `identity_engine`'s pre-existing `linked_objects` mechanism (`POST /identity/link-object`) so a real holder session covers a linked external ID too, not just an exact match. `backend/permissions/`'s role/scope engine was considered and NOT used — it has never been wired into any live route in this codebase (verified: zero call sites), and building that plumbing for the first time here would have been new infrastructure this item didn't ask for, not "wiring an existing mechanism"; the `_holder_or_admin` pattern this pass uses is the one already proven live twice this session (`identity_engine`, `registry`). Live-tested: `backend/tests/test_fingerprint.py::TestHolderAuth` (6 tests), `backend/tests/test_geo_security.py::TestHolderAuth` (5 tests) — direct match, cross-subject rejection, the `linked_objects` path, and `/match`'s deliberate exclusion.
+4. **DONE**: `sync_router`, `heritage_router`, `investor_router`, `pdf_batch_router` are now individually audited (`docs/PERMISSION_MATRIX.md`) — all confirmed real-protected except `investor_router` (2 GET-only, low-severity, genuinely public dashboard reads) and `heritage`'s `/claim` + `/lineage/{frek_id}` (intentionally public by design).
+5. **DONE**: all `backend/frek/` routes audited and individually classified per the founder-decided reconciliation vocabulary (PRESERVE/HARDEN/ABSORB/MIGRATE/ADAPTER/SUPERSEDE/DEPRECATE/NEEDS_FOUNDER_DECISION) — `reports/FREKCORE_CONTRADICTIONS.md` C4 is resolved: **not authorized for deletion, not globally deprecated** (docs/decisions/0001-founder-decisions-2026-08-31.md §9). See `docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`: the prior "33" figure was a stale estimate, corrected there to the actual **43** routes (13 in `routes.py` + 30 in `routes_advanced.py`, both re-verified 2026-08-31 directly against the code, along with a second arithmetic error found in the doc's own summary table while re-checking it). Disposition: 20 PRESERVE, 3 ABSORB candidate, 1 ADAPTER candidate, 19 NEEDS_FOUNDER_DECISION (every mutating route, blocked on the same root cause — `backend/frek/`'s NODE04/06 pipeline only activates its real PostgreSQL/pgvector backend when `MONGO_URL` starts with `postgres`, which it structurally never does in this deployment, so every write silently falls back to in-process memory and never survives a restart), 0 SUPERSEDE/DEPRECATE/MIGRATE. **Nothing further is actionable here without founder input** — this audit's own closing line: "No route in this audit was found safe to authenticate, harden, or modify in-place this session... Per founder directive §28, this stops for founder input rather than guessing."
+6. **CLOSED (2026-08-31)**: reconciled the two object-type taxonomies (`.fk`'s `object_type` enum vs. FREK Registry's `frek.*` namespaces) — `docs/architecture/FK_OBJECT_TAXONOMY_RECONCILIATION.md`. Finding: `frek.work.work_type` was already an exact mirror of `.fk`'s `OBJECT_TYPES` by design (Phase 1's own schema docstring said so); this pass made it a verified, tested fact (`backend/registry/fk_taxonomy.py`, `backend/tests/test_registry_fk_taxonomy.py`) rather than an unchecked claim, and mapped `song`/`album`/`event` to their additional specific namespaces. Deliberately did not wire an automatic `.fk` → Registry mirror on object creation (a real behavior change, out of this item's scope) — flagged as a smaller, clearly-scoped future item in the doc.
+7. **CLOSED (2026-08-31)**: the Registry instance store — `POST/GET /api/v1/registry/objects/{namespace}` and `GET /api/v1/registry/objects/{namespace}/{frek_id}`, `backend/registry/routes.py`, backed by a new `registry_objects` MongoDB collection, schema-validated before insert. Write authority: an OAuth2 client with the new `registry:write` permission (ISSUER — the seeded `kiltikonet-cc2026` client now carries it) or an `identity_engine` holder session forced to its own `owner_id` (OWNER) — no admin-key fallback. Reads are public, matching this module's existing catalog endpoints. Deliberately does not publish any event (see item #8 below — `object.created` stays `.fk`'s, per the event catalog's own `producer: "fk"`). Live-tested: `backend/tests/test_registry_objects.py` (18 tests). This closes every `docs/interfaces/*.md`'s "PROPOSED, NOT IMPLEMENTED" resolver gap that named this as the blocker (`KORA.md`, `LABELOS.md`, both updated).
+8. **Add remaining event producers.** `identity.revoked`/`identity.updated` and now **`object.created`** are all **DONE (2026-08-31)**. `object.created`: `backend/eventbus/producers.py:build_object_created_event()`, wired into `backend/fk/routes.py POST /fk/create` right after the object is persisted, same best-effort try/except pattern as `identity_engine`. Payload echoes only what `GET /api/v1/fk/detail/{frek_id}` already returns publicly. Verified two ways: a unit test for the producer's output (`backend/tests/test_eventbus.py`) and a wiring-level test that proves `fk/routes.py` actually calls it (`backend/tests/test_fk_object_created_event.py`, isolated FastAPI app + TestClient + mongomock, subscribes a test-local bus and asserts the real envelope arrives on a real `POST /fk/create`). Still open: `certificate.issued` needs the Academy Certificate Engine to exist at all (Bloc 5, still MISSING); `identity.merged` needs `identity_engine`'s still-unbuilt `merge` capability.
+
+9. **DONE (2026-08-31)**: closed the 2 remaining Sprint G resilience P1 fixes (`memory/RESILIENCE_REPORT_v1.0.md`, an earlier CC2026-focused freeze cycle, 2026-07-08 — found during the documentation reconciliation above). Of its 4 named P1 fixes, 2 were already implemented (Motor 3s timeout; `/health/deep` always-200-with-degraded-detail) — confirmed, no code change needed. The other 2 were genuinely missing/insufficient and are closed here: (1) `POST /notary/anchor/force-upgrade`, `X-Admin-Key`-gated (same convention as `health/routes.py::_require_admin`), calling the same `OTSAnchor.upgrade_pending()` the pre-existing `/anchor/upgrade` uses — that endpoint predates the report by two months but is gated by the client-credential `emit` permission (held by any partner client, not an administrator), which is what the report's own "(admin)" annotation was actually asking to close; (2) `backend/notary/chain_watchdog.py` (new) — a periodic (6h) `FrekChain.verify_chain()` pass reporting via `security.policies.record_anomaly` at `severity="critical"` on tamper detection, closing the gap the report's test 3 found (corruption only ever caught if someone happened to call `/notary/chain/verify`). Wired into `server.py`'s startup/shutdown, opt-out via `FREK_DISABLE_CHAIN_WATCHDOG=1`. 10 new unit tests, full suite 171/171 passing, coverage gate 96.34%.
+
+## P2 — Required for ecosystem interoperability
+
+1. **DONE (2026-08-31)**: exhaustive documentation reconciliation. Enumerated every historical document with zero cross-references anywhere in `reports/`/`docs/` (`grep -rl <filename> reports/ docs/`: 7 in `frek_v3/docs/`, 12 in `memory/`) and read/triaged all 19. Two genuine, evidence-resolvable findings fixed: (1) `FREK_Attestation_Protocol_v0.1.md`'s counter/firmware-bound signing-key claim is superseded by `FREK_Cryptographic_Architecture_Review_v0.1.md`'s explicit correction (stable Attestation Key derived once from the Device Root Key; confirmed against `frek_v3/reference_verifier/frek_crypto.py`'s actual code) — fixed in `docs/architecture/FAP_PROOF_ENGINE_RECONCILIATION.md`; (2) `.fk`'s real implementation source was misattributed to the later, never-validated `frek_v3/docs/FREK_Object_Model_Specification_v0.1.md` draft instead of `memory/FK_CULTURE_SPEC_v1.0.md`, which matches `fk/models.py`'s `LayersMap` exactly — fixed in `docs/architecture/FREK_ID_CANONICAL_MODEL.md` (PARTIAL → IMPLEMENTED, with the `intelligence/` layer carved out as PARTIAL pending FREKANSLA). The remaining 8 `memory/` documents (business model, ecosystem architecture, field-test protocol/checklist/report template, public charter, consolidated status snapshot, ops credentials runbook) carry no architecture/proof/identity-semantics requirements and either corroborate already-reconciled findings or are out of this pass's scope by their own nature (pricing, UX field-test logistics, production-readiness items explicitly deferred).
+2. **DONE (2026-08-31)**: reconciled FAP (`frek_v3/`) with `backend/proof_engine/` — `docs/architecture/FAP_PROOF_ENGINE_RECONCILIATION.md`. Resolved from evidence, no founder decision needed: the two are orthogonal trust axes (Proof Engine = how anchored is this hash; FAP = how trustworthy is the hash's hardware source), not competing proof systems — a captured fingerprint can carry both simultaneously. FAP does NOT become a `ProofState` (that would conflate the two axes); the integration shape when hardware exists is an additive field plus the existing `notary.chain.append_block` extensibility point, not a Proof Engine redesign. Not implemented (no hardware to build against) — this closes the reconciliation, deliberately not the build.
+3. **DONE (2026-08-31)**: connected Issuer/Holder/Verifier to the Permission Engine — `backend/permissions/protocol_roles.py`, a typed `ProtocolRole` vocabulary plus an explicit, documented mapping to `Role` (the mapping layer option, not new `Role` enum members — see that file's docstring for why: `Role` is a closed, mission-brief-defined vocabulary, and no DID/EUDI route calls `permissions.engine.decide()` today, so adding enforceable roles for them now would be unbacked scope). The honest documented answer for all three is "maps to no `Role` today" (Issuer = the platform itself, Holder = the base case of having a FREK-ID, Verifier = a public unauthenticated read) — this closes the "never connected" gap `reports/FREKCORE_MASTER_REQUIREMENTS_MATRIX.md`'s Credentials section named, without inventing capability. 4 new unit tests (`tests/test_permissions.py`), 100% coverage on the new module, black/flake8/mypy clean, re-verified in a fresh venv. Independent, additive, no existing route or Role behavior changed.
+4. **DONE (2026-08-31)**: investigated the five candidate event categories (domain/eventbus, security-audit/audit_trail, proof-notarial/notary, operational-timeline/audit, permission-decisions) — `docs/architecture/AUDIT_EVENT_SEPARATION.md`. Finding: the guarantees that matter (cryptographic integrity, forensic reliability) were already correctly separated at the write/storage level (`notary_blocks` hash-chained; `audit_trail_events` append-only, independent collection); `backend/audit/` writes nothing, so the real gap was read-side categorization, not an integrity risk. Closed by adding an explicit `category` field to `backend/audit/`'s `TimelineEvent` (additive, backward-compatible, 5 tests) plus fixing a concrete found-while-investigating bug: the notary-block filter was silently omitting this session's own `identity_recovery`/`identity_reconciliation` events from a holder's timeline. Deliberately did NOT build a new abstraction/collection/event-bus — the founder's own "do not create abstractions merely for architectural aesthetics" rule applies directly, since the write-side separation was already correct.
+5. **SCOPED, 2026-08-31, deliberately not implemented**: `docs/architecture/OPENID4VP_SCOPING.md` — the building blocks (presentation_definition, a present-VP verification endpoint reusing OID4VCI's existing verifier, direct_post transport) and the FREK-ID boundary (OpenID4VP consumes existing VC/DID, never redefines identity/provenance) are recorded. Not built: no confirmed consumer (checked against `docs/interfaces/CVLN_WALLET.md`, `AGENT_FACTORY.md` — neither names a presentation requirement) and no reference wallet to conformance-test against, matching this mission's own "do not claim EUDI/eIDAS compatibility unless technically proven" rule. Still MISSING, now with an execution-ready plan rather than an open question.
+6. **DONE (2026-08-31)**: extended both SDKs to cover the Registry API's instance-store endpoints (`create_object`/`list_objects`/`get_object`, wrapping this session's P1 registry-objects work) — the SDK previously covered only the schema-catalog half of `/api/v1/registry/*`. Python 10/10 tests, TypeScript 7/7, both re-verified in a fresh venv/install. Independent, additive, no existing method's behavior changed. Superseded/extended by item 8 below.
+7. **PARTIALLY DONE (2026-08-31)**: wired the 3 real event producers added during P1 (`identity.updated`, `identity.revoked`, `object.created`) into the Audit Trail, alongside the pre-existing `identity.created` subscription — `backend/server.py`'s `_AUDIT_TRAIL_EVENT_TYPES`. Zero route changes: `event_envelope_to_audit_event()` (`backend/audit_trail/subscribers.py`) is a fully generic mapping, so this was purely additive. Directly improves `reports/21_FREEZE_ASSESSMENT.md`'s "Audit trail active for sensitive mutations" criterion from 1/6 to 4/6 named categories. Verified: 5 new unit tests (mapping-correctness for each new event shape, an end-to-end subscriber-writes-to-recorder test, and a static server.py source check), a live dev-server smoke test confirming the exact startup log line, and the full local unit suite (128/128). Still open: the 3 newly-wired categories are unit-verified only (fake Mongo collection), not yet independently live-Mongo-verified (blocked on `reports/23_REAL_MONGODB_VALIDATION_PLAN.md`); `identity.merged` and `certificate.issued` remain the 2 of 6 categories with no producer at all, both gated on work not yet built (merge — founder decision pending; Academy Certificate Engine — doesn't exist).
+8. **DONE (2026-08-31)**: extended both SDKs beyond the Registry API to `identity_engine`'s **public-read** surface (`FrekcoreIdentityClient`/`identityClient.ts`: `get_identity`/`getIdentity`, `get_me`/`getMe`, `get_linked_objects`/`getLinkedObjects`, `search_identities`/`searchIdentities`) — the exact "natural next candidate" item 6 above named, now that this module's read endpoints have the same live-tested evidence the Registry API has (P1's real per-holder auth work, `search`'s own regression tests). Python 18/18 tests (up from 10/10, re-verified in a fresh venv/install matching CI's `sdk-python` job exactly), TypeScript 13/13 + typecheck (up from 7/7). Deliberately still NOT wrapped: the write/lifecycle surface (`init`, `register/*`, `authenticate/*`, `revocation`, `update`, `archive`, `link-object`) — the WebAuthn-ceremony ones need a browser/authenticator context no SDK test environment here has, and merge/renew/recovery, though now implemented server-side (`docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md`), are not yet SDK-wrapped — a real next candidate for a future pass, not a semantics question anymore. Independent, additive, no existing method's behavior changed, no route touched.
+
+## P1.5 — Historical FREK capability reconciliation (D1–D6, founder-required, 2026-08-31)
+
+Founder decision (`reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md`):
+the 19 `backend/frek/` routes previously `NEEDS_FOUNDER_DECISION`
+(`docs/architecture/FREK_LEGACY_ROUTE_AUDIT.md`) map to 5 historical
+capabilities, all of which the founder requires preserved. This is no
+longer a founder blocker — it is ordered technical work. Per the
+reconciliation report's §T (evaluated against §D's dependency evidence,
+no reordering needed):
+
+0. **DONE (2026-09-01) — Evidence semantics foundation (D6)** — added
+   CLAIM/EVIDENCE as named, first-class concepts
+   (`backend/proof_engine/evidence_semantics.py`: `Claim`, `ClaimOrigin`,
+   `Evidence`, `EvidenceKind`, `AuthorityStatus`, `VerificationResult`)
+   alongside the existing `proof_engine.ProofState` ladder, reused
+   unmodified. 24 unit tests (`backend/tests/test_evidence_semantics.py`),
+   100% coverage on the new file, full suite 195/195. Executed under the
+   founder's explicit `FREKCORE_EXECUTION_PROTOCOL_V1` (`EXECUTE_D6=TRUE`,
+   `EXECUTE_D1..D5=FALSE`) — items 1–6 below remain not started, each
+   gated on its own separate founder authorization before execution.
+1. **DONE (2026-09-01) — Canonical bindings/object model** — separated
+   FREK-ID (canonical object identity, minted only by `.fk`'s
+   `POST /fk/create`) from Signal Fingerprint (content/signal binding,
+   `backend/content_binding/models.py:ContentBinding`) as distinct,
+   explicit concepts — resolves the historical conflation
+   `node02_identity.py` created by naming a hash-derived ID "FREK-ID".
+   Realized as a standalone `db.content_bindings` record referencing an
+   existing `.fk` object's `frek_id`, not an array embedded inside the
+   object (considered and rejected — would require reopening `.fk`'s
+   already-signed `ProofLayer`, out of this step's scope).
+2. **DONE (2026-09-01) — Fingerprint integration (D1)** — reuses
+   `node01_extraction.py`'s real DSP pipeline verbatim (not
+   reimplemented). Storage-shape question (§M) resolved for these 3
+   routes specifically: plain MongoDB, no vector-similarity index needed
+   (exact lookup by `frek_id`/`binding_id` only — similarity search is
+   D3-B/resonance's concern, out of D1's scope). No "infalsifiable"/
+   "irréfutable" claim anywhere — `reports/FREKCORE_D1_VALIDATION_
+   EVIDENCE.md` records real DEMONSTRATED/PARTIALLY_DEMONSTRATED/
+   NOT_TESTED evidence per property (golden-vector-style synthetic
+   fixtures, not FAP's 16-vector bar exactly, but the same honesty
+   standard) and one real defect found+fixed (too-short audio producing
+   a silent `NaN` fingerprint). Full record: `docs/decisions/0004-
+   d1-signal-fingerprint-founder-decisions-implemented.md`. `backend/
+   frek/`'s 3 historical routes (`/certify`, `/certify/upload`,
+   `/verify/{frek_id}`) are unchanged — additive, not a replacement.
+3. **DONE (2026-09-02) — Creative Lifecycle (D2)** — Event/Claim records
+   (`backend/creative_lifecycle/`) reusing the GENESIS/WORKSHOP/
+   METAMORPHOSE/EMISSION/LEGACY vocabulary (already identical to
+   `frek_v1`'s, kept structurally separate — verified collision) and
+   `notary.service.notarize_event` for durability. State-machine shape
+   (`LIFECYCLE_MODEL = HYBRID`) derived from `node03_cycle.py`'s own guard
+   logic, not invented; a real re-entry idempotency defect found and fixed
+   by this step's own tests. Reuses D1's extraction functions and D6's
+   Claim/Evidence directly. 40 new tests, full suite green (272, up from
+   230 after D1). Full record: `docs/decisions/0005-d2-creative-lifecycle-
+   founder-decisions-implemented.md`. `backend/frek/`'s 2 historical
+   routes (`/genesis`, `/workshop`) are unchanged — additive, not a
+   replacement.
+4. **DONE (2026-09-02) — Relationship/Provenance Graph (D3)** —
+   `backend/relationship_graph/` splits TRUST (Layer A, near-core,
+   verifiable) from CULTURAL (Layer B, inferred, never auto-promotable
+   to TRUST — enforced structurally: a CULTURAL relationship can never
+   reach `VERIFIED`) via a closed, predicate-derived `layer` field.
+   Reuses `permissions.models.Scope`/`ScopeType` directly for relation
+   visibility instead of a new visibility system (`permissions.engine.
+   decide()` itself deliberately not wired in — no `RoleGrant`
+   persistence exists anywhere to feed it honestly, a disclosed
+   tradeoff). Authenticated writes close the historical zero-auth
+   exposure the reconciliation report's §P flagged as the single most
+   acute security gap among all five capabilities. Bounded traversal
+   throughout (neighbors/path all capped). 41 new tests, full suite
+   green (315, up from 272 after D2). Full record: `docs/decisions/0006-
+   d3-relationship-provenance-graph-founder-decisions-implemented.md`.
+   `backend/frek/`'s 7 historical réseau routes are unchanged —
+   additive, not a replacement.
+5. **DONE (2026-09-02) — Offline transport envelope + sync (D4)** —
+   `backend/offline_transport/`: a core envelope (Ed25519 signature via
+   `passport.keys`, replay/nonce protection, real FAP device attestation
+   genuinely reused via `frek_v3/reference_verifier/` — the first live
+   caller into what a prior pass confirmed was fully isolated —
+   reconciliation state) with every transport (BLE/NFC/WiFi/QR/
+   ultrasound/cellular/local-file/local-network/device-to-device) as a
+   pluggable adapter attaching only metadata, never touching the signed
+   core (verified by test). No robustness/inaudibility claim for the
+   ultrasonic watermark — the historical generator is reused verbatim,
+   wrapped with an honest `NOT_TESTED` validation status;
+   `WATERMARK_EQUALS_PROOF=FALSE` enforced structurally (no other module
+   imports the watermark one). 35 new tests, full suite green (352, up
+   from 315 after D3). Full record: `docs/decisions/0007-d4-offline-
+   proof-transport-founder-decisions-implemented.md`. `backend/frek/`'s
+   6 historical transmission routes are unchanged — additive, not a
+   replacement.
+6. **DONE (2026-09-02) — Technical evidence report (D5)** —
+   `backend/technical_evidence_report/`: a legally-hardened, structured
+   report composed only from resource ID references, resolving and
+   rendering D1/D2/D3/D4/D6's own canonical state (never formatting
+   caller-supplied, unverified claims as if verified) — the historical
+   `create_attestation`'s blind-trust behavior is not preserved, its
+   "notaire de fait, jamais juge de droit" intent is. Sections labeled
+   CLAIMED/OBSERVED/ATTESTED/COMPUTED/INFERRED/EVIDENCE/PROOF/VERIFIED/
+   UNKNOWN/NOT_VERIFIED/LEGAL_CONCLUSION_NOT_MADE, never flattened. A
+   negation-aware forbidden-phrase guard (`assert_no_forbidden_language`)
+   structurally blocks the exact overclaim class (IRREFUTABLE and
+   similar) `node09_juridique.py`'s `to_legal_text()` produced, enforced
+   at pydantic-construction time on every section. Public verification
+   endpoint returns shape only; authorized retrieval is redacted
+   per-section via reused `permissions.models.Scope`
+   (`CREATE_REPORT_PERMISSION_SYSTEM=FALSE`, same disclosed tradeoff as
+   D3). 46 new tests, full suite green (400, up from 352 after D4). Full
+   record: `docs/decisions/0008-d5-technical-evidence-report-founder-
+   decisions-implemented.md`. `backend/frek/`'s 1 historical
+   `/juridique/attestation` route is unchanged — additive, not a
+   replacement.
+7. **DONE (2026-09-02) — Compatibility adapters for the 19 historical
+   routes (STATE_6)** — every route received an explicit disposition
+   (13 HARDEN: rate limiting + audit visibility added, response shape
+   otherwise unchanged; 4 ADAPTER: a genuine canonical-module read/
+   delegation added; 2 HARDEN-with-a-disclosed-gap: D1 certify/upload
+   and D2 genesis/workshop's write side genuinely needs a separate
+   founder decision before further ADAPTER work is safe). Revises the
+   "no confirmed external caller" premise below: this state's own
+   whole-repository consumer discovery found `frontend/src/pages/
+   Certify.jsx` and `Verify.jsx` as real, live, local callers of D1's
+   `/certify` and `/verify/{frek_id}` — `memory/INVENTORY.md`'s
+   "current production core" list not naming `backend/frek/` was
+   evidence of absence at the infrastructure-inventory level, not proof
+   the frontend didn't still call these two routes directly (a real
+   instance of `ABSENCE_OF_LOCAL_CALLER_EQUALS_NO_CONSUMER=FALSE`). Zero
+   routes deleted, zero historical vocabulary deleted, no parallel truth
+   engine introduced (confirmed by static test). 48 new tests, full
+   suite green (449, up from 400 after D5). Full record: `docs/
+   architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`.
+8. **Migration/persistence** — near-empty scope: nothing durable exists
+   to migrate (everything is in-process memory today, confirmed).
+   Reduces to "wire the actual storage engine" once 4 (graph) and 2
+   (vector) resolve their storage-shape questions.
+9. **DONE (2026-09-03) — SDK integration (STATE_7)** — both SDKs now
+   cover content_binding, creative_lifecycle, relationship_graph,
+   offline_transport, and technical_evidence_report (one canonical
+   create/generate + one canonical read method each, matching
+   `identity_client.py`'s own established lean-wrapping precedent), plus
+   a canonical `FrekError` hierarchy in both languages, mapped from HTTP
+   status. Neither SDK wraps any `backend/frek/` (legacy) route — by
+   design, new consumers integrate against `/api/v1/...`. Full record:
+   `docs/architecture/FREKCORE_SDK_CONTRACT_V1.md`,
+   `FREKCORE_API_CONTRACT_V1.md`, `FREKCORE_ERROR_CONTRACT_V1.md`,
+   `FREKCORE_EVENT_CONTRACT_V1.md`, `FREKCORE_VERSIONING_POLICY.md`.
+10. **DONE (2026-09-03) — Regression/evidence tests, full cross-module
+    validation (STATE_8)** — per capability, written alongside
+    implementation throughout D1–D5/STATE_6/STATE_7 (§R of the
+    reconciliation report), then validated as one integrated system:
+    full backend regression re-run green (507, up from 483), STATE_7's
+    `DELEGATED_AUTHORITY=PARTIAL` closed to `VERIFIED` via a new
+    composed authority-chain check reusing the Permission Engine, real-
+    MongoDB and real-OTS validation re-attempted and confirmed still
+    `BLOCKED` (not assumed, not substituted with mongomock), all 19
+    legacy routes re-verified, a bounded failure-injection matrix run.
+    Full record: `docs/validation/FREKCORE_STATE8_VALIDATION_PLAN.md`,
+    `FREKCORE_STATE8_VALIDATION_RESULTS.md`,
+    `FREKCORE_MIGRATION_VALIDATION.md`, `FREKCORE_FAILURE_MODE_MATRIX.md`.
+11. **Freeze reassessment** — after this item's subset the founder
+    prioritizes is closed; see `reports/21_FREEZE_ASSESSMENT.md`. STATE_8
+    completion does not by itself authorize final freeze — the founder's
+    own next-named state is `STATE_9_FINAL_HISTORICAL_ARCHITECTURAL_
+    RECONCILIATION`, not yet authorized.
+
+**Not started this pass** — pure documentation/architectural
+reconciliation only, per explicit instruction. No runtime code changed.
+
+## P3 — Future / optional / research
+
+1. **Trust anchors / trust lists** for VC verification — no current use case identified; MISSING is not necessarily wrong yet.
+2. **Key rotation/revocation tooling** for the Ed25519 signing key — real gap, but no incident has forced it yet; still worth scheduling deliberately rather than reactively.
+3. **A queryable cultural-provenance graph** (Produced By, Certified By, Published By, Licensed To, Sampled From — beyond the existing informal `based_on`) — named in Phase 1's original Bloc 1 spec, never built; large enough to be its own project.
+4. **S3/Cloudinary `StorageProvider` implementations** — explicitly deferred twice now (Phase 2, Phase 3) for the same reason: no real, evidenced need beyond the existing Emergent Object Storage integration.
+5. **eIDAS/EUDI conformance testing** against a real reference wallet or conformance suite — the code exists (`backend/eudi/`); proving compliance is a distinct, larger effort this repository has never claimed to have done (and this backlog explicitly does not recommend claiming it without that testing).
+
+## Explicitly out of scope for this backlog (not silently dropped, addressed separately)
+
+Two large mission briefs were received mid-session during Phase 3 and are **not** reflected in the P0–P3 items above because they were not executed this session — see the final report to the user for why (each is an independently multi-week-scale engagement: a full adversarial Red/Blue/Purple Team security assessment with an isolated attack lab, and a full UI/UX/design-system/accessibility/motion/3D overhaul of `frontend/`, which no Phase 1–3 work has touched). Both remain live requests; they need their own dedicated sessions rather than a partial, evidence-thin pass folded into this backlog.

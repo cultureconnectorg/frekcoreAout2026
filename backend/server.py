@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import asyncio
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
@@ -10,8 +11,15 @@ from typing import List
 import uuid
 from datetime import datetime, timezone
 
-# Import FREK v2 routes
-from frek.routes import frek_router
+# Import FREK v2 routes. STATE_6 Historical Compatibility Reconciliation
+# (2026-09-02): `set_db` on both frek/routes.py and frek/routes_advanced.py
+# is new this state -- these 19 historical routes previously had no
+# MongoDB access at all. It exists ONLY so the D1/D3/D4 compatibility
+# cross-reference touches (backend/frek/legacy_compat.py and the routes
+# themselves) can READ canonical persistence; nothing in backend/frek/
+# writes to it. See docs/architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md.
+from frek.routes import frek_router, set_db as frek_set_db
+from frek.routes_advanced import set_db as frek_advanced_set_db
 
 # Import FREK v1 API (identity platform)
 from frek_v1.router import v1_router, init_v1_db
@@ -28,6 +36,7 @@ from services.webhook import webhook_router, set_db as webhook_set_db
 # Import FREK Notary (Bitcoin anchoring via OpenTimestamps)
 from notary.routes import notary_router, set_db as notary_set_db, get_chain as notary_get_chain, get_anchor as notary_get_anchor
 from notary.service import init_service as notary_init_service
+from notary.chain_watchdog import watchdog_loop as notary_watchdog_loop
 
 # Import FREK Staff PWA (Scanner terrain)
 from staff.routes import staff_router, set_db as staff_set_db, seed_default_staff
@@ -40,7 +49,11 @@ from audit.routes import audit_router, set_db as audit_set_db
 from spec.routes import spec_router
 
 # Import FREK Security (rate limiting silencieux + audit trail)
-from security.policies import set_db as security_set_db, ensure_indexes as security_ensure_indexes
+from security.policies import (
+    set_db as security_set_db,
+    ensure_indexes as security_ensure_indexes,
+    record_anomaly as security_record_anomaly,
+)
 from security.routes import security_router, set_db as security_routes_set_db
 
 # Import FREK Passport (Phase 3 — souverainete du porteur, Ed25519 + Merkle disclosure)
@@ -63,6 +76,63 @@ from core.scoring import seed_default_rules_if_empty as core_seed_rules
 
 # Import FREK Cultural Fingerprint Layer (Phase 5 — propriete CVLN)
 from fingerprint.routes import fp_router, set_db as fp_set_db, ensure_indexes as fp_ensure_indexes
+
+# D1 — Content Binding (founder decision D1, 2026-09-01): canonical,
+# hardened successor concept to backend/frek/'s historical certify/verify
+# routes (untouched, see content_binding/routes.py's own module docstring).
+from content_binding.routes import (
+    content_binding_router,
+    set_db as content_binding_set_db,
+    ensure_indexes as content_binding_ensure_indexes,
+)
+
+# D2 — Creative Lifecycle (founder decision D2, 2026-09-02): PRESERVE +
+# ABSORB the historical GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY
+# provenance vocabulary as a structurally-separate module from frek_v1's
+# participant/badge stage lifecycle (see creative_lifecycle/models.py's
+# own module docstring). backend/frek/'s historical routes are untouched.
+from creative_lifecycle.routes import (
+    creative_lifecycle_router,
+    set_db as creative_lifecycle_set_db,
+    ensure_indexes as creative_lifecycle_ensure_indexes,
+)
+
+# D3 — Relationship / Provenance Graph (founder decision D3, 2026-09-02):
+# PRESERVE_MIGRATE the historical FREK Network (backend/frek/nodes/
+# node06_reseau.py) as two structurally-separate layers (TRUST vs.
+# CULTURAL, see relationship_graph/models.py's own module docstring).
+# backend/frek/'s 7 historical réseau routes are untouched.
+from relationship_graph.routes import (
+    relationship_graph_router,
+    set_db as relationship_graph_set_db,
+    ensure_indexes as relationship_graph_ensure_indexes,
+)
+
+# D4 — Offline Proof Transport / Synchronization (founder decision D4,
+# 2026-09-02): PRESERVE_ADAPTER the historical multi-channel
+# transmission vision (backend/frek/nodes/node07_transmission.py) as a
+# transport-independent, cryptographically verifiable envelope + sync
+# service (see offline_transport/models.py's own module docstring).
+# backend/frek/'s 6 historical transmission routes are untouched.
+from offline_transport.routes import (
+    offline_transport_router,
+    set_db as offline_transport_set_db,
+    ensure_indexes as offline_transport_ensure_indexes,
+)
+
+# D5 — Technical Evidence Report (founder decision D5, 2026-09-02):
+# PRESERVE_INTENT_ABSORB_LEGAL_HARDEN the historical "notaire de fait"
+# principle (backend/frek/nodes/node09_juridique.py) as a canonical,
+# legally-hardened report generator that only ever describes existing
+# D1/D2/D3/D4/D6 state, never caller-supplied "facts" (see
+# technical_evidence_report/models.py's own module docstring for the
+# historical finding). backend/frek/'s /juridique/attestation route is
+# untouched.
+from technical_evidence_report.routes import (
+    technical_evidence_report_router,
+    set_db as technical_evidence_report_set_db,
+    ensure_indexes as technical_evidence_report_ensure_indexes,
+)
 
 # Import FREK Certified Seal (script JS embeddable pour partenaires)
 from seal import seal_router
@@ -118,6 +188,12 @@ db = client[os.environ['DB_NAME']]
 init_v1_db(db)
 
 # Initialize CC2026 modules
+# STATE_6 Historical Compatibility Reconciliation (2026-09-02): the 19
+# historical backend/frek/ routes' own read-only canonical
+# cross-reference touches (see frek/routes.py, frek/routes_advanced.py).
+frek_set_db(db)
+frek_advanced_set_db(db)
+
 badges_set_db(db)
 jetons_set_db(db)
 email_set_db(db)
@@ -128,6 +204,11 @@ webhook_set_db(db)
 # Initialize FREK Notary (Bitcoin anchoring)
 notary_set_db(db)
 notary_init_service(notary_get_chain(), notary_get_anchor())
+
+# FREK-Chain integrity watchdog task handle (started in startup, cancelled
+# in shutdown — see notary/chain_watchdog.py and memory/RESILIENCE_REPORT_
+# v1.0.md Sprint G §7#4).
+_chain_watchdog_task = None
 
 # Initialize FREK Staff PWA
 staff_set_db(db)
@@ -154,6 +235,19 @@ core_set_db(db)
 
 # Initialize FREK Cultural Fingerprint Layer (Phase 5)
 fp_set_db(db)
+
+# Initialize D1 Content Binding (founder decision D1, 2026-09-01)
+content_binding_set_db(db)
+
+# Initialize D2 Creative Lifecycle (founder decision D2, 2026-09-02)
+creative_lifecycle_set_db(db)
+
+# Initialize D3 Relationship / Provenance Graph (founder decision D3, 2026-09-02)
+relationship_graph_set_db(db)
+technical_evidence_report_set_db(db)
+
+# Initialize D4 Offline Proof Transport (founder decision D4, 2026-09-02)
+offline_transport_set_db(db)
 
 # Create the main app without a prefix
 # Doctrine IP protection : surface d'attaque minimale en production.
@@ -328,10 +422,104 @@ from fk.routes import fk_router, set_db as fk_set_db
 fk_set_db(db)
 app.include_router(fk_router, prefix="/api/v1")
 
+# D1 — Content Binding (founder decision D1, 2026-09-01): binds computed
+# exact-hash + signal-fingerprint evidence to an existing .fk Cultural
+# Object above — mounted alongside it under the same /api/v1 namespace.
+app.include_router(content_binding_router, prefix="/api/v1")
+
+# D2 — Creative Lifecycle (founder decision D2, 2026-09-02): the
+# GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY provenance capability,
+# structurally separate from frek_v1's participant/badge stage lifecycle.
+app.include_router(creative_lifecycle_router, prefix="/api/v1")
+
+# D3 — Relationship / Provenance Graph (founder decision D3, 2026-09-02):
+# TRUST (verifiable/attestable) and CULTURAL (inferred) relationships,
+# structurally separate from and preserving the historical FREK Network.
+app.include_router(relationship_graph_router, prefix="/api/v1")
+
+# D4 — Offline Proof Transport / Synchronization (founder decision D4,
+# 2026-09-02): transport-independent envelope + sync/reconciliation,
+# structurally separate from and preserving the historical transmission
+# vision.
+app.include_router(offline_transport_router, prefix="/api/v1")
+
+# D5 — Technical Evidence Report (founder decision D5, 2026-09-02):
+# legally-hardened, structured evidence reports composed only from
+# resource ID references, resolved server-side from D1/D2/D3/D4/D6's own
+# canonical storage.
+app.include_router(technical_evidence_report_router, prefix="/api/v1")
+
 # Identity Engine — Passkey/WebAuthn attache aux FREK-ID
 from identity_engine.routes import identity_router, set_db as identity_set_db, ensure_indexes as identity_ensure_indexes
 identity_set_db(db)
 app.include_router(identity_router, prefix="/api/v1")
+
+# FREK Registry — catalogue des namespaces culturels CVLN (Bloc 1). The
+# schema-catalog endpoints stay stateless; /objects/{namespace} (P1, see
+# registry/routes.py's module docstring) needs the shared db handle.
+from registry.routes import registry_router, set_db as registry_set_db, ensure_indexes as registry_ensure_indexes
+registry_set_db(db)
+app.include_router(registry_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+async def _registry_startup():
+    try:
+        await registry_ensure_indexes()
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Registry instance-store indexes skipped: {_e}")
+
+# Audit Trail (Phase 3 Priority 5) — subscribes to the Event Bus (built
+# Phase 2) so any already-published event becomes an append-only
+# audit_trail_events record. No new route; no change to any existing
+# route's code — event_envelope_to_audit_event() is a generic mapping
+# (backend/audit_trail/subscribers.py), not hardcoded to any one event
+# type, so extending this list is purely additive.
+#
+# P1/P2 (2026-08-31): identity.updated, identity.revoked, and
+# object.created are all now real producers (reports/FREKCORE_COMPLETION_
+# BACKLOG.md P1 #8) that were never subscribed here — closing that gap
+# directly improves the freeze assessment's own "Audit trail active for
+# sensitive mutations: PARTIAL (1 of 6 categories)" criterion
+# (reports/21_FREEZE_ASSESSMENT.md). identity.recovered and
+# identity.reconciled added with the MERGE/RENEW/RECOVERY implementation
+# (docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md)
+# — both are explicitly named "requires... complete auditability" by the
+# founder decision, so both are wired in from the same commit that adds
+# their producers, not left as a follow-up gap.
+from audit_trail import MongoAuditRecorder, make_audit_trail_subscriber
+from eventbus.bus import default_bus as _audit_event_bus
+
+_audit_recorder = MongoAuditRecorder(db)
+
+_AUDIT_TRAIL_EVENT_TYPES = (
+    "identity.created",
+    "identity.updated",
+    "identity.revoked",
+    "object.created",
+    "identity.recovered",
+    "identity.reconciled",
+    "content_binding.created",
+    "creative_lifecycle.recorded",
+    "relationship.recorded",
+    "offline_transport.envelope_recorded",
+    "technical_evidence_report.recorded",
+    "legacy_route.invoked",
+)
+
+
+@app.on_event("startup")
+async def _audit_trail_startup():
+    try:
+        await _audit_recorder.ensure_indexes()
+        _subscriber = make_audit_trail_subscriber(_audit_recorder)
+        for _event_type in _AUDIT_TRAIL_EVENT_TYPES:
+            _audit_event_bus.subscribe(_event_type, _subscriber)
+        logging.getLogger(__name__).info(
+            "Audit Trail: subscribed to %s", ", ".join(_AUDIT_TRAIL_EVENT_TYPES)
+        )
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Audit Trail startup skipped: {_e}")
 
 
 @app.on_event("startup")
@@ -366,6 +554,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Observability (Phase 3 Priority 7, module built in Phase 2) — request/
+# correlation ID middleware, added last so it is outermost (present even
+# around CORS handling). Only reads/writes X-Request-ID and X-Correlation-ID
+# — never Authorization, X-Admin-Key, X-FREK-Session, or any credential
+# header (backend/observability/request_id.py has no code path that reads
+# them). See reports/18_RUNTIME_VALIDATION.md for the wiring evidence.
+from observability.request_id import RequestIdMiddleware
+from observability import metrics as _obs_metrics
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response as _MetricsResponse
+
+app.add_middleware(RequestIdMiddleware)
+
+
+@app.get("/api/metrics")
+async def metrics_endpoint():
+    """Prometheus exposition format. No PII: only counters/histograms with
+    method/path/status/operation labels — never a header value, a FREK-ID,
+    an email, or any other user-identifying value. See
+    reports/18_RUNTIME_VALIDATION.md for the label-content audit."""
+    return _MetricsResponse(content=generate_latest(_obs_metrics.registry), media_type=CONTENT_TYPE_LATEST)
 
 # Configure logging
 logging.basicConfig(
@@ -459,7 +669,10 @@ async def seed_clients():
             "name": "Culture Connect 2026",
             "secret": configured_client_secret("FREK_CLIENT_KILTIKONET_SECRET"),
             "secret_env": "FREK_CLIENT_KILTIKONET_SECRET",
-            "permissions": ["emit", "stage", "stats"],
+            # "registry:write" (P1, 2026-08-31): CC2026's own internal
+            # integration client — the natural first ISSUER-authority actor
+            # for backend/registry/routes.py's new /objects instance store.
+            "permissions": ["emit", "stage", "stats", "registry:write"],
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {
@@ -522,6 +735,20 @@ async def seed_clients():
     notary_get_anchor().start()
     logger.info("FREK Notary (Bitcoin anchoring) demarre")
 
+    # FREK-Chain integrity watchdog (P1, memory/RESILIENCE_REPORT_v1.0.md
+    # Sprint G §5.2/§7#4): periodic verify_chain() pass, reports via
+    # security_events (severity critical) on tamper detection — closes
+    # the historical gap where corruption was only ever caught if someone
+    # happened to call /notary/chain/verify. Opt out with
+    # FREK_DISABLE_CHAIN_WATCHDOG=1 (e.g. a short-lived dev/mongomock run
+    # where a long-lived background task isn't wanted).
+    global _chain_watchdog_task
+    if os.environ.get("FREK_DISABLE_CHAIN_WATCHDOG") != "1":
+        _chain_watchdog_task = asyncio.create_task(
+            notary_watchdog_loop(notary_get_chain(), security_record_anomaly)
+        )
+        logger.info("FREK-Chain watchdog demarre (verification toutes les 6h)")
+
     # FREK Staff PWA — seed comptes terrain + indexes
     await db.staff.create_index("agent_id", unique=True)
     # client_uuid idempotency indexes are preflighted and never replaced at startup.
@@ -544,6 +771,16 @@ async def seed_clients():
     await core_seed_rules()
     # FREK Cultural Fingerprint Layer — indexes
     await fp_ensure_indexes()
+    # D1 Content Binding — indexes (founder decision D1, 2026-09-01)
+    await content_binding_ensure_indexes()
+    # D2 Creative Lifecycle — indexes (founder decision D2, 2026-09-02)
+    await creative_lifecycle_ensure_indexes()
+    # D3 Relationship / Provenance Graph — indexes (founder decision D3, 2026-09-02)
+    await relationship_graph_ensure_indexes()
+    # D4 Offline Proof Transport — indexes (founder decision D4, 2026-09-02)
+    await offline_transport_ensure_indexes()
+    # D5 Technical Evidence Report — indexes (founder decision D5, 2026-09-02)
+    await technical_evidence_report_ensure_indexes()
     # FREK Geo — indexes Phase 6
     await geo_ensure_indexes()
     # FREK Counter — indexes + seed regles
@@ -578,4 +815,6 @@ async def seed_clients():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     notary_get_anchor().stop()
+    if _chain_watchdog_task is not None:
+        _chain_watchdog_task.cancel()
     client.close()

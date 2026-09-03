@@ -17,7 +17,14 @@ CE QUE FREK DIT SEULEMENT:
 ✓ A été soumis par cet identifiant
 ✓ A ce timestamp précis
 ✓ Depuis cet endroit
-✓ Et ce fait est mathématiquement irréfutable
+✓ Et ce fait technique est reproductible et vérifiable par quiconque
+
+STATE_6 hardening (2026-09-02, docs/architecture/
+FREK_HISTORICAL_COMPATIBILITY_MATRIX.md): the "ALWAYS" line above and
+`to_legal_text()`'s own closing sentence used to say "mathématiquement
+irréfutable" — an unqualified overclaim the founder's D5/STATE_6
+instructions explicitly named for removal. Fixed in both places; every
+other field/behavior of this module is unchanged.
 
 5 COUCHES DE PROTECTION JURIDIQUE:
 1. CGU — Transfert de responsabilité
@@ -98,17 +105,36 @@ class TechnicalAttestation:
     gps_coordinates: Optional[str]
     
     def to_legal_text(self) -> str:
-        """Génère le texte légal de l'attestation"""
+        """Génère le texte descriptif de l'attestation.
+
+        STATE_6 hardening (2026-09-02, `docs/architecture/
+        FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`, D5 legacy
+        reconciliation): the historical closing sentence here read "Ce
+        fait est mathematiquement certain et temporellement
+        irrefutable" — an unqualified overclaim confirmed, by reading
+        this exact function, to be produced from caller-supplied,
+        unverified values with no independent check against any
+        canonical FREKCORE state. Per the founder's explicit D5/STATE_6
+        instruction ("Do NOT preserve... 'mathematically irrefutable'
+        wording"), this closing sentence is rewritten below to describe
+        only what this function actually did — format the caller's own
+        submitted values — without asserting their truth. Every other
+        field of this dict is unchanged (non-breaking)."""
         gps_part = f" depuis les coordonnées [{self.gps_coordinates}]" if self.gps_coordinates else ""
-        
+
         return (
             f"Le signal audio portant l'empreinte SHA-256 [{self.sha256_signal[:12]}...] "
             f"et le vecteur fréquentiel [v{self.vector_dimensions}D] "
             f"a été soumis via l'identifiant [{self.artiste_id}] "
             f"le {self.timestamp_iso}{gps_part}. "
-            f"Ce fait est mathématiquement certain et temporellement irréfutable."
+            f"Ce texte décrit fidèlement les valeurs soumises par l'appelant ; "
+            f"il ne constitue ni une preuve juridique de propriété ou de paternité, "
+            f"ni un acte notarié, ni un horodatage électronique qualifié. Pour un "
+            f"rapport technique vérifiable, généré uniquement à partir de l'état "
+            f"canonique FREKCORE (jamais des seules valeurs de l'appelant), voir "
+            f"POST /api/v1/reports/technical-evidence."
         )
-    
+
     def to_dict(self) -> dict:
         return {
             "sha256_signal": self.sha256_signal,
@@ -117,6 +143,7 @@ class TechnicalAttestation:
             "timestamp_iso": self.timestamp_iso,
             "gps_coordinates": self.gps_coordinates,
             "legal_text": self.to_legal_text(),
+            "canonical_technical_evidence_report_endpoint": "/api/v1/reports/technical-evidence",
         }
 
 
@@ -186,9 +213,14 @@ class Node09Juridique:
             explanation="GPS condensé si fourni",
         ),
         LegalStatement(
-            statement="Et ce fait est mathématiquement irréfutable",
+            statement="Et ce fait technique est reproductible et vérifiable par quiconque",
             type=JuridicalStatement.ALWAYS,
-            explanation="SHA-256 chaîné, vérifiable par quiconque",
+            explanation=(
+                "SHA-256 chaîné, recalculable par quiconque à partir des mêmes "
+                "données — une propriété technique de vérifiabilité, jamais une "
+                "conclusion juridique (voir to_legal_text() et le module "
+                "docstring pour le contexte de durcissement STATE_6)."
+            ),
         ),
     ]
     

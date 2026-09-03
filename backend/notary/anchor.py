@@ -9,7 +9,9 @@ import asyncio
 import base64
 import logging
 import os
+import time
 from datetime import datetime, timezone
+from typing import Dict, Optional
 
 from opentimestamps.calendar import RemoteCalendar
 from opentimestamps.core.serialize import (
@@ -96,6 +98,56 @@ def _walk_and_upgrade(ts: Timestamp, cal: RemoteCalendar) -> Timestamp:
     return ts
 
 
+class _CalendarCircuitBreaker:
+    """Per-calendar circuit breaker: after N consecutive failures, skip a
+    calendar for a cooldown window instead of retrying it on every call.
+
+    Added Phase 3 (reports/16_INTEGRATION_TEST_BASELINE.md, Priority 3):
+    the integration run showed `submit_block()`'s unconditional per-call
+    loop over all `DEFAULT_CALENDARS` — invoked as a FastAPI background
+    task on every identity emission, plus via `POST /anchor/sweep`
+    (`submit_pending_blocks`, up to 50 blocks x 5 calendars each) —
+    exhausting the shared `asyncio.to_thread` thread pool when every
+    calendar is unreachable (this sandbox's network policy returns an
+    immediate 403 Forbidden for all five), which starved unrelated
+    concurrent requests into timing out. This breaker bounds the blast
+    radius of a sustained calendar outage without changing behavior when
+    calendars ARE reachable (a lone failure is still retried next call;
+    only a *run* of failures opens the breaker).
+    """
+
+    def __init__(self, threshold: int = 3, cooldown_seconds: float = 300.0):
+        self.threshold = threshold
+        self.cooldown_seconds = cooldown_seconds
+        self._failures: Dict[str, int] = {}
+        self._disabled_until: Dict[str, float] = {}
+
+    def is_open(self, url: str, now: Optional[float] = None) -> bool:
+        """True if `url` should be SKIPPED right now (breaker open)."""
+        now = time.monotonic() if now is None else now
+        until = self._disabled_until.get(url)
+        if until is None:
+            return False
+        if now >= until:
+            # Cooldown elapsed: half-open — let the next call through and
+            # judge the calendar again from a clean slate.
+            del self._disabled_until[url]
+            self._failures[url] = 0
+            return False
+        return True
+
+    def record_success(self, url: str) -> None:
+        self._failures[url] = 0
+        self._disabled_until.pop(url, None)
+
+    def record_failure(self, url: str, now: Optional[float] = None) -> None:
+        now = time.monotonic() if now is None else now
+        count = self._failures.get(url, 0) + 1
+        self._failures[url] = count
+        if count >= self.threshold:
+            self._disabled_until[url] = now + self.cooldown_seconds
+
+
 class OTSAnchor:
     """Anchor service: submits block hashes to OTS and upgrades to Bitcoin proofs."""
 
@@ -107,6 +159,10 @@ class OTSAnchor:
         self.calendars = _get_calendars()
         self._upgrade_task = None
         self._stop = False
+        self._breaker = _CalendarCircuitBreaker(
+            threshold=int(os.environ.get("OTS_BREAKER_THRESHOLD", "3")),
+            cooldown_seconds=float(os.environ.get("OTS_BREAKER_COOLDOWN_SECONDS", "300")),
+        )
 
     async def submit_block(self, height: int) -> dict:
         """Submit a block's hash to all configured OTS calendars.
@@ -130,11 +186,16 @@ class OTSAnchor:
 
         # 2. Source OTS (toujours, pour la preuve Bitcoin verifiable hors-ligne)
         for url in self.calendars:
+            if self._breaker.is_open(url):
+                errors.append({"calendar": url, "error": "circuit_open"})
+                continue
             try:
                 ts = await asyncio.to_thread(_submit_to_calendar, url, digest)
                 merged_ts.merge(ts)
                 success_cals.append(url)
+                self._breaker.record_success(url)
             except Exception as e:
+                self._breaker.record_failure(url)
                 errors.append({"calendar": url, "error": str(e)})
                 logger.warning(f"OTS submit failed on {url}: {e}")
 
@@ -203,9 +264,13 @@ class OTSAnchor:
         ts = deserialize_timestamp(blk["ots_proof"], digest)
 
         for url in self.calendars:
+            if self._breaker.is_open(url):
+                continue
             try:
                 await asyncio.to_thread(_upgrade_via_calendar, url, ts)
+                self._breaker.record_success(url)
             except Exception as e:
+                self._breaker.record_failure(url)
                 logger.debug(f"upgrade via {url} failed: {e}")
 
         att = find_btc_attestation(ts)

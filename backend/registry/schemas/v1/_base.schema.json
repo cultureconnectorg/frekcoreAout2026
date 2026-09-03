@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.frekcore.dev/registry/v1/_base.schema.json",
+  "title": "FREK Registry Base Object",
+  "description": "Common envelope fields shared by every FREK Registry namespace (Bloc 1 / Phase 2 FREK-ID base). Every namespace schema in this directory extends this shape via allOf.",
+  "type": "object",
+  "properties": {
+    "frek_id": {
+      "type": "string",
+      "description": "Canonical FREK-ID of this object (see Identity Engine, backend/identity_engine/service.py:generate_identity_id).",
+      "pattern": "^(id|frek)-[0-9a-f]{6,}-[0-9a-f]{2,}$"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "FREK Registry namespace this object belongs to, e.g. 'frek.artist'."
+    },
+    "owner_id": {
+      "type": ["string", "null"],
+      "description": "FREK-ID of the identity (Person/Organization) that owns/controls this object."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "archived", "revoked"],
+      "default": "draft"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "checksum": {
+      "type": ["string", "null"],
+      "description": "SHA-256 of the canonicalized object body (Proof Engine — see backend/passport/merkle.py:canonical_json).",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "public_key": {
+      "type": ["string", "null"],
+      "description": "base64/PEM public key associated with the issuer or owner, when applicable."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Free-form extensible metadata bag.",
+      "additionalProperties": true
+    }
+  },
+  "required": ["frek_id", "entity_type", "status", "created_at"]
+}

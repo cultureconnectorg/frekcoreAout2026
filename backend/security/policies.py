@@ -25,6 +25,82 @@ DEFAULT_LIMITS = {
     "stage_transition": (int(os.environ.get("FREK_RATE_STAGE_PER_HOUR", "500")), 3600),
     "staff_login_fail": (5, 900),  # 5 echecs / 15 min => lockout
     "scan_access": (int(os.environ.get("FREK_RATE_SCAN_PER_HOUR", "5000")), 3600),
+    # Added under the P0 unauthenticated-mutation review (docs/decisions/0001-...):
+    # these three actions are device/participant-originated and would break their
+    # real client if gated behind an admin/client credential (no session system
+    # exists for the callers), so they stay reachable without auth but are rate
+    # limited per-subject instead — see fingerprint/routes.py, geo/routes.py,
+    # services/stripe_pay.py for where each is called and why.
+    "fingerprint_observe": (int(os.environ.get("FREK_RATE_FP_OBSERVE_PER_HOUR", "120")), 3600),
+    "geo_observe": (int(os.environ.get("FREK_RATE_GEO_OBSERVE_PER_HOUR", "120")), 3600),
+    "checkout_create": (int(os.environ.get("FREK_RATE_CHECKOUT_PER_HOUR", "20")), 3600),
+    # D1 content-binding creation (founder decision D1, 2026-09-01): an
+    # authenticated write (holder session or admin), but real compute
+    # cost per call (FFT/MFCC extraction) — bounded regardless, per the
+    # reconciliation report's own P27 finding that the historical
+    # /certify route had no rate limit at all.
+    "content_binding_create": (
+        int(os.environ.get("FREK_RATE_CONTENT_BINDING_PER_HOUR", "30")),
+        3600,
+    ),
+    # D2 creative-lifecycle mutations (founder decision D2, 2026-09-02):
+    # shared across genesis/workshop/metamorphose/emission/legacy —
+    # authenticated writes, some with real compute cost (workshop/
+    # metamorphose reuse D1's extraction), historical routes had none.
+    "creative_lifecycle_write": (
+        int(os.environ.get("FREK_RATE_CREATIVE_LIFECYCLE_PER_HOUR", "60")),
+        3600,
+    ),
+    # D3 relationship-graph writes (founder decision D3, 2026-09-02):
+    # authenticated (holder self-assertion or admin), real compute cost
+    # negligible per call but the graph itself is durable and public-
+    # readable by default -- bounded regardless.
+    "relationship_write": (
+        int(os.environ.get("FREK_RATE_RELATIONSHIP_PER_HOUR", "120")),
+        3600,
+    ),
+    # D4 offline-transport writes (founder decision D4, 2026-09-02):
+    # authenticated (holder self-assertion or admin), shared across
+    # create/receive/sync -- historical transmission routes had none.
+    "offline_transport_write": (
+        int(os.environ.get("FREK_RATE_OFFLINE_TRANSPORT_PER_HOUR", "120")),
+        3600,
+    ),
+    # D5 technical-evidence-report generation (founder decision D5,
+    # 2026-09-02): authenticated (holder or admin), resolves and composes
+    # canonical state across every prior D-state, so bounded more tightly
+    # than a plain read. Public verification is a separate, distinct
+    # limit -- mission's own explicit "mandatory rate limiting on public
+    # verification/report endpoints", keyed by report_id rather than
+    # caller identity since the endpoint has no auth to key on.
+    "technical_evidence_report_generate": (
+        int(os.environ.get("FREK_RATE_TECHNICAL_EVIDENCE_REPORT_GENERATE_PER_HOUR", "30")),
+        3600,
+    ),
+    "technical_evidence_report_verify": (
+        int(os.environ.get("FREK_RATE_TECHNICAL_EVIDENCE_REPORT_VERIFY_PER_HOUR", "300")),
+        3600,
+    ),
+    # STATE_6 Historical Compatibility Reconciliation (2026-09-02): the 19
+    # historical backend/frek/ routes had NO rate limiting at all
+    # (confirmed by D1-D5's own historical-route findings) -- this is the
+    # one shared hardening control added for all of them
+    # (`frek/legacy_compat.py`), reusing this exact mechanism rather than
+    # inventing separate throttling infrastructure. Two keys, not one per
+    # route: legacy reads (verify/reseau/transmission-info/juridique-info)
+    # are cheap and safe to allow generously; legacy writes (certify/
+    # genesis/workshop/transmission-packet/watermark/sync/attestation)
+    # mint state or consume real compute, bounded more tightly, matching
+    # the same read/write split every canonical D-state module already
+    # uses.
+    "legacy_frek_read": (
+        int(os.environ.get("FREK_RATE_LEGACY_READ_PER_HOUR", "1000")),
+        3600,
+    ),
+    "legacy_frek_write": (
+        int(os.environ.get("FREK_RATE_LEGACY_WRITE_PER_HOUR", "60")),
+        3600,
+    ),
 }
 
 

@@ -1,0 +1,196 @@
+{
+  "event_registry_version": "1.0.0",
+  "generated_at": "2026-08-30T00:00:00Z",
+  "doctrine": "Catalogue versionne des evenements FREKCORE (Bloc 7). Chaque entree distingue le contrat specifie de son etat d'implementation reel — Evidence First (voir reports/02_GAP_ANALYSIS.md).",
+  "envelope_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://schemas.frekcore.dev/registry/v1/event.envelope.schema.json",
+    "title": "FREK Event Envelope",
+    "description": "Enveloppe generique pour tout evenement FREKCORE v1. Implementee par backend/eventbus/envelope.py:EventEnvelope (Phase 2, Priorite 5) et emise par de vrais producteurs a partir de Phase 2 Priorite 6 (voir 'implemented' par entree du catalogue ci-dessous).",
+    "type": "object",
+    "properties": {
+      "event_id": {"type": "string", "description": "Identifiant unique de l'evenement (uuid4)."},
+      "event_type": {"type": "string", "description": "Nom canonique, ex: 'identity.created'."},
+      "event_version": {"type": "string", "default": "v1"},
+      "occurred_at": {"type": "string", "format": "date-time"},
+      "producer": {"type": "string", "description": "Module qui a emis l'evenement, ex: 'identity_engine'."},
+      "subject": {"type": ["string", "null"], "description": "FREK-ID principal concerne par l'evenement, si applicable."},
+      "correlation_id": {"type": ["string", "null"], "description": "Identifiant reliant plusieurs evenements d'une meme requete/flux."},
+      "causation_id": {"type": ["string", "null"], "description": "event_id de l'evenement qui a directement cause celui-ci, si applicable."},
+      "payload": {"type": "object", "additionalProperties": true},
+      "schema_version": {"type": "string", "default": "1.0.0", "description": "Version du schema du payload (pas de l'enveloppe)."}
+    },
+    "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload", "schema_version"]
+  },
+  "catalog": [
+    {
+      "event_type": "identity.created",
+      "version": "v1",
+      "description": "Nouveau FREK-ID cree.",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Phase 2 Priorite 6: backend/identity_engine/routes.py:126-130 (POST /identity/init) publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_identity_created_event(). Publish is best-effort (wrapped in try/except, never blocks identity creation — see routes.py:39-43,124-130). Verified by backend/tests/test_eventbus.py::test_build_identity_created_event_matches_envelope_contract and test_identity_engine_wires_eventbus_without_raising_on_publish_failure (unit, no live server/Mongo needed). NOT yet verified end-to-end against a live server + MongoDB in this sandbox (see reports/10_TEST_INFRASTRUCTURE.md) — the wiring itself is real code, not aspirational, but full integration coverage remains a gap."
+    },
+    {
+      "event_type": "identity.updated",
+      "version": "v1",
+      "description": "Modification d'une identite (display_name, metadata, credentials...).",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P1 backlog (2026-08-31): backend/identity_engine/routes.py's PATCH /{frek_id} (update_identity) publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_updated_event(), best-effort (try/except, never blocks the response). payload carries changed_fields (names only, never the new values, so this event can't leak PII by existing) — see docs/architecture/FREK_ID_RECONCILIATION.md's P1 implementation update. Verified by backend/tests/test_eventbus.py::test_build_identity_updated_event_never_carries_field_values (unit) and backend/tests/test_identity_lifecycle.py::TestUpdate (live, mongomock-backed server)."
+    },
+    {
+      "event_type": "identity.recovered",
+      "version": "v1",
+      "description": "Un titulaire ayant perdu tous ses Passkeys a retrouve l'acces a son FREK-ID existant via la cle admin (RECOVERY, docs/decisions/0003-...md Section 3).",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P2 backlog (2026-08-31): backend/identity_engine/routes.py's register_begin/register_complete publish a real EventEnvelope via backend/eventbus/producers.py:build_identity_recovered_event() specifically when an already-credentialed identity is recovered via the X-Admin-Key path (not ordinary holder-initiated credential rotation, which does not fire this event). frek_id is never regenerated; payload has no 'new_frek_id' field by design. Notarized (payload_type=identity_recovery). Verified by backend/tests/test_eventbus.py::test_build_identity_recovered_event_matches_envelope_contract (unit) and backend/tests/test_identity_recovery_unit.py (7 tests, isolated FastAPI app + mongomock_motor)."
+    },
+    {
+      "event_type": "identity.merged",
+      "version": "v1",
+      "description": "Fusion de deux identites (Bloc 2 — Identity Engine: Merge).",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "REJECTED",
+      "evidence": "docs/decisions/0003-identity-lifecycle-founder-decisions-implemented.md Section 1 (founder-approved, 2026-08-31): true fusion/merge of two identities is explicitly rejected — 'never delete or overwrite a FREK-ID', 'existing references to reconciled IDs must remain resolvable'. This literal event_type (destructive merge) will never be implemented. See identity.reconciled below for the approved, non-destructive replacement concept."
+    },
+    {
+      "event_type": "identity.reconciled",
+      "version": "v1",
+      "description": "Etablit une relation d'identite canonique non-destructive entre deux FREK-ID (MERGE, docs/decisions/0003-...md Section 1).",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P2 backlog (2026-08-31): backend/identity_engine/routes.py's POST /{frek_id}/reconcile (reconcile_identity) appends one record to frek_reconciliations (never deletes, updates, or overwrites either identity) and publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_reconciled_event(), best-effort. Notarized (payload_type=identity_reconciliation). Authorization requires dual holder-session consent for same-system targets or the admin key (prevents cross-holder takeover); cross-system (frek_v1) targets are admin-only, since frek_v1 has no holder-session concept to verify consent against. Verified by backend/tests/test_eventbus.py::test_build_identity_reconciled_event_matches_envelope_contract (unit) and backend/tests/test_identity_reconcile_unit.py (9 tests, isolated FastAPI app + mongomock_motor — non-destructiveness, dual-consent, cross-system admin-only, idempotency, bidirectional visibility)."
+    },
+    {
+      "event_type": "identity.revoked",
+      "version": "v1",
+      "description": "Revocation d'une identite.",
+      "producer": "identity_engine",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P1 backlog (2026-08-31): backend/identity_engine/routes.py's POST /{frek_id}/revocation (revoke_identity — see docs/architecture/FREK_ID_RECONCILIATION.md for why the path is /revocation, not /revoke: frek_v1 already owns POST /{frek_id}/revoke at the identical mounted path) publishes a real EventEnvelope via backend/eventbus/producers.py:build_identity_revoked_event(), best-effort. Also notarized (payload_type=identity_revocation, backend/notary/service.py:notarize_event()). Distinct from frek_identities.revoked (frek_v1's own, separate field/system — see reports/FREKCORE_CONTRADICTIONS.md C1) — this entry now covers identity_engine's revoke. Verified by backend/tests/test_eventbus.py::test_build_identity_revoked_event_matches_envelope_contract and backend/tests/test_identity_lifecycle.py::TestRevoke (live, mongomock-backed server)."
+    },
+    {
+      "event_type": "object.created",
+      "version": "v1",
+      "description": "Creation d'un objet culturel (FK Cultural Object Container).",
+      "producer": "fk",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "P1 backlog (2026-08-31): backend/fk/routes.py POST /fk/create publishes a real EventEnvelope via backend/eventbus/producers.py:build_object_created_event(), right after db.fk_objects.insert_one(doc), best-effort (try/except, never blocks FK creation — same pattern as identity_engine/routes.py:126-130). Payload echoes only fields GET /api/v1/fk/detail/{frek_id} already returns publicly (storage_path excluded, verified by backend/tests/test_eventbus.py::test_build_object_created_event_never_carries_storage_path). Verified by backend/tests/test_eventbus.py::test_build_object_created_event_matches_envelope_contract (unit, producer output only) and backend/tests/test_fk_object_created_event.py (isolated FastAPI app + TestClient, mongomock_motor-backed, no external server process — monkeypatches fk.routes's own bus reference to a test-local InProcessEventBus, subscribes to object.created, and asserts the real envelope arrives on a real POST /fk/create call, proving the wiring itself, not just the producer function)."
+    },
+    {
+      "event_type": "object.verified",
+      "version": "v1",
+      "description": "Verification d'un objet culturel (proof valide).",
+      "producer": "fk",
+      "implemented": false,
+      "status": "PARTIAL",
+      "evidence": "backend/fk/routes.py POST /fk/verify retourne un resultat synchrone au caller mais n'emet pas d'evenement persistant/diffuse."
+    },
+    {
+      "event_type": "proof.generated",
+      "version": "v1",
+      "description": "Nouvelle preuve emise par le Proof Engine (notary block / passport).",
+      "producer": "notary",
+      "implemented": true,
+      "status": "PARTIAL",
+      "evidence": "backend/notary/service.py:notarize_event() cree un bloc signe et l'ecrit dans notary_blocks (voir backend/notary/routes.py POST /notary/notarize). C'est un log append-only interne, pas un evenement publie/versionne au sens Event Bus (pas de souscription possible)."
+    },
+    {
+      "event_type": "certificate.issued",
+      "version": "v1",
+      "description": "Emission d'un certificat Academy / Culture Connect.",
+      "producer": "certificate_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Aucun module 'certificate' ou 'academy' trouve sous backend/. badges/ gere des badges evenementiels CC2026, pas des certificats Academy avec JCC credits."
+    },
+    {
+      "event_type": "wallet.linked",
+      "version": "v1",
+      "description": "Un Wallet CVLN externe est rattache a une identite FREK.",
+      "producer": "identity_engine",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Aucune route ou modele 'wallet' trouve sous backend/ (le module jetons/ gere des jetons evenementiels internes CC2026, distinct du CVLN Wallet vise par le Bloc 7)."
+    },
+    {
+      "event_type": "artist.verified",
+      "version": "v1",
+      "description": "Un artiste est verifie par LabelOS/KORA.",
+      "producer": "registry",
+      "implemented": false,
+      "status": "MISSING",
+      "evidence": "Le champ frek.artist.verified existe desormais dans backend/registry/schemas/v1/frek.artist.schema.json (cette livraison) mais aucun producteur d'evenement ne l'emet encore."
+    },
+    {
+      "event_type": "content_binding.created",
+      "version": "v1",
+      "description": "Nouveau content binding (exact-hash + signal fingerprint) cree pour un FREK Object existant.",
+      "producer": "content_binding",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D1 (2026-09-01, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/content_binding/routes.py:create_content_binding publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_content_binding_created_event(). Publish is best-effort (try/except, never blocks binding creation). Verified by backend/tests/test_content_binding_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "creative_lifecycle.recorded",
+      "version": "v1",
+      "description": "Un evenement de cycle de vie creatif (GENESIS/WORKSHOP/METAMORPHOSE/EMISSION/LEGACY) a ete enregistre pour un pre_id.",
+      "producer": "creative_lifecycle",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D2 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/creative_lifecycle/routes.py's five stage endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_creative_lifecycle_event(). One unified event type covers all five stages (payload.stage distinguishes). Publish is best-effort (try/except, never blocks the lifecycle write). Verified by backend/tests/test_creative_lifecycle_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "relationship.recorded",
+      "version": "v1",
+      "description": "Une relation canonique (creation, verification ou revocation d'assertion) a ete enregistree dans le graphe TRUST/CULTURAL.",
+      "producer": "relationship_graph",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D3 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/relationship_graph/routes.py's create/verify/revoke endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_relationship_event(). One unified event type covers create/verify/revoke (payload.status distinguishes). Publish is best-effort (try/except, never blocks the write). Verified by backend/tests/test_relationship_graph_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "offline_transport.envelope_recorded",
+      "version": "v1",
+      "description": "Une transition (creation, reception, synchronisation) d'une enveloppe de transport hors-ligne a ete enregistree.",
+      "producer": "offline_transport",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D4 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/offline_transport/routes.py's create/receive/sync endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_offline_transport_event(). One unified event type covers create/receive/sync (payload.transition and payload.sync_status distinguish). Publish is best-effort (try/except, never blocks the write). Verified by backend/tests/test_offline_transport_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "technical_evidence_report.recorded",
+      "version": "v1",
+      "description": "Un rapport de preuve technique (D5) a ete genere, consulte, ou verifie publiquement.",
+      "producer": "technical_evidence_report",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "Founder decision D5 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/technical_evidence_report/routes.py's generate/get/verify endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_technical_evidence_report_event(). One unified event type covers generate/access/verify (payload.transition distinguishes). Payload is deliberately minimal identifying metadata only -- report sections (which may carry private evidence/relationship/credential content) are never echoed into the event. Publish is best-effort (try/except, never blocks). Verified by backend/tests/test_technical_evidence_report_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "legacy_route.invoked",
+      "version": "v1",
+      "description": "Une des 19 routes historiques backend/frek/ a ete invoquee -- visibilite d'audit pour la couche de compatibilite, sans dupliquer d'evenement metier canonique.",
+      "producer": "frek_legacy_compat",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "STATE_6 Historical Compatibility Reconciliation (2026-09-02, docs/architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md): backend/frek/legacy_compat.py:publish_legacy_invocation(), called from every one of the 19 historical routes in backend/frek/routes.py and backend/frek/routes_advanced.py, publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_legacy_route_invoked_event(). One shared event type for all 19 routes (payload.legacy_route/canonical_target/outcome distinguish). Never published alongside a canonical business event for the same call -- a legacy route that also drives a real canonical write publishes only that canonical event, never this one too (EVENT_DUPLICATION_AVOIDED=TRUE). Payload never carries raw request content (audio, GPS, sha256, artiste_id) -- coarse compatibility metadata only. Publish is best-effort (try/except, never blocks the legacy route). Verified by backend/tests/test_legacy_compatibility.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    }
+  ],
+  "legacy_stage_log": {
+    "description": "Journal d'etapes append-only reellement implemente aujourd'hui (distinct du catalogue d'evenements ci-dessus). Ordre fixe: GENESIS -> WORKSHOP -> METAMORPHOSE -> EMISSION -> LEGACY.",
+    "evidence": "backend/frek_v1/stages.py POST /identity/{frek_id}/stage ecrit dans db.frek_stages et appelle notary.service.notarize_event(); backend/frek_v1/models.py:STAGE_ORDER definit la sequence.",
+    "implemented": true,
+    "status": "EXISTS",
+    "gap_vs_bloc7": "Pas de schema d'enveloppe versionne, pas de mecanisme de souscription (pub/sub), consommateurs actuels = lecture directe MongoDB uniquement."
+  }
+}
