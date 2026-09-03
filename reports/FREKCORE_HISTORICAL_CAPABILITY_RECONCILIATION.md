@@ -1,17 +1,21 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: All of D1–D6 are now IMPLEMENTED. D6 (Evidence Semantics), D1
-(Signal Fingerprint / Content Binding), D2 (Creative Lifecycle), D3
-(Relationship / Provenance Graph), D4 (Offline Proof Transport), and D5
-(Technical Evidence Report / Juridical Framing) — see the 2026-09-01/
-2026-09-02 updates below — (`backend/proof_engine/evidence_semantics.py`,
+**Status**: All of D1–D6 are IMPLEMENTED, and Historical Compatibility
+Reconciliation (STATE_6) is DONE. D6 (Evidence Semantics), D1 (Signal
+Fingerprint / Content Binding), D2 (Creative Lifecycle), D3 (Relationship
+/ Provenance Graph), D4 (Offline Proof Transport), and D5 (Technical
+Evidence Report / Juridical Framing) — see the 2026-09-01/2026-09-02
+updates below — (`backend/proof_engine/evidence_semantics.py`,
 `backend/content_binding/`, `backend/creative_lifecycle/`,
 `backend/relationship_graph/`, `backend/offline_transport/`,
-`backend/technical_evidence_report/`). `backend/frek/` remains untouched
-throughout — every D-state module was built additively alongside it, not
-inside it (see the D1/D2/D3/D4/D5 updates below). D5 completion does
-**not** by itself authorize final freeze: the founder's own next-named
-state is `STATE_6_HISTORICAL_COMPATIBILITY_RECONCILIATION`, not yet
+`backend/technical_evidence_report/`). `backend/frek/` was additively
+built alongside throughout D1–D5 (untouched by those 5 states) and then,
+in STATE_6, hardened in place (rate limiting, audit visibility, additive
+canonical cross-references, one wording fix) — never destructively
+rewritten (see the D1/D2/D3/D4/D5/STATE_6 updates below and `docs/
+architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`). STATE_6
+completion does **not** by itself authorize final freeze: the founder's
+own next-named state is `STATE_7_API_SDK_CONTRACT_STABILIZATION`, not yet
 authorized. PR #1 not merged, not deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
@@ -288,6 +292,67 @@ RECONCILIATION` (`EXECUTE_STATE_6=FALSE` this pass), explicitly not
 Production Readiness, Wiring, or Deployment. Per the protocol, this
 document now stops and waits for the founder to authorize STATE_6 before
 any further execution.
+
+**Update (2026-09-02, STATE_6/Historical Compatibility Reconciliation
+executed under FREKCORE_EXECUTION_PROTOCOL_V1)**: per `EXECUTE_STATE_6=
+TRUE, EXECUTE_STATE_7=FALSE`, Historical Compatibility Reconciliation is
+now DONE. Full record: `docs/architecture/FREK_HISTORICAL_COMPATIBILITY_
+MATRIX.md`. In brief: all 19 historical routes (re-verified from code
+this pass: D1=3, D2=2, D3=7, D4=6, D5=1, matching the expected count)
+each received an explicit disposition — 13 HARDEN (rate-limited via the
+same `security.policies.check_rate_limit` every canonical route already
+uses, made audit-visible via one new shared `legacy_route.invoked`
+event, response shape otherwise unchanged), 4 ADAPTER (a genuine
+canonical-module read or delegation added: D3's `/reseau/node/{id}`
+cross-references canonical `relationship_graph` for OEUVRE nodes via
+`bounded_neighbors`/`can_read` reused directly; D4's `/transmission/
+protocols` and `/transmission/protocol/{protocol}` merge in canonical
+`offline_transport.adapters.adapter_info()`; D4's `/transmission/
+watermark` now calls canonical `offline_transport.watermark.
+create_watermark_reference` directly, a strict response superset), and 2
+HARDEN-with-a-disclosed-gap (D1's `/certify`+`/certify/upload` and D2's
+`/genesis`+`/workshop` write sides cannot safely become full canonical-
+write ADAPTERs without a further founder decision — D1's legacy
+identity-minting has no existing `.fk` object to bind evidence to, and
+D2's anonymous `artiste_id` has no session to authenticate as a
+canonical `creative_lifecycle` actor without weakening that service's
+own security model, per the founder's own explicit "Historical zero-auth
+routes must NOT force canonical services to weaken their security
+model" rule).
+
+**Consumer discovery (this pass, whole-repository search)**: confirmed
+real, live, local callers for the first time this reconciliation —
+`frontend/src/pages/Certify.jsx` calls `POST /api/frek/certify`,
+`frontend/src/pages/Verify.jsx` calls `GET /api/frek/verify/{frek_id}`,
+both mounted at real frontend routes (`frontend/src/App.jsx`). This is
+exactly the risk the founder's own `ABSENCE_OF_LOCAL_CALLER_EQUALS_NO_
+CONSUMER=FALSE` rule anticipated, and it is why these two routes' response
+changes are additive-only (new fields added, nothing removed or
+restructured) — confirmed by a test pinning every field the real
+frontend code reads. No other historical route has a confirmed local
+caller; `ECOSYSTEM_WIDE_CONSUMER_AUDIT=INCOMPLETE` for all 19 (no other
+CVLN repository is present in this workspace) — backward compatibility
+stays mandatory regardless.
+
+`backend/frek/` changed this state (`BACKEND_FREK_CHANGED=YES`, explicitly
+permitted for STATE_6) — but only for hardening/compatibility: rate
+limiting (`frek/legacy_compat.py`), audit visibility (a new shared event,
+never duplicated alongside a canonical business event for the same call),
+additive read-only canonical cross-references (never a write to any
+canonical D1–D5 collection, confirmed by a static test), and — D5's own
+route only — replacing its output's "mathematiquement irrefutable"
+overclaim at the source (`node09_juridique.py:to_legal_text`, confirmed
+clean against D5's own `assert_no_forbidden_language` guard). **Zero
+routes deleted, zero historical vocabulary deleted, zero destructive API
+migration** — `ROUTES_DELETED=0`, `CONCEPTS_DELETED=0`, locked in by a
+static route-count regression test. 48 new unit tests, full unit suite
+green (449, up from 400 after D5), coverage gate re-verified at 96.70%.
+Per the founder's own explicit instruction, STATE_6 completion does
+**not** automatically authorize STATE_7: the next state the founder
+named is `STATE_7_API_SDK_CONTRACT_STABILIZATION`
+(`EXECUTE_STATE_7=FALSE` this pass), explicitly not Production Readiness,
+Wiring, or Deployment. Per the protocol, this document now stops and
+waits for the founder to authorize STATE_7 before any further execution.
 
 ---
 
@@ -1731,10 +1796,9 @@ sequence matches what §D independently found:
    everything above existing in verifiable form (it reports on them) —
    correctly last among the five capabilities, and it is a pure consumer
    of D1–D4/D6, never a sixth independent truth source.
-7. **Compatibility adapters for historical routes** — only meaningful
-   once 1–6 exist (they now do); this is the founder's own next-named
-   state, `STATE_6_HISTORICAL_COMPATIBILITY_RECONCILIATION`, not yet
-   authorized.
+7. **DONE (2026-09-02) — Compatibility adapters for historical routes
+   (STATE_6)** — see the 2026-09-02 STATE_6 update above and `docs/
+   architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`.
 8. **Migration/persistence** — confirmed near-empty scope by §Q (nothing
    durable to migrate); mostly a "pick and wire the actual storage engine"
    step per §M's still-open D1/D3 technical question.
@@ -1746,17 +1810,17 @@ sequence matches what §D independently found:
 11. **Freeze reassessment** — after 0–10, or after whichever subset the
     founder chooses to prioritize.
 
-**This document did not start step 0 when first written; steps 0–6 (D6,
-the canonical bindings model, D1, D2, D3, D4, and D5) have since been
-executed**, each under the founder's explicit, separate authorization
-(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then
-`EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`, then `EXECUTE_D5=TRUE`) — see
-the 2026-09-01/2026-09-02 updates at the top of this document. Step 7
-(compatibility adapters for the historical routes,
-`STATE_6_HISTORICAL_COMPATIBILITY_RECONCILIATION`) remains exactly as
-planned here: not started, requiring its own separate founder
-authorization before execution — `EXECUTE_STATE_6=FALSE` as of this
-update.
+**This document did not start step 0 when first written; steps 0–7 (D6,
+the canonical bindings model, D1, D2, D3, D4, D5, and Historical
+Compatibility Reconciliation) have since been executed**, each under the
+founder's explicit, separate authorization (`EXECUTE_D6=TRUE`, then
+`EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then `EXECUTE_D3=TRUE`, then
+`EXECUTE_D4=TRUE`, then `EXECUTE_D5=TRUE`, then `EXECUTE_STATE_6=TRUE`) —
+see the 2026-09-01/2026-09-02 updates at the top of this document. Steps
+9 (SDK integration) and 11 (freeze reassessment) are the founder's own
+next-named state, `STATE_7_API_SDK_CONTRACT_STABILIZATION` — not
+started, requiring its own separate founder authorization before
+execution — `EXECUTE_STATE_7=FALSE` as of this update.
 
 ---
 

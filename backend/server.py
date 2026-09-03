@@ -11,8 +11,15 @@ from typing import List
 import uuid
 from datetime import datetime, timezone
 
-# Import FREK v2 routes
-from frek.routes import frek_router
+# Import FREK v2 routes. STATE_6 Historical Compatibility Reconciliation
+# (2026-09-02): `set_db` on both frek/routes.py and frek/routes_advanced.py
+# is new this state -- these 19 historical routes previously had no
+# MongoDB access at all. It exists ONLY so the D1/D3/D4 compatibility
+# cross-reference touches (backend/frek/legacy_compat.py and the routes
+# themselves) can READ canonical persistence; nothing in backend/frek/
+# writes to it. See docs/architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md.
+from frek.routes import frek_router, set_db as frek_set_db
+from frek.routes_advanced import set_db as frek_advanced_set_db
 
 # Import FREK v1 API (identity platform)
 from frek_v1.router import v1_router, init_v1_db
@@ -181,6 +188,12 @@ db = client[os.environ['DB_NAME']]
 init_v1_db(db)
 
 # Initialize CC2026 modules
+# STATE_6 Historical Compatibility Reconciliation (2026-09-02): the 19
+# historical backend/frek/ routes' own read-only canonical
+# cross-reference touches (see frek/routes.py, frek/routes_advanced.py).
+frek_set_db(db)
+frek_advanced_set_db(db)
+
 badges_set_db(db)
 jetons_set_db(db)
 email_set_db(db)
@@ -491,6 +504,7 @@ _AUDIT_TRAIL_EVENT_TYPES = (
     "relationship.recorded",
     "offline_transport.envelope_recorded",
     "technical_evidence_report.recorded",
+    "legacy_route.invoked",
 )
 
 

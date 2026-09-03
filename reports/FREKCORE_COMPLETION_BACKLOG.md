@@ -145,9 +145,25 @@ no reordering needed):
    decisions-implemented.md`. `backend/frek/`'s 1 historical
    `/juridique/attestation` route is unchanged — additive, not a
    replacement.
-7. **Compatibility adapters for the 19 historical routes** — low
-   priority: no confirmed external caller found (`memory/INVENTORY.md`'s
-   "current production core" list does not name `backend/frek/`).
+7. **DONE (2026-09-02) — Compatibility adapters for the 19 historical
+   routes (STATE_6)** — every route received an explicit disposition
+   (13 HARDEN: rate limiting + audit visibility added, response shape
+   otherwise unchanged; 4 ADAPTER: a genuine canonical-module read/
+   delegation added; 2 HARDEN-with-a-disclosed-gap: D1 certify/upload
+   and D2 genesis/workshop's write side genuinely needs a separate
+   founder decision before further ADAPTER work is safe). Revises the
+   "no confirmed external caller" premise below: this state's own
+   whole-repository consumer discovery found `frontend/src/pages/
+   Certify.jsx` and `Verify.jsx` as real, live, local callers of D1's
+   `/certify` and `/verify/{frek_id}` — `memory/INVENTORY.md`'s
+   "current production core" list not naming `backend/frek/` was
+   evidence of absence at the infrastructure-inventory level, not proof
+   the frontend didn't still call these two routes directly (a real
+   instance of `ABSENCE_OF_LOCAL_CALLER_EQUALS_NO_CONSUMER=FALSE`). Zero
+   routes deleted, zero historical vocabulary deleted, no parallel truth
+   engine introduced (confirmed by static test). 48 new tests, full
+   suite green (449, up from 400 after D5). Full record: `docs/
+   architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`.
 8. **Migration/persistence** — near-empty scope: nothing durable exists
    to migrate (everything is in-process memory today, confirmed).
    Reduces to "wire the actual storage engine" once 4 (graph) and 2

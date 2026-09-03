@@ -26,6 +26,7 @@ from eventbus.producers import (  # noqa: E402
     build_relationship_event,
     build_offline_transport_event,
     build_technical_evidence_report_event,
+    build_legacy_route_invoked_event,
 )
 
 pytestmark = pytest.mark.unit
@@ -359,6 +360,23 @@ def test_build_technical_evidence_report_event_matches_envelope_contract():
     assert env.payload["transition"] == "generated"
     # Never echoes the full sections (statements/data) payload.
     assert "sections" not in env.payload
+
+
+def test_build_legacy_route_invoked_event_matches_envelope_contract():
+    env = build_legacy_route_invoked_event(
+        legacy_route="POST /api/frek/certify",
+        canonical_target="content_binding",
+        outcome="created",
+        detail={"note": "coarse only"},
+        correlation_id="corr-10",
+    )
+
+    assert env.event_type == "legacy_route.invoked"
+    assert env.producer == "frek_legacy_compat"
+    assert env.subject == "POST /api/frek/certify"
+    assert env.correlation_id == "corr-10"
+    assert env.payload["canonical_target"] == "content_binding"
+    assert env.payload["outcome"] == "created"
 
 
 def test_identity_engine_publish_wrapper_survives_a_broken_bus():

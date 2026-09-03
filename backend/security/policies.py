@@ -81,6 +81,26 @@ DEFAULT_LIMITS = {
         int(os.environ.get("FREK_RATE_TECHNICAL_EVIDENCE_REPORT_VERIFY_PER_HOUR", "300")),
         3600,
     ),
+    # STATE_6 Historical Compatibility Reconciliation (2026-09-02): the 19
+    # historical backend/frek/ routes had NO rate limiting at all
+    # (confirmed by D1-D5's own historical-route findings) -- this is the
+    # one shared hardening control added for all of them
+    # (`frek/legacy_compat.py`), reusing this exact mechanism rather than
+    # inventing separate throttling infrastructure. Two keys, not one per
+    # route: legacy reads (verify/reseau/transmission-info/juridique-info)
+    # are cheap and safe to allow generously; legacy writes (certify/
+    # genesis/workshop/transmission-packet/watermark/sync/attestation)
+    # mint state or consume real compute, bounded more tightly, matching
+    # the same read/write split every canonical D-state module already
+    # uses.
+    "legacy_frek_read": (
+        int(os.environ.get("FREK_RATE_LEGACY_READ_PER_HOUR", "1000")),
+        3600,
+    ),
+    "legacy_frek_write": (
+        int(os.environ.get("FREK_RATE_LEGACY_WRITE_PER_HOUR", "60")),
+        3600,
+    ),
 }
 
 

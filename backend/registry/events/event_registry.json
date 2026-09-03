@@ -175,6 +175,15 @@
       "implemented": true,
       "status": "EXISTS",
       "evidence": "Founder decision D5 (2026-09-02, reports/FREKCORE_HISTORICAL_CAPABILITY_RECONCILIATION.md section D): backend/technical_evidence_report/routes.py's generate/get/verify endpoints publish a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_technical_evidence_report_event(). One unified event type covers generate/access/verify (payload.transition distinguishes). Payload is deliberately minimal identifying metadata only -- report sections (which may carry private evidence/relationship/credential content) are never echoed into the event. Publish is best-effort (try/except, never blocks). Verified by backend/tests/test_technical_evidence_report_unit.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
+    },
+    {
+      "event_type": "legacy_route.invoked",
+      "version": "v1",
+      "description": "Une des 19 routes historiques backend/frek/ a ete invoquee -- visibilite d'audit pour la couche de compatibilite, sans dupliquer d'evenement metier canonique.",
+      "producer": "frek_legacy_compat",
+      "implemented": true,
+      "status": "EXISTS",
+      "evidence": "STATE_6 Historical Compatibility Reconciliation (2026-09-02, docs/architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md): backend/frek/legacy_compat.py:publish_legacy_invocation(), called from every one of the 19 historical routes in backend/frek/routes.py and backend/frek/routes_advanced.py, publishes a real EventEnvelope via backend/eventbus/bus.py:default_bus, built by backend/eventbus/producers.py:build_legacy_route_invoked_event(). One shared event type for all 19 routes (payload.legacy_route/canonical_target/outcome distinguish). Never published alongside a canonical business event for the same call -- a legacy route that also drives a real canonical write publishes only that canonical event, never this one too (EVENT_DUPLICATION_AVOIDED=TRUE). Payload never carries raw request content (audio, GPS, sha256, artiste_id) -- coarse compatibility metadata only. Publish is best-effort (try/except, never blocks the legacy route). Verified by backend/tests/test_legacy_compatibility.py (unit, mongomock, no live server/Mongo needed). Subscribed into the Audit Trail alongside every other real producer (backend/server.py _AUDIT_TRAIL_EVENT_TYPES)."
     }
   ],
   "legacy_stage_log": {

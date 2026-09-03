@@ -137,7 +137,15 @@ with no independent verification against FREKCORE state) is exactly what
 D5's own implementation replaces: reports are now generated only from
 resource ID references, resolved server-side from D1–D4/D6's canonical
 state, with a negation-aware forbidden-phrase guard structurally blocking
-that same overclaim pattern from any canonical D5 output.
+that same overclaim pattern from any canonical D5 output. **Update
+(2026-09-02)**: Historical Compatibility Reconciliation (STATE_6) is now
+DONE too — the "N historical routes are unchanged" language in the rows
+below refers to each D-state's own implementation step (D1–D5 truly
+built additively without touching `backend/frek/`); STATE_6 subsequently
+hardened all 19 routes in place (rate limiting, audit visibility,
+additive canonical cross-references, D5's own overclaim-wording fix) —
+still zero routes deleted, zero destructive rewrite. Full record: `docs/
+architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`.
 
 | Capability | Status | Evidence |
 |---|---|---|

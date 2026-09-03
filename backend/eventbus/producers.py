@@ -364,6 +364,48 @@ def build_offline_transport_event(
     )
 
 
+def build_legacy_route_invoked_event(
+    *,
+    legacy_route: str,
+    canonical_target: str,
+    outcome: str,
+    detail: Optional[Dict[str, Any]] = None,
+    correlation_id: Optional[str] = None,
+) -> EventEnvelope:
+    """Build the `legacy_route.invoked` event (STATE_6 Historical
+    Compatibility Reconciliation, 2026-09-02 -- see docs/architecture/
+    FREK_HISTORICAL_COMPATIBILITY_MATRIX.md).
+
+    This is the ONE shared audit-visibility event for all 19 historical
+    `backend/frek/` routes (`frek/legacy_compat.py:
+    publish_legacy_invocation`) -- it exists solely so a legacy route's
+    execution is visible in the Audit Trail without inventing a second
+    event per route. It is NEVER published alongside a canonical
+    business event for the same call (e.g. a legacy route that also
+    drives a real canonical write publishes only that canonical event --
+    `content_binding.created`, `creative_lifecycle.recorded`, etc. --
+    never this one too): EVENT_DUPLICATION_AVOIDED=TRUE. `detail` is
+    caller-supplied but must never carry raw request payload content
+    (audio bytes, sha256 signal, GPS, artiste_id) -- only coarse,
+    non-sensitive compatibility metadata; callers of this function are
+    responsible for that restriction (see `legacy_compat.py`'s own
+    docstring), not this function itself.
+    """
+    return EventEnvelope(
+        event_type="legacy_route.invoked",
+        producer="frek_legacy_compat",
+        subject=legacy_route,
+        correlation_id=correlation_id,
+        payload={
+            "legacy_route": legacy_route,
+            "canonical_target": canonical_target,
+            "outcome": outcome,
+            "detail": detail or {},
+        },
+        schema_version="1.0.0",
+    )
+
+
 def build_technical_evidence_report_event(
     report_doc: Dict[str, Any],
     *,
