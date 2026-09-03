@@ -173,6 +173,53 @@ egress to MongoDB Atlas (a developer machine, a CI runner with network
 access, or a sandbox session configured with that destination allowlisted)
 -- not achievable by supplying credentials alone to this session.
 
+**Addendum 2 (2026-09-03, FREKCORE_REAL_MONGO_VALIDATION_PROTOCOL)** —
+acting on the recommendation directly above, a dedicated GitHub Actions
+job (`real-mongo-validation`, `.github/workflows/ci.yml`) was built to
+run this exact validation from a GitHub-hosted runner (ordinary internet
+egress, unlike this sandbox) against the repository's own `MONGO_URI`
+secret. `backend/tests/test_real_mongo_validation.py` (20 tests) covers
+connection, basic durability (write/read/update/delete), index creation
++ idempotency + real unique-constraint enforcement, restart/reconnection
+(a brand-new client at the same URI re-reading data a different, closed
+client wrote), same-key idempotency (content_binding dedup,
+offline_transport conflict), and one create+read through real route code
+for each of registry / content_binding / creative_lifecycle /
+relationship_graph / offline_transport queue / technical_evidence_report,
+plus direct `FrekChain` (proof/notary hash-chain linkage) and
+`MongoAuditRecorder` (audit) persistence -- all through the repository's
+own `set_db()`/`ensure_indexes()` code, never a second Mongo
+configuration system. The file was dry-run validated against mongomock
+before commit (never touching real Atlas or the credential) and 4 real
+logic bugs were found and fixed this way ahead of the first real run.
+
+**First real CI run result**: `REAL_MONGO_VALIDATION=BLOCKED_NETWORK`,
+but for a reason distinct from every prior attempt --
+`MONGO_SECRET_DETECTED=false`. Both the push-triggered run
+([33740892795](https://github.com/cultureconnectorg/frekcoreAout2026/actions/runs/33740892795))
+and the pull_request-triggered run
+([33740898108](https://github.com/cultureconnectorg/frekcoreAout2026/actions/runs/33740898108))
+on commit `4a2d3bd` show the job's own `MONGO_URI` environment variable
+arriving **empty** (`env: MONGO_URI:` with nothing after it, confirmed
+by direct job-log inspection on both runs) despite `${{ secrets.MONGO_URI
+}}` being referenced correctly in the workflow. The job detected this
+and failed safely and cleanly, exactly as designed: no connection was
+attempted, no exception, no credential-adjacent text logged --
+`"MONGO_URI secret is not set -- failing safely, no connection
+attempted."` This is a GitHub repository/secret **configuration**
+question this session has no ability to inspect or fix (no access to
+repository Settings): most likely either the secret was never actually
+saved as a **repository** secret (Settings -> Secrets and variables ->
+Actions -> Repository secrets, not an *environment* secret, which would
+need this job to declare a matching `environment:` key to receive it),
+or its name does not exactly match `MONGO_URI`. **Recommendation to the
+founder**: verify the secret's exact name and scope in the repository's
+own GitHub Settings; once it resolves as a repository secret, this same
+job will run against it on the next push with no further code changes
+needed. The 4 existing blocking jobs (Lint/Format/Typecheck, Unit tests
++ coverage, Python SDK, TypeScript SDK) remained green on both runs --
+this new job did not weaken any existing gate, confirmed directly.
+
 What this sandbox *can* verify, and does:
 
 - **`storage.local.LocalFilesystemStorageProvider`** — the one canonical
