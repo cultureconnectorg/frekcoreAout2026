@@ -154,11 +154,16 @@ class DelegationGrant(BaseModel):
     subject) to act on its behalf, within a bounded scope/action/resource
     window -- e.g. "KORA may submit an event for this creator only", "the
     Agent Factory may invoke FREKCORE only within these delegated
-    scopes". `delegate` can never be granted more authority than
-    `delegator` itself holds within `scope` -- enforced by
+    scopes". `delegate` can never be granted more than this grant's own
+    scope/actions/resource/window state -- enforced by
     `permissions.delegation.delegation_permits()`, not by this model
-    alone (a model cannot check that against the delegator's own actual
-    RoleGrants; the pure function does, given both)."""
+    alone. That check alone does not prove `delegator` ever actually
+    held the authority it delegated; STATE_8 added
+    `permissions.delegation.delegation_authority_chain_valid()`, which
+    composes `delegation_permits()` with `permissions.engine.decide()`
+    against the delegator's own current RoleGrants for that (a model
+    cannot see the delegator's actual RoleGrants; the pure functions
+    do, given both)."""
 
     grant_id: str
     delegator_frek_id: str = Field(

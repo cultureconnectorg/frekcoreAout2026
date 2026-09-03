@@ -28,6 +28,7 @@ from permissions import (  # noqa: E402
     Subject,
     cvln_role_for_protocol_role,
     decide,
+    delegation_authority_chain_valid,
     delegation_permits,
 )
 from permissions.audit_integration import decision_to_audit_event  # noqa: E402
@@ -443,3 +444,245 @@ def test_delegation_resource_boundary_rejects_mismatched_resource_type():
         )
         is False
     )
+
+
+# ------------- Delegated Authority: full chain (STATE_8, 2026-09-03) -------------
+# STATE_7 correctly reported DELEGATED_AUTHORITY=PARTIAL because
+# `delegation_permits()` deliberately takes the grant as given, never
+# checking whether the delegator actually held the authority it purports
+# to delegate. STATE_8's mission requires proving the complete chain:
+# DELEGATOR -> EXISTING AUTHORITY/ROLE GRANT -> DELEGATION GRANT ->
+# DELEGATE -> REQUESTED ACTION/RESOURCE. `delegation_authority_chain_valid()`
+# composes `decide()` (the delegator's own current RoleGrants) with
+# `delegation_permits()` (the grant itself) -- reuse, not a second engine
+# (NO_PARALLEL_AUTHORITY_ENGINE=TRUE).
+
+
+def _founder_subject_with_org_role(org_id: str = "org-1") -> Subject:
+    return Subject(
+        frek_id="id-founder",
+        roles=[
+            RoleGrant(
+                role=Role.EXECUTIVE,
+                scope=Scope(type=ScopeType.ORGANIZATION, id=org_id),
+                granted_at="2026-08-30T00:00:00Z",
+            )
+        ],
+    )
+
+
+def test_delegation_chain_valid_when_delegator_holds_matching_authority():
+    """The positive case: delegator's own RoleGrant justifies the exact
+    scope/action the DelegationGrant extends to the delegate."""
+    grant = _grant_for_delegation(
+        scope=Scope(type=ScopeType.ORGANIZATION, id="org-1"),
+        actions=[Action.READ],
+    )
+    resource = ResourceRef(resource_type="frek.track", organization_id="org-1")
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=_founder_subject_with_org_role(),
+        delegate_frek_id="svc-kora",
+        action=Action.READ,
+        resource=resource,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is True
+    assert decision.matched_role == Role.EXECUTIVE
+
+
+def test_delegation_chain_denied_when_delegator_never_held_authority():
+    """A delegator with NO RoleGrant at all cannot create/use an effective
+    delegation, even though the DelegationGrant record itself is
+    well-formed and would pass `delegation_permits()` alone."""
+    grant = _grant_for_delegation(
+        scope=Scope(type=ScopeType.ORGANIZATION, id="org-1"),
+        actions=[Action.READ],
+    )
+    resource = ResourceRef(resource_type="frek.track", organization_id="org-1")
+    delegator_with_no_roles = Subject(frek_id="id-founder", roles=[])
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=delegator_with_no_roles,
+        delegate_frek_id="svc-kora",
+        action=Action.READ,
+        resource=resource,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is False
+    assert "delegator lacks current originating authority" in decision.reason
+    # the underlying grant record is otherwise valid -- confirms the
+    # denial comes specifically from the delegator-authority check, not
+    # from delegation_permits() itself
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is True
+    )
+
+
+def test_delegation_chain_denied_when_delegator_authority_revoked():
+    """Revocation-propagation policy: a delegator whose RoleGrant has
+    since been revoked/removed loses downstream delegated authority too,
+    even when the DelegationGrant record itself was never separately
+    marked `revoked_at`. Modeled as canonical persistence no longer
+    returning the revoked RoleGrant on `Subject.roles` -- exactly how
+    `decide()` already expects revocation to be reflected."""
+    grant = _grant_for_delegation(
+        scope=Scope(type=ScopeType.ORGANIZATION, id="org-1"),
+        actions=[Action.READ],
+        # the DelegationGrant record itself is NOT revoked
+        revoked_at=None,
+    )
+    resource = ResourceRef(resource_type="frek.track", organization_id="org-1")
+    delegator_after_role_revoked = Subject(frek_id="id-founder", roles=[])
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=delegator_after_role_revoked,
+        delegate_frek_id="svc-kora",
+        action=Action.READ,
+        resource=resource,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is False
+    assert "delegator lacks current originating authority" in decision.reason
+
+
+def test_delegation_chain_denied_when_delegator_subject_mismatch():
+    """The delegator_subject passed by the caller must be the same
+    identity the grant names -- a caller cannot substitute a
+    better-authorized subject to launder a mismatched grant."""
+    grant = _grant_for_delegation(
+        delegator_frek_id="id-founder",
+        scope=Scope(type=ScopeType.ORGANIZATION, id="org-1"),
+        actions=[Action.READ],
+    )
+    resource = ResourceRef(resource_type="frek.track", organization_id="org-1")
+    someone_else = Subject(
+        frek_id="id-someone-else",
+        roles=[
+            RoleGrant(
+                role=Role.FOUNDER,
+                scope=Scope(type=ScopeType.GLOBAL),
+                granted_at="2026-08-30T00:00:00Z",
+            )
+        ],
+    )
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=someone_else,
+        delegate_frek_id="svc-kora",
+        action=Action.READ,
+        resource=resource,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is False
+    assert "does not match this grant's delegator_frek_id" in decision.reason
+
+
+def test_delegation_chain_denied_when_grant_itself_invalid():
+    """Even a fully-authorized delegator cannot rescue a grant that is
+    itself expired/revoked/wrong-delegate -- the chain requires BOTH
+    halves to hold."""
+    grant = _grant_for_delegation(
+        scope=Scope(type=ScopeType.ORGANIZATION, id="org-1"),
+        actions=[Action.READ],
+        revoked_at="2026-09-02T00:00:00Z",
+    )
+    resource = ResourceRef(resource_type="frek.track", organization_id="org-1")
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=_founder_subject_with_org_role(),
+        delegate_frek_id="svc-kora",
+        action=Action.READ,
+        resource=resource,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is False
+    assert "delegation grant itself does not cover" in decision.reason
+
+
+def test_delegation_chain_denied_when_role_capability_does_not_cover_action():
+    """The delegator's role/scope may cover the resource but not the
+    action itself -- e.g. Role.STUDENT is READ-only in
+    ROLE_CAPABILITIES. A DelegationGrant that lists a broader action was
+    never actually backed by originating authority, and the chain check
+    must catch this even though `delegation_permits()` alone would
+    allow it."""
+    grant = _grant_for_delegation(
+        delegator_frek_id="id-student",
+        scope=Scope(type=ScopeType.GLOBAL),
+        actions=[Action.DELETE],
+    )
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    student = Subject(
+        frek_id="id-student",
+        roles=[
+            RoleGrant(
+                role=Role.STUDENT,
+                scope=Scope(type=ScopeType.GLOBAL),
+                granted_at="2026-08-30T00:00:00Z",
+            )
+        ],
+    )
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.DELETE,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is True
+    )
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=student,
+        delegate_frek_id="svc-kora",
+        action=Action.DELETE,
+        resource=resource,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is False
+
+
+def test_delegation_chain_denied_object_scope_when_delegator_not_owner():
+    """OBJECT-scope delegator authority is itself "ses oeuvres
+    uniquement" -- a delegator cannot delegate authority over a resource
+    they do not own, even if their own RoleGrant is OBJECT-scoped and
+    the DelegationGrant record names that scope. (Both halves of the
+    chain independently deny this: `_scope_covers()` -- reused by both
+    `delegation_permits()` and `decide()` -- ties OBJECT scope to
+    `owner_id`, so either check alone already denies it here.)"""
+    grant = _grant_for_delegation(
+        delegator_frek_id="id-artist",
+        scope=Scope(type=ScopeType.OBJECT),
+        actions=[Action.UPDATE],
+    )
+    artist = Subject(
+        frek_id="id-artist",
+        roles=[
+            RoleGrant(
+                role=Role.ARTIST,
+                scope=Scope(type=ScopeType.OBJECT),
+                granted_at="2026-08-30T00:00:00Z",
+            )
+        ],
+    )
+    not_owned = ResourceRef(
+        resource_type="frek.track", resource_id="t-9", owner_id="someone-else"
+    )
+    decision = delegation_authority_chain_valid(
+        grant,
+        delegator_subject=artist,
+        delegate_frek_id="svc-kora",
+        action=Action.UPDATE,
+        resource=not_owned,
+        now_iso="2026-09-03T00:00:00Z",
+    )
+    assert decision.allowed is False

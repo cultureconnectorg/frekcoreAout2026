@@ -1,8 +1,9 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
 **Status**: All of D1–D6 are IMPLEMENTED, Historical Compatibility
-Reconciliation (STATE_6) is DONE, and API/SDK Contract Stabilization
-(STATE_7) is DONE. D6 (Evidence Semantics), D1 (Signal Fingerprint /
+Reconciliation (STATE_6) is DONE, API/SDK Contract Stabilization
+(STATE_7) is DONE, and Regression/Evidence/Migration Validation (STATE_8)
+is DONE. D6 (Evidence Semantics), D1 (Signal Fingerprint /
 Content Binding), D2 (Creative Lifecycle), D3 (Relationship / Provenance
 Graph), D4 (Offline Proof Transport), and D5 (Technical Evidence Report /
 Juridical Framing) — see the 2026-09-01/2026-09-03 updates below —
@@ -15,9 +16,12 @@ in place in STATE_6 (rate limiting, audit visibility, additive canonical
 cross-references, one wording fix — never destructively rewritten), and
 left untouched again in STATE_7 (a contracts/documentation/SDK state, see
 `docs/architecture/FREKCORE_API_CONTRACT_V1.md` and its 4 companion
-documents). STATE_7 completion does **not** by itself authorize final
-freeze: the founder's own next-named state is `STATE_8_REGRESSION_
-EVIDENCE_MIGRATION_VALIDATION`, not yet authorized. PR #1 not merged, not
+documents) and once more in STATE_8 (a validation state — `git diff
+--stat -- backend/frek/` confirmed empty; see `docs/validation/
+FREKCORE_STATE8_VALIDATION_RESULTS.md` and its 3 companion documents).
+STATE_8 completion does **not** by itself authorize final freeze: the
+founder's own next-named state is `STATE_9_FINAL_HISTORICAL_
+ARCHITECTURAL_RECONCILIATION`, not yet authorized. PR #1 not merged, not
 deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
@@ -403,6 +407,47 @@ automatically authorize STATE_8: the next state the founder named is
 (`EXECUTE_STATE_8=FALSE` this pass), explicitly not Production Readiness,
 Wiring, or Deployment. Per the protocol, this document now stops and
 waits for the founder to authorize STATE_8 before any further execution.
+
+**Update (2026-09-03, STATE_8/Regression-Evidence-Migration Validation
+executed under FREKCORE_EXECUTION_PROTOCOL_V1)**: per `EXECUTE_STATE_8=
+TRUE, BASELINE_HEAD=fc37516`, STATE_8 validated the integrated D1–D6 +
+STATE_6 + STATE_7 baseline as one system rather than redesigning any of
+it (`docs/validation/FREKCORE_STATE8_VALIDATION_PLAN.md` +
+`FREKCORE_STATE8_VALIDATION_RESULTS.md` + `FREKCORE_MIGRATION_
+VALIDATION.md` + `FREKCORE_FAILURE_MODE_MATRIX.md`). Full regression
+re-run green (507 backend tests, up from 483, +24 genuinely new — audited
+against the existing 62-file suite first, so nothing already covered
+(offline-transport revocation/replay/conflict, D1 determinism/non-finite-
+input safety, identity-reconciliation idempotency, and more) was
+duplicated). STATE_7's `DELEGATED_AUTHORITY=PARTIAL` is now `VERIFIED`
+(still unwired, UNIT_VERIFIED): `permissions.delegation.delegation_
+authority_chain_valid()` composes the existing `decide()` with
+`delegation_permits()` to prove the delegator actually held the
+authority it purports to delegate, and that revoking the delegator's own
+RoleGrant invalidates the delegation — `NO_PARALLEL_AUTHORITY_ENGINE=
+TRUE` throughout. Real-MongoDB and real-OTS/Bitcoin-anchor validation
+were both re-attempted, not assumed still blocked from D1–D6: both
+remain `BLOCKED` (this sandbox now has no reachable Docker daemon at
+all — `Cannot connect to the Docker daemon at unix:///var/run/docker.sock`
+— and the OTS calendar server is unreachable through the outbound proxy),
+and mongomock is explicitly **not** substituted as equivalent evidence
+(confirmed this state: it isolates state per client instance, unlike
+real MongoDB) — the one genuinely real-infra-verified persistence layer
+in this codebase is `storage.local.LocalFilesystemStorageProvider` (real
+disk). All 19 `backend/frek/` legacy routes re-verified reachable,
+correctly mapped to their D1–D5 canonical target, writing no independent
+second truth, with response and identifier compatibility unchanged —
+`backend/frek/`'s diff is empty this state too (`BACKEND_FREK_CHANGED=
+NO`, same as STATE_7). One genuine docstring/code inconsistency was
+found and fixed (a `DelegationGrant` docstring in `permissions/models.py`
+overclaiming what `delegation_permits()` alone checks) — the one bounded
+contract correction this state makes, not a redesign. `D1_VERIFIED=
+PARTIAL` unchanged, no new scientific claim made. Per the founder's own
+explicit instruction, STATE_8 completion does **not** automatically
+authorize STATE_9: the next state the founder named is `STATE_9_FINAL_
+HISTORICAL_ARCHITECTURAL_RECONCILIATION` (`EXECUTE_STATE_9=FALSE` this
+pass). Per the protocol, this document now stops and waits for the
+founder to authorize STATE_9 before any further execution.
 
 ---
 
@@ -1856,30 +1901,35 @@ sequence matches what §D independently found:
    2026-09-03 STATE_7 update above and `docs/architecture/
    FREKCORE_SDK_CONTRACT_V1.md`. Both SDKs now cover every D1–D5
    capability, lean-wrapped.
-10. **Regression/evidence tests** — per §R, written alongside each
-    capability throughout D1–D5/STATE_6/STATE_7, not deferred to the end
-    (`backend/tests/test_api_contract.py` is this step's own STATE_7
-    contribution: a real OpenAPI-generation + golden-snapshot contract
-    regression test).
+10. **DONE (2026-09-03) — Regression/evidence tests, full cross-module
+    pass (STATE_8)** — per §R, written alongside each capability
+    throughout D1–D5/STATE_6/STATE_7, then validated as one integrated
+    system this state: see the 2026-09-03 STATE_8 update above and
+    `docs/validation/FREKCORE_STATE8_VALIDATION_RESULTS.md`
+    (`backend/tests/test_api_contract.py` remains this step's own
+    STATE_7 golden-snapshot contribution, re-run green; `backend/tests/
+    test_state8_validation.py` and the 7 new delegated-authority
+    full-chain tests in `tests/test_permissions.py` are STATE_8's own).
 11. **Freeze reassessment** — after 0–10 (now all done); this document's
     own verdict (§U, and `reports/21_FREEZE_ASSESSMENT.md`) is **NOT
-    READY FOR FINAL FREEZE — STATE_8 REGRESSION/EVIDENCE/MIGRATION
-    VALIDATION REQUIRED**, per the founder's own explicit framing that
-    STATE_7 completion does not by itself authorize final freeze.
+    READY FOR FINAL FREEZE — STATE_9 FINAL HISTORICAL ARCHITECTURAL
+    RECONCILIATION REQUIRED**, per the founder's own explicit framing
+    that STATE_8 completion does not by itself authorize final freeze.
 
-**This document did not start step 0 when first written; steps 0–9 (D6,
+**This document did not start step 0 when first written; steps 0–10 (D6,
 the canonical bindings model, D1, D2, D3, D4, D5, Historical
-Compatibility Reconciliation, and API/SDK Contract Stabilization) have
-since been executed**, each under the founder's explicit, separate
-authorization (`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then
-`EXECUTE_D2=TRUE`, then `EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`, then
-`EXECUTE_D5=TRUE`, then `EXECUTE_STATE_6=TRUE`, then
-`EXECUTE_STATE_7=TRUE`) — see the 2026-09-01/2026-09-03 updates at the
+Compatibility Reconciliation, API/SDK Contract Stabilization, and
+Regression/Evidence/Migration Validation) have since been executed**,
+each under the founder's explicit, separate authorization
+(`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then
+`EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`, then `EXECUTE_D5=TRUE`, then
+`EXECUTE_STATE_6=TRUE`, then `EXECUTE_STATE_7=TRUE`, then
+`EXECUTE_STATE_8=TRUE`) — see the 2026-09-01/2026-09-03 updates at the
 top of this document. Step 11 (freeze reassessment, in the sense of a
 founder-authorized final freeze) is the founder's own next-named state,
-`STATE_8_REGRESSION_EVIDENCE_MIGRATION_VALIDATION` — not started,
+`STATE_9_FINAL_HISTORICAL_ARCHITECTURAL_RECONCILIATION` — not started,
 requiring its own separate founder authorization before execution —
-`EXECUTE_STATE_8=FALSE` as of this update.
+`EXECUTE_STATE_9=FALSE` as of this update.
 
 ---
 

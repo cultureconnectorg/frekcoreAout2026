@@ -153,7 +153,20 @@ FREKCORE_API_CONTRACT_V1.md`, alongside SDK/event/error/versioning
 contracts in 4 companion documents. No capability's own implementation
 changed this state (`BACKEND_FREK_CHANGED=NO`); both SDKs now cover every
 D1–D5 capability below (one canonical create/generate + one canonical
-read method each).
+read method each). **Update (2026-09-03)**: Regression/Evidence/Migration
+Validation (STATE_8) is now DONE — every capability row below was
+re-validated as part of the integrated system, not just individually
+(full regression re-run green, 507 backend tests). This matrix does not
+carry its own row for STATE_7's Service Identity / Delegated Authority
+contract (that lives in `docs/architecture/FREKCORE_VERSIONING_POLICY.md`
+§9, not in this D1–D6 capability table); its `DELEGATED_AUTHORITY=PARTIAL`
+status is now `VERIFIED` (still unwired) via a new full-chain check
+reusing the Permission Engine, and real-MongoDB/real-OTS validation were
+both re-attempted and remain `BLOCKED` (reproduced fresh, not carried
+forward assumed) — none of that changes any D1–D6 row below. No
+capability's own implementation changed this state either
+(`BACKEND_FREK_CHANGED=NO` again). Full record: `docs/validation/
+FREKCORE_STATE8_VALIDATION_RESULTS.md`.
 
 | Capability | Status | Evidence |
 |---|---|---|

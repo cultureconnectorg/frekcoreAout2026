@@ -33,7 +33,7 @@ from .models import (
     Subject,
 )
 from .engine import ROLE_CAPABILITIES, decide
-from .delegation import delegation_permits
+from .delegation import delegation_authority_chain_valid, delegation_permits
 from .protocol_roles import (
     PROTOCOL_ROLE_TO_CVLN_ROLE,
     ProtocolRole,
@@ -55,6 +55,7 @@ __all__ = [
     "ROLE_CAPABILITIES",
     "decide",
     "delegation_permits",
+    "delegation_authority_chain_valid",
     "ProtocolRole",
     "PROTOCOL_ROLE_TO_CVLN_ROLE",
     "cvln_role_for_protocol_role",

@@ -179,10 +179,24 @@ no reordering needed):
    `docs/architecture/FREKCORE_SDK_CONTRACT_V1.md`,
    `FREKCORE_API_CONTRACT_V1.md`, `FREKCORE_ERROR_CONTRACT_V1.md`,
    `FREKCORE_EVENT_CONTRACT_V1.md`, `FREKCORE_VERSIONING_POLICY.md`.
-10. **Regression/evidence tests** — per capability, ideally alongside
-    implementation, not deferred (§R of the reconciliation report).
+10. **DONE (2026-09-03) — Regression/evidence tests, full cross-module
+    validation (STATE_8)** — per capability, written alongside
+    implementation throughout D1–D5/STATE_6/STATE_7 (§R of the
+    reconciliation report), then validated as one integrated system:
+    full backend regression re-run green (507, up from 483), STATE_7's
+    `DELEGATED_AUTHORITY=PARTIAL` closed to `VERIFIED` via a new
+    composed authority-chain check reusing the Permission Engine, real-
+    MongoDB and real-OTS validation re-attempted and confirmed still
+    `BLOCKED` (not assumed, not substituted with mongomock), all 19
+    legacy routes re-verified, a bounded failure-injection matrix run.
+    Full record: `docs/validation/FREKCORE_STATE8_VALIDATION_PLAN.md`,
+    `FREKCORE_STATE8_VALIDATION_RESULTS.md`,
+    `FREKCORE_MIGRATION_VALIDATION.md`, `FREKCORE_FAILURE_MODE_MATRIX.md`.
 11. **Freeze reassessment** — after this item's subset the founder
-    prioritizes is closed; see `reports/21_FREEZE_ASSESSMENT.md`.
+    prioritizes is closed; see `reports/21_FREEZE_ASSESSMENT.md`. STATE_8
+    completion does not by itself authorize final freeze — the founder's
+    own next-named state is `STATE_9_FINAL_HISTORICAL_ARCHITECTURAL_
+    RECONCILIATION`, not yet authorized.
 
 **Not started this pass** — pure documentation/architectural
 reconciliation only, per explicit instruction. No runtime code changed.
