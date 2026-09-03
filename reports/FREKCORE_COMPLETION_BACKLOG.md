@@ -168,8 +168,17 @@ no reordering needed):
    to migrate (everything is in-process memory today, confirmed).
    Reduces to "wire the actual storage engine" once 4 (graph) and 2
    (vector) resolve their storage-shape questions.
-9. **SDK integration** — net-new surface for all five capabilities;
-   neither SDK wraps any `backend/frek/` route today.
+9. **DONE (2026-09-03) — SDK integration (STATE_7)** — both SDKs now
+   cover content_binding, creative_lifecycle, relationship_graph,
+   offline_transport, and technical_evidence_report (one canonical
+   create/generate + one canonical read method each, matching
+   `identity_client.py`'s own established lean-wrapping precedent), plus
+   a canonical `FrekError` hierarchy in both languages, mapped from HTTP
+   status. Neither SDK wraps any `backend/frek/` (legacy) route — by
+   design, new consumers integrate against `/api/v1/...`. Full record:
+   `docs/architecture/FREKCORE_SDK_CONTRACT_V1.md`,
+   `FREKCORE_API_CONTRACT_V1.md`, `FREKCORE_ERROR_CONTRACT_V1.md`,
+   `FREKCORE_EVENT_CONTRACT_V1.md`, `FREKCORE_VERSIONING_POLICY.md`.
 10. **Regression/evidence tests** — per capability, ideally alongside
     implementation, not deferred (§R of the reconciliation report).
 11. **Freeze reassessment** — after this item's subset the founder

@@ -97,6 +97,8 @@ export interface ListObjectsOptions {
   offset?: number;
 }
 
+import { raiseForFrekStatus } from "./errors";
+
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export class FrekcoreRegistryClient {
@@ -110,9 +112,7 @@ export class FrekcoreRegistryClient {
 
   private async getJson<T>(path: string): Promise<T> {
     const resp = await this.fetchImpl(`${this.baseUrl}${path}`, { method: "GET" });
-    if (!resp.ok) {
-      throw new Error(`FREKCORE Registry request failed: GET ${path} -> ${resp.status}`);
-    }
+    await raiseForFrekStatus(resp, path);
     return (await resp.json()) as T;
   }
 
@@ -126,9 +126,7 @@ export class FrekcoreRegistryClient {
       headers: { "Content-Type": "application/json", ...extraHeaders },
       body: JSON.stringify(body),
     });
-    if (!resp.ok) {
-      throw new Error(`FREKCORE Registry request failed: POST ${path} -> ${resp.status}`);
-    }
+    await raiseForFrekStatus(resp, path);
     return (await resp.json()) as T;
   }
 

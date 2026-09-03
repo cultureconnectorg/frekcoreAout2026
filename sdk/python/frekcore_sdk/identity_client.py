@@ -31,6 +31,8 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from .errors import raise_for_frek_status
+
 
 class FrekcoreIdentityClient:
     """Thin, typed wrapper over `identity_engine`'s public-read endpoints
@@ -70,7 +72,7 @@ class FrekcoreIdentityClient:
         own `_to_public()` strips credentials before this response is
         built, so this is safe to call with no session/admin context."""
         resp = self._client.get(f"/api/v1/identity/{frek_id}")
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def get_me(self, session_token: str) -> Dict[str, Any]:
@@ -80,7 +82,7 @@ class FrekcoreIdentityClient:
         resp = self._client.get(
             "/api/v1/identity/me", headers={"X-FREK-Session": session_token}
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def get_linked_objects(self, frek_id: str, session_token: str) -> Dict[str, Any]:
@@ -91,7 +93,7 @@ class FrekcoreIdentityClient:
             f"/api/v1/identity/{frek_id}/objects",
             headers={"X-FREK-Session": session_token},
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def search_identities(
@@ -120,5 +122,5 @@ class FrekcoreIdentityClient:
             params=params,
             headers={"X-Admin-Key": admin_key},
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()

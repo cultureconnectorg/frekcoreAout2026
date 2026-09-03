@@ -141,15 +141,17 @@ jobs:
         run: pip-audit -r requirements-ci.txt
 
   # ---------------------------------------------------------------------
-  # SDKs (Priority 7). Both wrap ONLY the Registry API — see
-  # sdk/python/frekcore_sdk/__init__.py and sdk/typescript/src/registryClient.ts
-  # for scope. The Python SDK test is a real end-to-end test against the
-  # actual registry_router (FastAPI TestClient, no live server); the
-  # TypeScript SDK test mocks fetch (no ASGI-transport equivalent in TS —
-  # see sdk/typescript/README.md).
+  # SDKs (Priority 7, extended STATE_7 2026-09-03 to Registry + Identity
+  # (read) + the D1-D5 capability clients) — see
+  # sdk/python/frekcore_sdk/__init__.py, sdk/typescript/src/index.ts, and
+  # docs/architecture/FREKCORE_SDK_CONTRACT_V1.md for scope. The Python
+  # SDK test is a real end-to-end test against each capability's actual
+  # FastAPI router (TestClient, no live server); the TypeScript SDK test
+  # mocks fetch (no ASGI-transport equivalent in TS — see
+  # sdk/typescript/README.md).
   # ---------------------------------------------------------------------
   sdk-python:
-    name: Python SDK (Registry) — real end-to-end test
+    name: Python SDK — real end-to-end test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -163,11 +165,11 @@ jobs:
         run: |
           pip install -r backend/requirements-ci.txt
           pip install -e sdk/python
-      - name: pytest (real end-to-end against registry_router)
+      - name: pytest (real end-to-end against each capability's own router)
         run: PYTHONPATH=backend:sdk/python python3 -m pytest sdk/python/tests -v
 
   sdk-typescript:
-    name: TypeScript SDK (Registry) — typecheck + test
+    name: TypeScript SDK — typecheck + test
     runs-on: ubuntu-latest
     defaults:
       run:

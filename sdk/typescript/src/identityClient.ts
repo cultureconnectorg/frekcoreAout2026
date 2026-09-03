@@ -27,6 +27,7 @@
  */
 
 import { FetchLike } from "./registryClient";
+import { raiseForFrekStatus } from "./errors";
 export type { FetchLike };
 
 export interface IdentityPublicView {
@@ -73,9 +74,7 @@ export class FrekcoreIdentityClient {
       method: "GET",
       headers: extraHeaders,
     });
-    if (!resp.ok) {
-      throw new Error(`FREKCORE Identity request failed: GET ${path} -> ${resp.status}`);
-    }
+    await raiseForFrekStatus(resp, path);
     return (await resp.json()) as T;
   }
 

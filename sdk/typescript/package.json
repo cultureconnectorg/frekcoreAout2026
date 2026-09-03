@@ -1,7 +1,7 @@
 {
   "name": "@frekcore/registry-sdk",
-  "version": "0.1.0",
-  "description": "FREKCORE TypeScript SDK — Registry API only (Phase 2, Priority 7). See src/registryClient.ts for scope.",
+  "version": "0.2.0",
+  "description": "FREKCORE TypeScript SDK — Registry, Identity (read), and D1-D5 capability clients. See src/index.ts and docs/architecture/FREKCORE_SDK_CONTRACT_V1.md for scope.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

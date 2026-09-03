@@ -17,15 +17,18 @@ if str(BACKEND_DIR) not in sys.path:
 from permissions import (  # noqa: E402
     Action,
     DecisionRequest,
+    DelegationGrant,
     ProtocolRole,
     ResourceRef,
     Role,
     RoleGrant,
     Scope,
     ScopeType,
+    ServiceIdentity,
     Subject,
     cvln_role_for_protocol_role,
     decide,
+    delegation_permits,
 )
 from permissions.audit_integration import decision_to_audit_event  # noqa: E402
 from permissions.protocol_roles import PROTOCOL_ROLE_TO_CVLN_ROLE  # noqa: E402
@@ -227,3 +230,216 @@ def test_no_protocol_role_currently_maps_to_an_enforceable_cvln_role():
     that's the point: it can't silently drift unnoticed."""
     for protocol_role in ProtocolRole:
         assert cvln_role_for_protocol_role(protocol_role) is None
+
+
+# ------------- Service Identity & Delegated Authority (STATE_7, 2026-09-03) -------------
+# docs/architecture/FREKCORE_VERSIONING_POLICY.md §9. Pure data + pure logic
+# only -- not wired into any live route this state, same disclosed status as
+# RoleGrant/decide() themselves (zero live callers, confirmed unchanged).
+
+
+def test_service_identity_active_by_default():
+    svc = ServiceIdentity(
+        service_id="svc-kora",
+        owner=ResourceRef(resource_type="organization", resource_id="org-1"),
+    )
+    assert svc.is_active(now_iso="2026-09-03T00:00:00Z") is True
+
+
+def test_service_identity_inactive_once_revoked():
+    svc = ServiceIdentity(
+        service_id="svc-kora",
+        owner=ResourceRef(resource_type="organization", resource_id="org-1"),
+        revoked_at="2026-09-01T00:00:00Z",
+    )
+    assert svc.is_active(now_iso="2026-09-03T00:00:00Z") is False
+
+
+def test_service_identity_inactive_once_expired():
+    svc = ServiceIdentity(
+        service_id="svc-kora",
+        owner=ResourceRef(resource_type="organization", resource_id="org-1"),
+        expires_at="2026-09-02T00:00:00Z",
+    )
+    assert svc.is_active(now_iso="2026-09-03T00:00:00Z") is False
+    assert svc.is_active(now_iso="2026-09-01T00:00:00Z") is True
+
+
+def _grant_for_delegation(**overrides) -> DelegationGrant:
+    body = dict(
+        grant_id="g-1",
+        delegator_frek_id="id-founder",
+        delegate_frek_id="svc-kora",
+        scope=Scope(type=ScopeType.GLOBAL),
+        actions=[Action.READ, Action.CREATE],
+        valid_from="2026-09-01T00:00:00Z",
+    )
+    body.update(overrides)
+    return DelegationGrant(**body)
+
+
+def test_delegation_permits_within_scope_and_actions():
+    grant = _grant_for_delegation()
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is True
+    )
+
+
+def test_delegation_denies_action_not_in_grant():
+    """The core invariant: a delegate can never get more than the grant
+    itself lists, even when scope would otherwise cover the resource."""
+    grant = _grant_for_delegation(actions=[Action.READ])
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.DELETE,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_denies_wrong_delegate():
+    grant = _grant_for_delegation()
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="someone-else",
+            action=Action.READ,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_denies_once_revoked():
+    grant = _grant_for_delegation(revoked_at="2026-09-02T00:00:00Z")
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_denies_before_valid_from():
+    grant = _grant_for_delegation(valid_from="2026-09-10T00:00:00Z")
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_denies_after_valid_until():
+    grant = _grant_for_delegation(valid_until="2026-09-02T00:00:00Z")
+    resource = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=resource,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_object_scope_covers_only_delegator_owned_resource():
+    grant = _grant_for_delegation(scope=Scope(type=ScopeType.OBJECT))
+    owned = ResourceRef(
+        resource_type="frek.track", resource_id="t-1", owner_id="id-founder"
+    )
+    not_owned = ResourceRef(
+        resource_type="frek.track", resource_id="t-2", owner_id="someone-else"
+    )
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=owned,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is True
+    )
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=not_owned,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_resource_boundary_narrower_than_scope():
+    grant = _grant_for_delegation(
+        resource=ResourceRef(resource_type="frek.track", resource_id="t-1")
+    )
+    matching = ResourceRef(resource_type="frek.track", resource_id="t-1")
+    other = ResourceRef(resource_type="frek.track", resource_id="t-2")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=matching,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is True
+    )
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=other,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )
+
+
+def test_delegation_resource_boundary_rejects_mismatched_resource_type():
+    grant = _grant_for_delegation(
+        resource=ResourceRef(resource_type="frek.track", resource_id="t-1")
+    )
+    wrong_type = ResourceRef(resource_type="frek.artist", resource_id="t-1")
+    assert (
+        delegation_permits(
+            grant,
+            delegate_frek_id="svc-kora",
+            action=Action.READ,
+            resource=wrong_type,
+            now_iso="2026-09-03T00:00:00Z",
+        )
+        is False
+    )

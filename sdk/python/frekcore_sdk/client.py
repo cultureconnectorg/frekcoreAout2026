@@ -30,6 +30,8 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
+from .errors import raise_for_frek_status
+
 
 @dataclass
 class RegistryNamespace:
@@ -81,14 +83,14 @@ class FrekcoreRegistryClient:
 
     def list_versions(self) -> Dict[str, Any]:
         resp = self._client.get("/api/v1/registry/versions")
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def list_namespaces(self, schema_version: str = "v1") -> List[RegistryNamespace]:
         resp = self._client.get(
             "/api/v1/registry/namespaces", params={"schema_version": schema_version}
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return [RegistryNamespace(**row) for row in resp.json()]
 
     def get_namespace_schema(
@@ -98,7 +100,7 @@ class FrekcoreRegistryClient:
             f"/api/v1/registry/namespaces/{namespace}",
             params={"schema_version": schema_version},
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def validate(
@@ -112,13 +114,13 @@ class FrekcoreRegistryClient:
                 "schema_version": schema_version,
             },
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         body = resp.json()
         return ValidationResult(**body)
 
     def list_events(self) -> Dict[str, Any]:
         resp = self._client.get("/api/v1/registry/events")
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     @staticmethod
@@ -153,7 +155,7 @@ class FrekcoreRegistryClient:
             json={"payload": payload, "schema_version": schema_version},
             headers=self._write_auth_headers(bearer_token, session_token),
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def list_objects(
@@ -178,7 +180,7 @@ class FrekcoreRegistryClient:
         if status is not None:
             params["status"] = status
         resp = self._client.get(f"/api/v1/registry/objects/{namespace}", params=params)
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()
 
     def get_object(
@@ -189,5 +191,5 @@ class FrekcoreRegistryClient:
             f"/api/v1/registry/objects/{namespace}/{frek_id}",
             params={"schema_version": schema_version},
         )
-        resp.raise_for_status()
+        raise_for_frek_status(resp)
         return resp.json()

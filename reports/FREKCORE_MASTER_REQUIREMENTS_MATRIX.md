@@ -145,7 +145,15 @@ built additively without touching `backend/frek/`); STATE_6 subsequently
 hardened all 19 routes in place (rate limiting, audit visibility,
 additive canonical cross-references, D5's own overclaim-wording fix) —
 still zero routes deleted, zero destructive rewrite. Full record: `docs/
-architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`.
+architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`. **Update
+(2026-09-03)**: API/SDK Contract Stabilization (STATE_7) is now DONE —
+the canonical `/api/v1/...` surface (46 endpoints across every capability
+row below) is documented endpoint-by-endpoint in `docs/architecture/
+FREKCORE_API_CONTRACT_V1.md`, alongside SDK/event/error/versioning
+contracts in 4 companion documents. No capability's own implementation
+changed this state (`BACKEND_FREK_CHANGED=NO`); both SDKs now cover every
+D1–D5 capability below (one canonical create/generate + one canonical
+read method each).
 
 | Capability | Status | Evidence |
 |---|---|---|

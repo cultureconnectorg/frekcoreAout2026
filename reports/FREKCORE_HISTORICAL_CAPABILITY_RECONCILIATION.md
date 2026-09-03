@@ -1,22 +1,24 @@
 # FREKCORE — Historical Capability Reconciliation (D1–D6)
 
-**Status**: All of D1–D6 are IMPLEMENTED, and Historical Compatibility
-Reconciliation (STATE_6) is DONE. D6 (Evidence Semantics), D1 (Signal
-Fingerprint / Content Binding), D2 (Creative Lifecycle), D3 (Relationship
-/ Provenance Graph), D4 (Offline Proof Transport), and D5 (Technical
-Evidence Report / Juridical Framing) — see the 2026-09-01/2026-09-02
-updates below — (`backend/proof_engine/evidence_semantics.py`,
+**Status**: All of D1–D6 are IMPLEMENTED, Historical Compatibility
+Reconciliation (STATE_6) is DONE, and API/SDK Contract Stabilization
+(STATE_7) is DONE. D6 (Evidence Semantics), D1 (Signal Fingerprint /
+Content Binding), D2 (Creative Lifecycle), D3 (Relationship / Provenance
+Graph), D4 (Offline Proof Transport), and D5 (Technical Evidence Report /
+Juridical Framing) — see the 2026-09-01/2026-09-03 updates below —
+(`backend/proof_engine/evidence_semantics.py`,
 `backend/content_binding/`, `backend/creative_lifecycle/`,
 `backend/relationship_graph/`, `backend/offline_transport/`,
 `backend/technical_evidence_report/`). `backend/frek/` was additively
-built alongside throughout D1–D5 (untouched by those 5 states) and then,
-in STATE_6, hardened in place (rate limiting, audit visibility, additive
-canonical cross-references, one wording fix) — never destructively
-rewritten (see the D1/D2/D3/D4/D5/STATE_6 updates below and `docs/
-architecture/FREK_HISTORICAL_COMPATIBILITY_MATRIX.md`). STATE_6
-completion does **not** by itself authorize final freeze: the founder's
-own next-named state is `STATE_7_API_SDK_CONTRACT_STABILIZATION`, not yet
-authorized. PR #1 not merged, not deployed.
+built alongside throughout D1–D5 (untouched by those 5 states), hardened
+in place in STATE_6 (rate limiting, audit visibility, additive canonical
+cross-references, one wording fix — never destructively rewritten), and
+left untouched again in STATE_7 (a contracts/documentation/SDK state, see
+`docs/architecture/FREKCORE_API_CONTRACT_V1.md` and its 4 companion
+documents). STATE_7 completion does **not** by itself authorize final
+freeze: the founder's own next-named state is `STATE_8_REGRESSION_
+EVIDENCE_MIGRATION_VALIDATION`, not yet authorized. PR #1 not merged, not
+deployed.
 
 **Founder decision this document records**: the 19 `backend/frek/` routes
 classified `NEEDS_FOUNDER_DECISION` in `docs/architecture/
@@ -345,14 +347,62 @@ overclaim at the source (`node09_juridique.py:to_legal_text`, confirmed
 clean against D5's own `assert_no_forbidden_language` guard). **Zero
 routes deleted, zero historical vocabulary deleted, zero destructive API
 migration** — `ROUTES_DELETED=0`, `CONCEPTS_DELETED=0`, locked in by a
-static route-count regression test. 48 new unit tests, full unit suite
-green (449, up from 400 after D5), coverage gate re-verified at 96.70%.
+static route-count regression test. 50 new unit tests, full unit suite
+green (450, up from 400 after D5), coverage gate re-verified at 96.70%.
 Per the founder's own explicit instruction, STATE_6 completion does
 **not** automatically authorize STATE_7: the next state the founder
 named is `STATE_7_API_SDK_CONTRACT_STABILIZATION`
 (`EXECUTE_STATE_7=FALSE` this pass), explicitly not Production Readiness,
 Wiring, or Deployment. Per the protocol, this document now stops and
 waits for the founder to authorize STATE_7 before any further execution.
+
+**Update (2026-09-03, STATE_7/API-SDK Contract Stabilization executed
+under FREKCORE_EXECUTION_PROTOCOL_V1)**: per `EXECUTE_STATE_7=TRUE,
+EXECUTE_STATE_8=FALSE`, API/SDK Contract Stabilization is now DONE. Full
+record: `docs/architecture/FREKCORE_API_CONTRACT_V1.md` (the
+authoritative endpoint matrix for the 11 capability areas the mission
+named) plus 4 companion documents (`FREKCORE_SDK_CONTRACT_V1.md`,
+`FREKCORE_EVENT_CONTRACT_V1.md`, `FREKCORE_ERROR_CONTRACT_V1.md`,
+`FREKCORE_VERSIONING_POLICY.md`). `CANONICAL_INTERNAL_IMPLEMENTATION !=
+PUBLIC_CONTRACT` is the organizing rule throughout: no D1–D6 route's own
+behavior or response shape was changed this state
+(`REWRITE_D1_D6_ARCHITECTURE=FALSE`, `BACKEND_FREK_CHANGED=NO`) — every
+deliverable is either documentation, or new, unwired, pure-logic
+coherence pieces (`backend/errors.py`'s canonical `ErrorCode`/
+`CanonicalError` vocabulary; `permissions.models.ServiceIdentity`/
+`DelegationGrant` + `permissions.delegation.delegation_permits()`, reusing
+`Scope`/`Action` directly, `NO_PARALLEL_AUTHORITY_ENGINE=TRUE`, not wired
+into any route — the same disclosed status `RoleGrant`/`decide()` have
+had since Phase 2), or SDK extensions. Both SDKs grew from
+Registry+Identity-read-only to also cover content_binding,
+creative_lifecycle, relationship_graph, offline_transport, and
+technical_evidence_report (one canonical create/generate + one canonical
+read method per capability — deliberately lean, matching
+`identity_client.py`'s own established precedent, not exhaustive
+wrapping), with a canonical `FrekError` hierarchy (mapped from HTTP
+status) now raised by every client method in both languages, including
+the two pre-existing ones (a strictly additive change — `FrekError`
+subclasses `httpx.HTTPStatusError` in Python; TypeScript's carries the
+original `Response`). A real OpenAPI-generation contract test
+(`backend/tests/test_api_contract.py`) confirms the canonical `/api/v1/
+...` surface (46 endpoints) has no duplicate (method, path) pairs, all
+19 legacy routes remain present in the generated schema, and a golden
+snapshot genuinely detects a breaking contract change (not merely
+exists). One draft inaccuracy was caught and corrected before
+publication: an early pass of the API contract document claimed `GET
+/api/v1/identity/{frek_id}` and the DID document route shared a path —
+re-verified directly from `server.py`'s router mounts, they do not
+(`did`/`vc` mount at their own separate `/did`/`/vc` prefixes) — the
+published document states the corrected, verified finding. 33 new
+backend unit tests, full unit suite green (483, up from 450 after
+STATE_6), coverage gate re-verified at 96.91%; Python SDK suite green
+(31, up from 18); TypeScript SDK suite green (38, up from 13). Per the
+founder's own explicit instruction, STATE_7 completion does **not**
+automatically authorize STATE_8: the next state the founder named is
+`STATE_8_REGRESSION_EVIDENCE_MIGRATION_VALIDATION`
+(`EXECUTE_STATE_8=FALSE` this pass), explicitly not Production Readiness,
+Wiring, or Deployment. Per the protocol, this document now stops and
+waits for the founder to authorize STATE_8 before any further execution.
 
 ---
 
@@ -1802,25 +1852,34 @@ sequence matches what §D independently found:
 8. **Migration/persistence** — confirmed near-empty scope by §Q (nothing
    durable to migrate); mostly a "pick and wire the actual storage engine"
    step per §M's still-open D1/D3 technical question.
-9. **SDK integration** — net-new for all five (§D's repeated "26. SDK/API
-   impact: none yet" finding); can start once 1–6's API contracts
-   stabilize.
-10. **Regression/evidence tests** — per §R, ideally written alongside each
-    capability, not deferred to the end.
-11. **Freeze reassessment** — after 0–10, or after whichever subset the
-    founder chooses to prioritize.
+9. **DONE (2026-09-03) — SDK integration (STATE_7)** — see the
+   2026-09-03 STATE_7 update above and `docs/architecture/
+   FREKCORE_SDK_CONTRACT_V1.md`. Both SDKs now cover every D1–D5
+   capability, lean-wrapped.
+10. **Regression/evidence tests** — per §R, written alongside each
+    capability throughout D1–D5/STATE_6/STATE_7, not deferred to the end
+    (`backend/tests/test_api_contract.py` is this step's own STATE_7
+    contribution: a real OpenAPI-generation + golden-snapshot contract
+    regression test).
+11. **Freeze reassessment** — after 0–10 (now all done); this document's
+    own verdict (§U, and `reports/21_FREEZE_ASSESSMENT.md`) is **NOT
+    READY FOR FINAL FREEZE — STATE_8 REGRESSION/EVIDENCE/MIGRATION
+    VALIDATION REQUIRED**, per the founder's own explicit framing that
+    STATE_7 completion does not by itself authorize final freeze.
 
-**This document did not start step 0 when first written; steps 0–7 (D6,
-the canonical bindings model, D1, D2, D3, D4, D5, and Historical
-Compatibility Reconciliation) have since been executed**, each under the
-founder's explicit, separate authorization (`EXECUTE_D6=TRUE`, then
-`EXECUTE_D1=TRUE`, then `EXECUTE_D2=TRUE`, then `EXECUTE_D3=TRUE`, then
-`EXECUTE_D4=TRUE`, then `EXECUTE_D5=TRUE`, then `EXECUTE_STATE_6=TRUE`) —
-see the 2026-09-01/2026-09-02 updates at the top of this document. Steps
-9 (SDK integration) and 11 (freeze reassessment) are the founder's own
-next-named state, `STATE_7_API_SDK_CONTRACT_STABILIZATION` — not
-started, requiring its own separate founder authorization before
-execution — `EXECUTE_STATE_7=FALSE` as of this update.
+**This document did not start step 0 when first written; steps 0–9 (D6,
+the canonical bindings model, D1, D2, D3, D4, D5, Historical
+Compatibility Reconciliation, and API/SDK Contract Stabilization) have
+since been executed**, each under the founder's explicit, separate
+authorization (`EXECUTE_D6=TRUE`, then `EXECUTE_D1=TRUE`, then
+`EXECUTE_D2=TRUE`, then `EXECUTE_D3=TRUE`, then `EXECUTE_D4=TRUE`, then
+`EXECUTE_D5=TRUE`, then `EXECUTE_STATE_6=TRUE`, then
+`EXECUTE_STATE_7=TRUE`) — see the 2026-09-01/2026-09-03 updates at the
+top of this document. Step 11 (freeze reassessment, in the sense of a
+founder-authorized final freeze) is the founder's own next-named state,
+`STATE_8_REGRESSION_EVIDENCE_MIGRATION_VALIDATION` — not started,
+requiring its own separate founder authorization before execution —
+`EXECUTE_STATE_8=FALSE` as of this update.
 
 ---
 
