@@ -130,13 +130,48 @@ $ env | grep -i mongo     # (no output — no MONGO_URI configured)
 This sandbox has no reachable Docker daemon at all (a different failure mode
 than the `403 Forbidden` pull error recorded in `reports/23_REAL_MONGODB_
 VALIDATION_PLAN.md` during D1-D6, but the same underlying blocker: no real
-MongoDB reachable here). Per the mission's explicit instruction, mongomock is
-**not** substituted as equivalent evidence. Consequently, true restart-survives
+MongoDB reachable here).
+
+**Addendum (2026-09-03, post-STATE_8-delivery)** — the founder supplied real
+MongoDB Atlas cluster credentials directly in chat after this state's report
+was delivered. Re-attempted immediately, credentials never written to disk
+or committed anywhere (used only in-memory for one diagnostic command, then
+discarded from this session's working state):
+
+```
+$ python3 -c "import socket; socket.getaddrinfo('_mongodb._tcp.cluster0.4rawqdn.mongodb.net', ...)"
+# SRV lookup succeeds -- 3 shard hosts resolve via DNS fine
+$ python3 -c "socket.socket(...).connect(('ac-86nvg7r-shard-00-00.4rawqdn.mongodb.net', 27017))"
+TimeoutError: timed out
+$ pymongo.MongoClient(<the real srv URI>).admin.command('ping')
+ServerSelectionTimeoutError: No replica set members found yet, Timeout: 8.0s,
+  ... servers: [... server_type: Unknown, rtt: None ...]  (all 3 shard hosts unreachable)
+```
+
+This never reached the authentication step at all -- the connection is
+blocked at the network layer, before any credential is evaluated (proven by
+running the same diagnostic with a placeholder password: identical
+failure). A control test to a wholly unrelated HTTPS destination
+(`https://www.google.com`) through this sandbox's own egress proxy returned
+the same class of result: `403 connect_rejected` ("gateway answered 403 to
+CONNECT (organization policy)"), confirming this sandbox's outbound network
+is allowlist-gated at the organization/session level, not merely missing a
+local Docker daemon. **This is stronger evidence than STATE_8's original
+finding**, not new information changing the verdict: even a real, reachable
+Atlas cluster with valid credentials cannot be validated from this specific
+sandboxed session -- the blocker is this session's own network egress
+policy, external to the FREKCORE codebase and independent of Docker's
+absence. Per the mission's explicit instruction, mongomock is **not**
+substituted as equivalent evidence. Consequently, true restart-survives
 -real-Mongo-persistence is **NOT_VERIFIED** for every Mongo-backed collection
 (identity, registry, content bindings, creative lifecycle, relationships,
 proof/notary, offline queue, technical evidence reports, audit trail,
 compatibility mappings) — this is unchanged from every prior state and remains
-the single largest concrete blocker to freeze.
+the single largest concrete blocker to freeze. **Recommendation to the
+founder**: this validation needs to run from an environment with open
+egress to MongoDB Atlas (a developer machine, a CI runner with network
+access, or a sandbox session configured with that destination allowlisted)
+-- not achievable by supplying credentials alone to this session.
 
 What this sandbox *can* verify, and does:
 
