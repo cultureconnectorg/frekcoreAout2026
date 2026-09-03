@@ -184,6 +184,101 @@ jobs:
       - run: npm test
 
   # ---------------------------------------------------------------------
+  # Real MongoDB Atlas validation (FREKCORE_REAL_MONGO_VALIDATION_PROTOCOL,
+  # 2026-09-03). A bounded infrastructure check against the repository's
+  # `MONGO_URI` secret -- every prior attempt at real-Mongo validation in
+  # this repository ran from a sandbox session whose own outbound network
+  # is policy-blocked (see docs/validation/FREKCORE_STATE8_VALIDATION_
+  # RESULTS.md §5); a GitHub-hosted runner has ordinary internet egress,
+  # so this is the first place this validation can actually run.
+  #
+  # `continue-on-error: true`, matching this repo's established
+  # convention for jobs whose outcome depends on external infrastructure
+  # this codebase does not control (Docker build, pip-audit, above) --
+  # Atlas network-access allowlisting or transient cloud issues are
+  # outside this repository's own code, so a failure here must not block
+  # the 4 existing blocking jobs, none of which changed. The job's own
+  # conclusion (green/red) still reflects the real outcome truthfully
+  # (see the classification step) -- "non-blocking" here means "does not
+  # gate other jobs," never "always reported green."
+  #
+  # backend/tests/test_real_mongo_validation.py reuses the repository's
+  # OWN Mongo configuration path throughout (every touched module's real
+  # `set_db()`/`ensure_indexes()`, the same functions every mongomock
+  # unit test already exercises) -- no second Mongo configuration system.
+  # `MONGO_URI` is injected as a job-level env var only, read once via
+  # `os.environ.get()` inside the test file, never echoed, never logged,
+  # never passed as a pytest CLI argument. No `set -x`. The run log is
+  # redacted (any `mongodb(+srv)://...` substring) before being printed,
+  # as defense-in-depth on top of pymongo's own credential-free error
+  # text, and no artifact is uploaded from this job.
+  # ---------------------------------------------------------------------
+  real-mongo-validation:
+    name: real-mongo-validation
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CI dependency set
+        run: pip install -r requirements-ci.txt
+      - name: Real-Mongo validation (connection, CRUD, indexes, restart, idempotency, canonical persistence)
+        shell: bash
+        run: |
+          if [ -z "${MONGO_URI:-}" ]; then
+            {
+              echo "## real-mongo-validation"
+              echo ""
+              echo "MONGO_SECRET_DETECTED=false"
+              echo "REAL_MONGO_VALIDATION=BLOCKED_NETWORK (MONGO_URI secret not set)"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "MONGO_URI secret is not set -- failing safely, no connection attempted." >&2
+            exit 1
+          fi
+
+          set +e
+          pytest -m real_mongo -v --tb=short tests/test_real_mongo_validation.py \
+            > /tmp/real_mongo_run.log 2>&1
+          PYTEST_EXIT=$?
+          set -e
+
+          # Defense-in-depth redaction before this ever reaches a log
+          # viewer, on top of pymongo's own credential-free error text.
+          sed -E 's#mongodb(\+srv)?://[^ "'"'"']*#[REDACTED_MONGO_URI]#g' \
+            /tmp/real_mongo_run.log > /tmp/real_mongo_run.redacted.log
+          cat /tmp/real_mongo_run.redacted.log
+
+          if [ "$PYTEST_EXIT" -eq 0 ]; then
+            CLASSIFICATION="REAL_INFRA_VERIFIED"
+          elif grep -q "REAL_MONGO_VALIDATION=BLOCKED_AUTH" /tmp/real_mongo_run.redacted.log; then
+            CLASSIFICATION="BLOCKED_AUTH"
+          elif grep -q "REAL_MONGO_VALIDATION=BLOCKED_NETWORK" /tmp/real_mongo_run.redacted.log; then
+            CLASSIFICATION="BLOCKED_NETWORK"
+          else
+            CLASSIFICATION="FAILED_SOFTWARE_VALIDATION"
+          fi
+
+          {
+            echo "## real-mongo-validation"
+            echo ""
+            echo "MONGO_SECRET_DETECTED=true"
+            echo "REAL_MONGO_VALIDATION=$CLASSIFICATION"
+            echo ""
+            echo "Commit: $GITHUB_SHA"
+            echo "Run: $GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "REAL_MONGO_VALIDATION=$CLASSIFICATION"
+
+          if [ "$CLASSIFICATION" != "REAL_INFRA_VERIFIED" ]; then
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------
   # Docker build. EXPECTED TO FAIL on a public runner today: the Dockerfile
   # runs `pip install -r backend/requirements.txt` inside the image, and
   # that file requires the private, non-PyPI `emergentintegrations` package

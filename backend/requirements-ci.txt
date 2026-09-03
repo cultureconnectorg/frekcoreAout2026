@@ -75,6 +75,14 @@ python-multipart==0.0.22
 python-dotenv==1.2.1
 pymongo==4.5.0
 motor==3.3.1
+# dnspython: required by pymongo to resolve `mongodb+srv://` URIs (DNS SRV
+# lookup) -- MongoDB Atlas connection strings are always srv://. Present
+# in the real backend/requirements.txt already (same pin); added here too
+# (2026-09-03, FREKCORE_REAL_MONGO_VALIDATION_PROTOCOL) because the
+# real-mongo-validation CI job installs only this file, and without it
+# `AsyncIOMotorClient(<atlas srv uri>)` raises a configuration error
+# before ever attempting a network connection.
+dnspython==2.8.0
 PyJWT==2.7.0
 qrcode==8.2
 stripe==14.3.0
